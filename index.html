@@ -128,11 +128,11 @@
     </div>
     <div class="card p-6">
       <div class="flex items-center justify-between">
-        <div class="title text-xs">Tickets abiertos</div>
-        <div class="w-9 h-9 rounded-lg grad-amber flex items-center justify-center">⏳</div>
+        <div class="title text-xs">Tickets este mes</div>
+        <div class="w-9 h-9 rounded-lg grad-amber flex items-center justify-center">📆</div>
       </div>
-      <div id="kpiOpen" class="kpi-number text-7xl mt-2">0</div>
-      <div id="kpiPending" class="text-sm text-slate-400 mt-1">pendientes: —</div>
+      <div id="kpiMonth" class="kpi-number text-7xl mt-2">0</div>
+      <div id="kpiOpenSub" class="text-sm text-slate-400 mt-1">abiertos: —</div>
     </div>
     <div class="card p-6 flex flex-col">
       <div class="flex items-center justify-between">
@@ -427,14 +427,14 @@
 
       setNum('kpiToday', d.tickets_today);
       setNum('kpiWeek',  d.tickets_week);
-      setNum('kpiOpen',  d.tickets_open);
+      setNum('kpiMonth', d.tickets_month);
 
       document.getElementById('kpiTodayDelta').textContent =
         d.tickets_yesterday != null ? `ayer: ${d.tickets_yesterday}` : 'ayer: —';
       document.getElementById('kpiWeekDelta').textContent =
         d.tickets_last_week != null ? `semana ant.: ${d.tickets_last_week}` : 'semana ant.: —';
-      document.getElementById('kpiPending').textContent =
-        d.tickets_pending != null ? `pendientes: ${d.tickets_pending}` : 'pendientes: —';
+      document.getElementById('kpiOpenSub').textContent =
+        d.tickets_open != null ? `abiertos: ${d.tickets_open}` : 'abiertos: —';
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
