@@ -302,10 +302,10 @@
       </div>
     </div>
     <div class="card p-5">
-      <div class="title text-xl">SLA · esta semana</div>
+      <div class="title text-xl">Tickets +3 días</div>
       <div class="flex items-baseline gap-4 mt-2">
-        <div id="kpiSLA" class="kpi-number text-5xl">—</div>
-        <div class="text-base text-slate-400"><span id="kpiSLADetail">— incumplidos</span></div>
+        <div id="kpiAged" class="kpi-number text-5xl">0</div>
+        <div class="text-base text-slate-400">sin cerrar · sin IA</div>
       </div>
     </div>
   </section>
@@ -615,16 +615,13 @@
       document.getElementById('kpiFRTDetail').textContent =
         frtSample > 0 ? `muestra: ${frtSample} tickets · sin IA` : 'muestra: —';
 
-      const slaEl  = document.getElementById('kpiSLA');
-      const sla    = d.sla_pct_week;
-      const breach = d.sla_breach_week ?? 0;
-      slaEl.textContent = (sla == null) ? '—' : (sla + '%');
-      slaEl.classList.remove('text-emerald-300','text-amber-300','text-rose-300');
-      if (sla != null) {
-        slaEl.classList.add(sla >= 95 ? 'text-emerald-300' : sla >= 85 ? 'text-amber-300' : 'text-rose-300');
-      }
-      document.getElementById('kpiSLADetail').textContent =
-        `${breach} incumplidos · ${d.tickets_week ?? 0} totales`;
+      const agedEl = document.getElementById('kpiAged');
+      const aged   = d.tickets_aged_3d ?? 0;
+      agedEl.textContent = aged;
+      agedEl.classList.remove('text-emerald-300','text-amber-300','text-rose-300','text-slate-200');
+      if (aged <= 5)       agedEl.classList.add('text-emerald-300');
+      else if (aged <= 15) agedEl.classList.add('text-amber-300');
+      else                 agedEl.classList.add('text-rose-300');
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
