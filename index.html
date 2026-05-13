@@ -286,12 +286,19 @@
   </section>
 
   <!-- SECONDARY KPIs · operacional -->
-  <section class="grid grid-cols-2 gap-6 px-10 mt-4 shrink-0">
+  <section class="grid grid-cols-3 gap-6 px-10 mt-4 shrink-0">
     <div class="card p-5">
       <div class="title text-xl">Backlog · hoy</div>
       <div class="flex items-baseline gap-4 mt-2">
         <div id="kpiBacklog" class="kpi-number text-5xl">0</div>
         <div class="text-base text-slate-400"><span id="kpiBacklogDetail">— nuevos · — resueltos</span></div>
+      </div>
+    </div>
+    <div class="card p-5">
+      <div class="title text-xl">Tiempo respuesta · hoy</div>
+      <div class="flex items-baseline gap-4 mt-2">
+        <div id="kpiFRT" class="kpi-number text-5xl">—</div>
+        <div class="text-base text-slate-400"><span id="kpiFRTDetail">muestra: —</span></div>
       </div>
     </div>
     <div class="card p-5">
@@ -579,6 +586,34 @@
       backlogEl.classList.add(backlog > 0 ? 'text-rose-300' : backlog < 0 ? 'text-emerald-300' : 'text-slate-200');
       document.getElementById('kpiBacklogDetail').textContent =
         `${d.tickets_today_manual ?? 0} nuevos · ${d.tickets_solved_today ?? 0} resueltos · solo humano`;
+
+      // FRT (tiempo medio de respuesta hoy)
+      const frtEl     = document.getElementById('kpiFRT');
+      const frtMin    = d.frt_avg_min;
+      const frtSample = d.frt_sample ?? 0;
+      const fmtFRT = m => {
+        if (m == null) return '—';
+        if (m < 60)   return m + ' min';
+        const h = Math.floor(m / 60);
+        const r = m % 60;
+        if (h < 24) return r ? `${h}h ${r}m` : `${h}h`;
+        const days = Math.floor(h / 24);
+        const rh = h % 24;
+        return rh ? `${days}d ${rh}h` : `${days}d`;
+      };
+      frtEl.textContent = fmtFRT(frtMin);
+      frtEl.classList.remove('text-emerald-300','text-amber-300','text-rose-300','text-slate-200');
+      if (frtMin == null) {
+        frtEl.classList.add('text-slate-200');
+      } else if (frtMin < 30) {
+        frtEl.classList.add('text-emerald-300');
+      } else if (frtMin < 120) {
+        frtEl.classList.add('text-amber-300');
+      } else {
+        frtEl.classList.add('text-rose-300');
+      }
+      document.getElementById('kpiFRTDetail').textContent =
+        frtSample > 0 ? `muestra: ${frtSample} tickets · sin IA` : 'muestra: —';
 
       const slaEl  = document.getElementById('kpiSLA');
       const sla    = d.sla_pct_week;
