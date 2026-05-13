@@ -285,7 +285,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const acc = $('Guardar Mes').first().json;\nreturn [{ json: { ...acc, zd_solved_today: $input.first().json } }];"
+        "jsCode": "const acc = $('Guardar Hist').first().json;\nreturn [{ json: { ...acc, zd_solved_today: $input.first().json } }];"
       },
       "id": "save-solved-today",
       "name": "Guardar Resueltos Hoy",
