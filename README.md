@@ -20,7 +20,7 @@ Una sola petición por ciclo → render limpio, sin estados intermedios.
 ## 1. Importar el workflow en n8n
 
 1. n8n → **Workflows** → **Import from File** → seleccionar `n8n-workflow-kpis-soporte.json`.
-2. En cada nodo HTTP de Zendesk, sustituir `TU-SUBDOMINIO.zendesk.com` por tu subdominio real.
+2. En cada nodo HTTP de Zendesk, sustituir `soporteyurest.zendesk.com` por tu subdominio real.
 3. Vincular credenciales:
    - Zendesk: en los 8 nodos HTTP de Zendesk (selector "Credential for Zendesk API").
    - Asana: en el nodo placeholder de Asana.

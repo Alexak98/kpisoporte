@@ -28,7 +28,7 @@
 
     {
       "parameters": {
-        "url": "=https://TU-SUBDOMINIO.zendesk.com/api/v2/search.json",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -48,7 +48,7 @@
     },
     {
       "parameters": {
-        "url": "=https://TU-SUBDOMINIO.zendesk.com/api/v2/search.json",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -68,7 +68,7 @@
     },
     {
       "parameters": {
-        "url": "=https://TU-SUBDOMINIO.zendesk.com/api/v2/search.json",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -88,7 +88,7 @@
     },
     {
       "parameters": {
-        "url": "=https://TU-SUBDOMINIO.zendesk.com/api/v2/search.json",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -108,7 +108,7 @@
     },
     {
       "parameters": {
-        "url": "=https://TU-SUBDOMINIO.zendesk.com/api/v2/search.json",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -129,7 +129,7 @@
     },
     {
       "parameters": {
-        "url": "=https://TU-SUBDOMINIO.zendesk.com/api/v2/search.json",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -150,7 +150,7 @@
     },
     {
       "parameters": {
-        "url": "=https://TU-SUBDOMINIO.zendesk.com/api/v2/search.json",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -171,7 +171,7 @@
     },
     {
       "parameters": {
-        "url": "=https://TU-SUBDOMINIO.zendesk.com/api/v2/search.json",
+        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
