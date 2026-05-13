@@ -172,13 +172,13 @@
 
   <!-- CHARTS / LISTS -->
   <section class="grid grid-cols-3 gap-6 px-10 mt-4" style="height: 340px;">
-    <!-- HEATMAP -->
+    <!-- HOURLY COMPARISON -->
     <div class="card p-6 col-span-2 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
-        <div class="text-3xl font-bold">Tickets por hora · hoy</div>
-        <div class="text-base text-slate-400">Franjas 09:00 – 18:00</div>
+        <div class="text-3xl font-bold">Tickets por hora · hoy vs media</div>
+        <div class="text-base text-slate-400">09:00 – 18:00 · media mismo día semana (4 sem)</div>
       </div>
-      <div id="heatmap" class="flex-1 min-h-0"></div>
+      <div id="hourlyChart" class="flex-1 min-h-0"></div>
     </div>
 
     <!-- TOP ORG -->
@@ -191,21 +191,16 @@
     </div>
   </section>
 
-  <!-- MINI HEATMAPS IA / MANUAL · esta semana -->
-  <section class="grid grid-cols-2 gap-6 px-10 mt-4" style="height: 220px;">
+  <!-- STACKED BAR IA / MANUAL por día · esta semana -->
+  <section class="grid grid-cols-1 gap-6 px-10 mt-4" style="height: 240px;">
     <div class="card p-5 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
-        <div class="text-2xl font-bold">IA · esta semana</div>
-        <div class="text-base text-slate-400"><span id="miniIAtotal">0</span> tickets · L-V</div>
+        <div class="text-2xl font-bold">Reparto IA · Manual por día · esta semana</div>
+        <div class="text-base text-slate-400">
+          IA <span id="weekIA">0</span> · Manual <span id="weekMa">0</span>
+        </div>
       </div>
-      <div id="heatmapIA" class="flex-1 min-h-0"></div>
-    </div>
-    <div class="card p-5 flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between mb-2 shrink-0">
-        <div class="text-2xl font-bold">Manual · esta semana</div>
-        <div class="text-base text-slate-400"><span id="miniManualtotal">0</span> tickets · L-V</div>
-      </div>
-      <div id="heatmapManual" class="flex-1 min-h-0"></div>
+      <div id="stackedChart" class="flex-1 min-h-0"></div>
     </div>
   </section>
 
@@ -231,8 +226,6 @@
     stage.style.transform = `scale(${s})`;
     stage.style.left = ((window.innerWidth  - 1920 * s) / 2) + 'px';
     stage.style.top  = ((window.innerHeight - 1080 * s) / 2) + 'px';
-    // Forzar recálculo del chart al reescalar
-    if (heatmapChart) heatmapChart.render();
   }
   window.addEventListener('resize', fitStage);
 
@@ -256,9 +249,8 @@
   }
   setInterval(updateCountdown, 1000);
 
-  let heatmapChart = null;
-  let heatmapIAChart = null;
-  let heatmapManualChart = null;
+  let hourlyChart = null;
+  let stackedChart = null;
 
   function setStatus(ok, text) {
     const dot = document.getElementById('statusDot');
@@ -267,133 +259,100 @@
     txt.textContent = text;
   }
 
-  function renderHeatmap(matrix) {
-    const container = document.getElementById('heatmap');
-    const h = container.clientHeight || 380;
+  // === Hoy vs media (barras) ===
+  function renderHourly(arr) {
+    const container = document.getElementById('hourlyChart');
+    const h = container.clientHeight || 300;
+    const labels = arr.map(x => x.hour);
+    const todayD = arr.map(x => x.today);
+    const avgD   = arr.map(x => x.avg);
     const options = {
       chart: {
-        type: 'heatmap',
-        height: h,
-        width: '100%',
-        toolbar: { show:false },
-        background:'transparent',
-        foreColor:'#cbd5e1',
-        fontFamily:'Bw Modelica, system-ui, sans-serif',
-        animations: { enabled:false }
+        type:'bar', height:h, width:'100%', stacked:false,
+        toolbar:{ show:false }, background:'transparent', foreColor:'#cbd5e1',
+        fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
       },
-      dataLabels: {
-        enabled:true,
-        style: { fontSize:'22px', fontWeight:700, colors:['#ffffff'], fontFamily:'Bw Modelica, sans-serif' },
-        formatter: v => (v === 0 ? '' : v)
-      },
-      stroke: { width:2, colors:['#0b1220'] },
-      plotOptions: {
-        heatmap: {
-          radius: 6,
-          useFillColorAsStroke: false,
-          colorScale: {
-            ranges: [
-              { from:0,  to:0,  color:'#1e293b', name:'0' },
-              { from:1,  to:2,  color:'#1e3a8a', name:'1-2' },
-              { from:3,  to:5,  color:'#2563eb', name:'3-5' },
-              { from:6,  to:10, color:'#60a5fa', name:'6-10' },
-              { from:11, to:9999,color:'#fbbf24', name:'11+' }
-            ]
-          }
-        }
-      },
-      series: matrix,
-      xaxis: {
-        type:'category',
-        labels:{ style:{ colors:'#cbd5e1', fontSize:'14px', fontWeight:600 }},
-        axisBorder:{ show:false }, axisTicks:{ show:false }
-      },
-      yaxis: { labels:{ show:false } },
-      grid:  { borderColor:'rgba(155,176,214,0.05)', padding:{ left:0, right:0, top:0, bottom:0 } },
-      legend:{ position:'top', horizontalAlign:'center', fontSize:'12px', labels:{ colors:'#cbd5e1' }, markers:{ size:6 } },
-      tooltip:{ theme:'dark', y:{ formatter: v => `${v} ticket${v === 1 ? '' : 's'}` } }
-    };
-    if (heatmapChart) {
-      heatmapChart.updateOptions(options, true, false);
-    } else {
-      heatmapChart = new ApexCharts(container, options);
-      heatmapChart.render();
-    }
-  }
-
-  function trimSeriesEdges(series) {
-    // Recorta de los extremos las horas cuya suma vertical es 0.
-    // Las horas con 0 en el medio se conservan.
-    if (!Array.isArray(series) || series.length === 0) return series;
-    const cols = series[0].data.length;
-    const colTotals = Array.from({length: cols}, (_, i) =>
-      series.reduce((sum, s) => sum + (s.data[i]?.y || 0), 0));
-    let start = 0;
-    while (start < cols && colTotals[start] === 0) start++;
-    let end = cols - 1;
-    while (end >= start && colTotals[end] === 0) end--;
-    if (start >= cols) return series; // todo a 0 → no recortar
-    return series.map(s => ({ ...s, data: s.data.slice(start, end + 1) }));
-  }
-
-  function renderMiniHeatmap(containerId, series, refChart) {
-    series = trimSeriesEdges(series);
-    const container = document.getElementById(containerId);
-    const h = container.clientHeight || 200;
-    const options = {
-      chart: {
-        type: 'heatmap',
-        height: h,
-        width: '100%',
-        toolbar: { show:false },
-        background:'transparent',
-        foreColor:'#9bb0d6',
-        fontFamily:'Bw Modelica, system-ui, sans-serif',
-        animations: { enabled:false }
-      },
+      series: [
+        { name:'Hoy',   data: todayD },
+        { name:'Media', data: avgD }
+      ],
+      plotOptions: { bar: { columnWidth:'70%', borderRadius:6, dataLabels:{ position:'top' } } },
+      colors: ['#3b82f6', '#475569'],
+      fill: { opacity: [1, 0.45] },
+      stroke: { width: [0, 2], curve:'smooth', dashArray: [0, 4], colors:['transparent','#94a3b8'] },
       dataLabels: {
         enabled: true,
-        style: { fontSize:'9px', fontWeight:700, colors:['#0b1220'] },
-        formatter: v => (v === 0 ? '' : v)
+        enabledOnSeries: [0],
+        offsetY: -22,
+        style:{ fontSize:'14px', fontWeight:700, colors:['#cbd5e1'] },
+        formatter: v => v === 0 ? '' : v
       },
-      stroke: { width:1, colors:['#0b1220'] },
-      plotOptions: {
-        heatmap: {
-          radius: 2,
-          useFillColorAsStroke: false,
-          colorScale: {
-            ranges: [
-              { from:0,  to:0,   color:'#1e293b', name:'0' },
-              { from:1,  to:1,   color:'#fde68a', name:'1' },
-              { from:2,  to:3,   color:'#fcd34d', name:'2-3' },
-              { from:4,  to:5,   color:'#fb923c', name:'4-5' },
-              { from:6,  to:8,   color:'#ef4444', name:'6-8' },
-              { from:9,  to:12,  color:'#b91c1c', name:'9-12' },
-              { from:13, to:9999,color:'#7f1d1d', name:'13+' }
-            ]
-          }
-        }
-      },
-      series: series,
       xaxis: {
-        type:'category',
-        labels:{ style:{ colors:'#9bb0d6', fontSize:'9px' }, rotate:0 },
+        categories: labels,
+        labels:{ style:{ colors:'#cbd5e1', fontSize:'14px', fontWeight:600 } },
         axisBorder:{ show:false }, axisTicks:{ show:false }
       },
-      yaxis: { labels:{ style:{ colors:'#9bb0d6', fontSize:'10px' }} },
-      grid:  { borderColor:'rgba(155,176,214,0.05)', padding:{ left:0, right:0, top:0, bottom:0 } },
-      legend:{ show:false },
-      tooltip:{ theme:'dark', y:{ formatter: v => `${v} ticket${v === 1 ? '' : 's'}` } }
+      yaxis: { labels:{ style:{ colors:'#9bb0d6', fontSize:'12px' }, formatter: v => Math.round(v) } },
+      grid:  { borderColor:'rgba(155,176,214,0.08)' },
+      legend:{ position:'top', horizontalAlign:'right', fontSize:'13px', labels:{ colors:'#cbd5e1' }, markers:{ size:8 } },
+      tooltip:{ theme:'dark', shared:true, intersect:false }
     };
-    if (refChart.chart) {
-      refChart.chart.updateOptions(options, true, false);
-    } else {
-      refChart.chart = new ApexCharts(container, options);
-      refChart.chart.render();
-    }
+    if (hourlyChart) hourlyChart.updateOptions(options, true, false);
+    else { hourlyChart = new ApexCharts(container, options); hourlyChart.render(); }
   }
-  const _refIA = { chart: null };
-  const _refMa = { chart: null };
+
+  // === Reparto IA / Manual por día (apilado) ===
+  function renderStacked(arr) {
+    const container = document.getElementById('stackedChart');
+    const h = container.clientHeight || 200;
+    const labels = arr.map(x => x.day);
+    const iaD    = arr.map(x => x.ia);
+    const maD    = arr.map(x => x.manual);
+    const pctIA  = arr.map(x => x.pct_ia);
+    const options = {
+      chart: {
+        type:'bar', height:h, width:'100%', stacked:true,
+        toolbar:{ show:false }, background:'transparent', foreColor:'#cbd5e1',
+        fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
+      },
+      series: [
+        { name:'IA',     data: iaD },
+        { name:'Manual', data: maD }
+      ],
+      plotOptions: { bar: { horizontal:false, columnWidth:'45%', borderRadius:6, borderRadiusApplication:'end', borderRadiusWhenStacked:'last' } },
+      colors: ['#a855f7', '#10b981'],
+      dataLabels: {
+        enabled: true,
+        style:{ fontSize:'13px', fontWeight:700, colors:['#ffffff'] },
+        formatter: v => v === 0 ? '' : v
+      },
+      xaxis: {
+        categories: labels,
+        labels:{ style:{ colors:'#cbd5e1', fontSize:'16px', fontWeight:700 } },
+        axisBorder:{ show:false }, axisTicks:{ show:false }
+      },
+      yaxis: { labels:{ style:{ colors:'#9bb0d6', fontSize:'12px' } } },
+      grid:  { borderColor:'rgba(155,176,214,0.08)' },
+      legend:{ position:'top', horizontalAlign:'right', fontSize:'13px', labels:{ colors:'#cbd5e1' }, markers:{ size:8 } },
+      tooltip:{ theme:'dark', shared:true, intersect:false,
+        y:{ formatter: (v,_,o) => `${v} (${pctIA[o.dataPointIndex]}% IA del día)` } }
+    };
+    if (stackedChart) stackedChart.updateOptions(options, true, false);
+    else { stackedChart = new ApexCharts(container, options); stackedChart.render(); }
+  }
+
+  // === Sparkline pequeña (inline en cada org) ===
+  function renderSparkline(container, data) {
+    const options = {
+      chart: { type:'area', height:36, width:120, sparkline:{ enabled:true }, animations:{ enabled:false } },
+      stroke: { width:1.5, curve:'smooth', colors:['#60a5fa'] },
+      fill:   { type:'gradient', gradient:{ shadeIntensity:1, opacityFrom:0.4, opacityTo:0.05, stops:[0,100] }, colors:['#3b82f6'] },
+      series: [{ name:'tickets', data: data }],
+      tooltip:{ enabled:false }
+    };
+    const chart = new ApexCharts(container, options);
+    chart.render();
+  }
 
   function renderTopOrgs(orgs) {
     const cont = document.getElementById('topOrgs');
@@ -406,15 +365,23 @@
       const pct = max ? Math.round((o.count / max) * 100) : 0;
       return `
         <div>
-          <div class="flex justify-between text-sm mb-1">
-            <span class="truncate max-w-[70%]" title="${o.name}">${i+1}. ${o.name}</span>
-            <span class="font-bold">${o.count}</span>
+          <div class="flex justify-between items-center text-base mb-1 gap-2">
+            <span class="truncate max-w-[55%]" title="${o.name}">${i+1}. ${o.name}</span>
+            <span class="flex items-center gap-3 shrink-0">
+              <span class="spark" data-spark="${(o.sparkline||[]).join(',')}"></span>
+              <span class="font-bold">${o.count}</span>
+            </span>
           </div>
           <div class="w-full h-2 bg-slate-800/60 rounded overflow-hidden">
             <div class="h-full grad-blue" style="width:${pct}%"></div>
           </div>
         </div>`;
     }).join('');
+    // Renderizar sparklines tras inyectar el HTML
+    cont.querySelectorAll('.spark').forEach(el => {
+      const arr = (el.dataset.spark || '').split(',').filter(Boolean).map(n => parseInt(n,10) || 0);
+      if (arr.length) renderSparkline(el, arr);
+    });
   }
 
   function setNum(id, val) {
@@ -474,11 +441,10 @@
       document.getElementById('barIA').style.width     = pctIA + '%';
       document.getElementById('barManual').style.width = pctMa + '%';
 
-      if (Array.isArray(d.heatmap)) renderHeatmap(d.heatmap);
-      if (Array.isArray(d.heatmap_ia))     renderMiniHeatmap('heatmapIA',     d.heatmap_ia,     _refIA);
-      if (Array.isArray(d.heatmap_manual)) renderMiniHeatmap('heatmapManual', d.heatmap_manual, _refMa);
-      document.getElementById('miniIAtotal').textContent     = d.tickets_week_ia     ?? 0;
-      document.getElementById('miniManualtotal').textContent = d.tickets_week_manual ?? 0;
+      if (Array.isArray(d.hourly_today))   renderHourly(d.hourly_today);
+      if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
+      document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
+      document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
       renderTopOrgs(d.top_orgs || []);
 
       const now = new Date();
