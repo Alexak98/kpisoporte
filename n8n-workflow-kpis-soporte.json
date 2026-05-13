@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Calcula rangos de fechas\nconst now = new Date();\nfunction startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }\nfunction addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }\nfunction toYMD(d){ return d.toISOString().substring(0,10); }\n\nconst todayStart = startOfDay(now);\nconst yesterdayStart = addDays(todayStart, -1);\nconst day = todayStart.getDay() || 7;\nconst weekStart = addDays(todayStart, -(day-1));\nconst lastWeekStart = addDays(weekStart, -7);\nconst sevenDaysAgo = addDays(todayStart, -6);\n\nreturn [{ json: {\n  today_ymd:        toYMD(todayStart),\n  yesterday_ymd:    toYMD(yesterdayStart),\n  week_ymd:         toYMD(weekStart),\n  last_week_ymd:    toYMD(lastWeekStart),\n  seven_days_ymd:   toYMD(sevenDaysAgo),\n  now_iso:          now.toISOString()\n} }];"
+        "jsCode": "// Calcula rangos de fechas\nconst now = new Date();\nfunction startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }\nfunction addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }\nfunction toYMD(d){ return d.toISOString().substring(0,10); }\n\nconst todayStart = startOfDay(now);\nconst yesterdayStart = addDays(todayStart, -1);\nconst day = todayStart.getDay() || 7;\nconst weekStart = addDays(todayStart, -(day-1));\nconst lastWeekStart = addDays(weekStart, -7);\nconst sevenDaysAgo = addDays(todayStart, -6);\nconst monthStart = new Date(todayStart); monthStart.setDate(1);\n\nreturn [{ json: {\n  today_ymd:        toYMD(todayStart),\n  yesterday_ymd:    toYMD(yesterdayStart),\n  week_ymd:         toYMD(weekStart),\n  last_week_ymd:    toYMD(lastWeekStart),\n  seven_days_ymd:   toYMD(sevenDaysAgo),\n  month_ymd:        toYMD(monthStart),\n  now_iso:          now.toISOString()\n} }];"
       },
       "id": "dates-1",
       "name": "Calcular fechas",
@@ -333,7 +333,48 @@
 
     {
       "parameters": {
-        "jsCode": "// Extrae los IDs de las top 8 orgs (a partir de tickets abiertos)\nconst d = $input.first().json;\nconst openRes = (d.zd_open && Array.isArray(d.zd_open.results)) ? d.zd_open.results : [];\nconst topRes  = (d.zd_top  && Array.isArray(d.zd_top.results))  ? d.zd_top.results  : [];\n\nconst orgCount = new Map();\nfor (const t of openRes) {\n  if (!t.organization_id) continue;\n  orgCount.set(t.organization_id, (orgCount.get(t.organization_id) || 0) + 1);\n}\nconst top = [...orgCount.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);\nconst ids = new Set(top.map(([id])=>id));\nif (topRes[0] && topRes[0].organization_id) ids.add(topRes[0].organization_id);\n\nreturn [{ json: { ...d, org_ids_csv: [...ids].join(','), top_orgs_raw: top } }];"
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.month_ymd }}" },
+            { "name": "per_page", "value": "100" }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "nextURL": "={{ $response.body.next_page }}",
+              "limitPagesFetched": true,
+              "maxRequests": 10
+            }
+          },
+          "response": { "response": { "neverError": true } }
+        }
+      },
+      "id": "zd-month",
+      "name": "ZD Mes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1900, 840]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Agrega todos los items de la paginación en un único zd_month\nconst acc = $('Guardar Hoy Manual').first().json;\nconst pages = $input.all().map(i => i.json);\nconst allResults = pages.flatMap(p => Array.isArray(p?.results) ? p.results : []);\nconst total = (pages[0] && typeof pages[0].count === 'number') ? pages[0].count : allResults.length;\nreturn [{ json: { ...acc, zd_month: { results: allResults, count: total } } }];"
+      },
+      "id": "save-month",
+      "name": "Guardar Mes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1900, 1000]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Extrae los IDs de las top 8 orgs del MES\nconst d = $input.first().json;\nconst monthRes = (d.zd_month && Array.isArray(d.zd_month.results)) ? d.zd_month.results : [];\nconst topRes   = (d.zd_top   && Array.isArray(d.zd_top.results))   ? d.zd_top.results   : [];\n\nconst orgCount = new Map();\nfor (const t of monthRes) {\n  if (!t.organization_id) continue;\n  orgCount.set(t.organization_id, (orgCount.get(t.organization_id) || 0) + 1);\n}\nconst top = [...orgCount.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);\nconst ids = new Set(top.map(([id])=>id));\nif (topRes[0] && topRes[0].organization_id) ids.add(topRes[0].organization_id);\n\nreturn [{ json: { ...d, org_ids_csv: [...ids].join(',') || '0', top_orgs_raw: top } }];"
       },
       "id": "calc-orgs",
       "name": "Calcular IDs orgs",
@@ -373,7 +414,7 @@
 
     {
       "parameters": {
-        "jsCode": "// Consolida todo en el JSON final\nconst d = $input.first().json;\n\nfunction count(obj){ \n  if (!obj) return 0;\n  if (typeof obj.count === 'number') return obj.count;\n  if (Array.isArray(obj.results)) return obj.results.length;\n  return 0;\n}\nfunction results(obj){\n  if (!obj || !Array.isArray(obj.results)) return [];\n  return obj.results;\n}\n\nconst today       = count(d.zd_today);\nconst yesterday   = count(d.zd_yesterday);\nconst week        = count(d.zd_week);\nconst lastWeek    = count(d.zd_last_week);\nconst open        = count(d.zd_open);\nconst integration = count(d.zd_integration);\nconst todayIA     = count(d.zd_today_ia);\nconst todayManual = count(d.zd_today_manual);\n\nconst todayRes   = results(d.zd_today);\nconst openRes    = results(d.zd_open);\nconst intRes     = results(d.zd_integration);\nconst topRes     = results(d.zd_top);\n\nconst pending = openRes.filter(t => t.status === 'pending').length;\nconst integrationOpen = intRes.filter(t => t.status && t.status !== 'solved' && t.status !== 'closed').length;\n\n// Heatmap HOY · franjas 9-18 (10 buckets: 09..18)\nconst HOURS = ['09','10','11','12','13','14','15','16','17','18'];\nconst buckets = Object.fromEntries(HOURS.map(h => [h, 0]));\n\n// Calcular fecha de hoy en zona Europe/Madrid usando offset desde now_iso\nconst now = new Date();\nconst todayLocalYMD = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' }); // YYYY-MM-DD\n\nfor (const t of todayRes) {\n  if (!t.created_at) continue;\n  // Hora local en Madrid\n  const parts = new Intl.DateTimeFormat('en-GB', {\n    timeZone: 'Europe/Madrid', hour: '2-digit', minute:'2-digit', hour12:false\n  }).formatToParts(new Date(t.created_at));\n  const hh = parts.find(p => p.type === 'hour')?.value || '00';\n  // Aseguramos que el ticket es realmente de hoy (Madrid)\n  const dYMD = new Date(t.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });\n  if (dYMD !== todayLocalYMD) continue;\n  if (buckets[hh] !== undefined) buckets[hh]++;\n}\nconst heatmap = [{\n  name: 'Hoy',\n  data: HOURS.map(h => ({ x: h + ':00', y: buckets[h] }))\n}];\n\n// Mapa de id -> nombre de organización\nconst orgMap = new Map();\nconst orgsResolved = (d.zd_orgs && Array.isArray(d.zd_orgs.organizations)) ? d.zd_orgs.organizations : [];\nfor (const o of orgsResolved) { if (o && o.id) orgMap.set(o.id, o.name); }\nfunction orgName(id){ return orgMap.get(id) || `Organización ${id}`; }\n\nconst topOrgsRaw = Array.isArray(d.top_orgs_raw) ? d.top_orgs_raw : [];\nconst top_orgs = topOrgsRaw.map(([id,count]) => ({ name: orgName(id), count }));\n\nlet top_ticket = null;\nif (topRes.length > 0) {\n  const t = topRes[0];\n  top_ticket = {\n    id: t.id,\n    subject: t.subject || t.raw_subject || '—',\n    status: t.status,\n    priority: t.priority,\n    requester: t.via?.source?.from?.name || null,\n    organization: t.organization_id ? orgName(t.organization_id) : null,\n    comments: t.comment_count || null,\n    updated_at: t.updated_at ? new Date(t.updated_at).toLocaleString('es-ES') : null\n  };\n}\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_today: today,\n  tickets_yesterday: yesterday,\n  tickets_week: week,\n  tickets_last_week: lastWeek,\n  tickets_open: open,\n  tickets_pending: pending,\n  tickets_integration: integration,\n  tickets_integration_open: integrationOpen,\n  tickets_today_ia: todayIA,\n  tickets_today_manual: todayManual,\n  heatmap,\n  top_orgs,\n  top_ticket,\n  asana_open: 0,\n  asana_overdue: 0\n} }];"
+        "jsCode": "// Consolida todo en el JSON final\nconst d = $input.first().json;\n\nfunction count(obj){ \n  if (!obj) return 0;\n  if (typeof obj.count === 'number') return obj.count;\n  if (Array.isArray(obj.results)) return obj.results.length;\n  return 0;\n}\nfunction results(obj){\n  if (!obj || !Array.isArray(obj.results)) return [];\n  return obj.results;\n}\n\nconst today       = count(d.zd_today);\nconst yesterday   = count(d.zd_yesterday);\nconst week        = count(d.zd_week);\nconst lastWeek    = count(d.zd_last_week);\nconst open        = count(d.zd_open);\nconst integration = count(d.zd_integration);\nconst todayIA     = count(d.zd_today_ia);\nconst todayManual = count(d.zd_today_manual);\n\nconst todayRes   = results(d.zd_today);\nconst openRes    = results(d.zd_open);\nconst intRes     = results(d.zd_integration);\nconst topRes     = results(d.zd_top);\n\nconst pending = openRes.filter(t => t.status === 'pending').length;\nconst integrationOpen = intRes.filter(t => t.status && t.status !== 'solved' && t.status !== 'closed').length;\n\n// Heatmap HOY · franjas 9-18 (10 buckets: 09..18)\nconst HOURS = ['09','10','11','12','13','14','15','16','17','18'];\nconst buckets = Object.fromEntries(HOURS.map(h => [h, 0]));\n\n// Calcular fecha de hoy en zona Europe/Madrid usando offset desde now_iso\nconst now = new Date();\nconst todayLocalYMD = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' }); // YYYY-MM-DD\n\nfor (const t of todayRes) {\n  if (!t.created_at) continue;\n  // Hora local en Madrid\n  const parts = new Intl.DateTimeFormat('en-GB', {\n    timeZone: 'Europe/Madrid', hour: '2-digit', minute:'2-digit', hour12:false\n  }).formatToParts(new Date(t.created_at));\n  const hh = parts.find(p => p.type === 'hour')?.value || '00';\n  // Aseguramos que el ticket es realmente de hoy (Madrid)\n  const dYMD = new Date(t.created_at).toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });\n  if (dYMD !== todayLocalYMD) continue;\n  if (buckets[hh] !== undefined) buckets[hh]++;\n}\nconst heatmap = [{\n  name: 'Hoy',\n  data: HOURS.map(h => ({ x: h + ':00', y: buckets[h] }))\n}];\n\n// Mapa de id -> nombre de organización\nconst orgMap = new Map();\nconst orgsResolved = (d.zd_orgs && Array.isArray(d.zd_orgs.organizations)) ? d.zd_orgs.organizations : [];\nfor (const o of orgsResolved) { if (o && o.id) orgMap.set(o.id, o.name); }\nfunction orgName(id){ return orgMap.get(id) || `Organización ${id}`; }\n\nconst topOrgsRaw = Array.isArray(d.top_orgs_raw) ? d.top_orgs_raw : [];\nconst top_orgs = topOrgsRaw.map(([id,count]) => ({ name: orgName(id), count }));\n\nlet top_ticket = null;\nif (topRes.length > 0) {\n  const t = topRes[0];\n  top_ticket = {\n    id: t.id,\n    subject: t.subject || t.raw_subject || '—',\n    status: t.status,\n    priority: t.priority,\n    requester: t.via?.source?.from?.name || null,\n    organization: t.organization_id ? orgName(t.organization_id) : null,\n    comments: t.comment_count || null,\n    updated_at: t.updated_at ? new Date(t.updated_at).toLocaleString('es-ES') : null\n  };\n}\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_today: today,\n  tickets_yesterday: yesterday,\n  tickets_week: week,\n  tickets_last_week: lastWeek,\n  tickets_open: open,\n  tickets_pending: pending,\n  tickets_integration: integration,\n  tickets_integration_open: integrationOpen,\n  tickets_today_ia: todayIA,\n  tickets_today_manual: todayManual,\n  heatmap,\n  top_orgs,\n  top_ticket\n} }];"
       },
       "id": "agg-1",
       "name": "Agregar KPIs",
@@ -423,7 +464,9 @@
     "ZD Hoy IA":            { "main": [[{ "node": "Guardar Hoy IA",    "type": "main", "index": 0 }]] },
     "Guardar Hoy IA":       { "main": [[{ "node": "ZD Hoy Manual",     "type": "main", "index": 0 }]] },
     "ZD Hoy Manual":        { "main": [[{ "node": "Guardar Hoy Manual","type": "main", "index": 0 }]] },
-    "Guardar Hoy Manual":   { "main": [[{ "node": "Calcular IDs orgs", "type": "main", "index": 0 }]] },
+    "Guardar Hoy Manual":   { "main": [[{ "node": "ZD Mes",            "type": "main", "index": 0 }]] },
+    "ZD Mes":               { "main": [[{ "node": "Guardar Mes",       "type": "main", "index": 0 }]] },
+    "Guardar Mes":          { "main": [[{ "node": "Calcular IDs orgs", "type": "main", "index": 0 }]] },
     "Calcular IDs orgs":    { "main": [[{ "node": "ZD Organizaciones", "type": "main", "index": 0 }]] },
     "ZD Organizaciones":    { "main": [[{ "node": "Guardar Orgs",      "type": "main", "index": 0 }]] },
     "Guardar Orgs":         { "main": [[{ "node": "Agregar KPIs",      "type": "main", "index": 0 }]] },
