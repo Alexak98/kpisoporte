@@ -25,12 +25,12 @@ Una sola petición por ciclo → render limpio, sin estados intermedios.
    - Zendesk: en los 8 nodos HTTP de Zendesk (selector "Credential for Zendesk API").
    - Asana: en el nodo placeholder de Asana.
 4. **Activar** el workflow.
-5. Copiar la URL de producción del webhook (algo tipo `https://n8n.tu-dominio.com/webhook/kpis-soporte`).
+5. Copiar la URL de producción del webhook: `https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte`.
 
 ### Test rápido
 
 ```bash
-curl https://n8n.tu-dominio.com/webhook/kpis-soporte | jq .
+curl https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte | jq .
 ```
 
 Debe devolver un JSON con `tickets_today`, `tickets_week`, `heatmap`, etc.
@@ -40,7 +40,7 @@ Debe devolver un JSON con `tickets_today`, `tickets_week`, `heatmap`, etc.
 Editar `index.html` línea ~120:
 
 ```js
-const N8N_WEBHOOK_URL = 'https://n8n.tu-dominio.com/webhook/kpis-soporte';
+const N8N_WEBHOOK_URL = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte';
 ```
 
 ## 3. Publicar la web
