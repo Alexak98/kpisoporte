@@ -12,15 +12,45 @@
       "name": "Webhook KPIs",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-1200, 0],
+      "position": [-1600, 0],
       "webhookId": "kpis-soporte"
     },
     {
       "parameters": {
-        "jsCode": "// Calcula rangos de fechas en formato ISO y Unix\nconst now = new Date();\nconst tz = 'Europe/Madrid';\n\nfunction startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }\nfunction addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }\n\nconst todayStart = startOfDay(now);\nconst yesterdayStart = addDays(todayStart, -1);\nconst tomorrowStart = addDays(todayStart, 1);\n\n// Semana ISO (lunes a domingo)\nconst day = todayStart.getDay() || 7; // 1..7\nconst weekStart = addDays(todayStart, -(day-1));\nconst lastWeekStart = addDays(weekStart, -7);\n\n// Hace 7 días (para heatmap)\nconst sevenDaysAgo = addDays(todayStart, -6);\n\nconst toISO = d => d.toISOString();\nconst toUnix = d => Math.floor(d.getTime()/1000);\n\nreturn [{ json: {\n  today_start: toISO(todayStart),\n  today_start_unix: toUnix(todayStart),\n  yesterday_start: toISO(yesterdayStart),\n  yesterday_start_unix: toUnix(yesterdayStart),\n  tomorrow_start: toISO(tomorrowStart),\n  tomorrow_start_unix: toUnix(tomorrowStart),\n  week_start: toISO(weekStart),\n  week_start_unix: toUnix(weekStart),\n  last_week_start: toISO(lastWeekStart),\n  last_week_start_unix: toUnix(lastWeekStart),\n  seven_days_ago: toISO(sevenDaysAgo),\n  seven_days_ago_unix: toUnix(sevenDaysAgo),\n  now_iso: toISO(now)\n} }];"
+        "jsCode": "// Calcula rangos de fechas\nconst now = new Date();\nfunction startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }\nfunction addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }\nfunction toYMD(d){ return d.toISOString().substring(0,10); }\n\nconst todayStart = startOfDay(now);\nconst yesterdayStart = addDays(todayStart, -1);\nconst day = todayStart.getDay() || 7;\nconst weekStart = addDays(todayStart, -(day-1));\nconst lastWeekStart = addDays(weekStart, -7);\nconst sevenDaysAgo = addDays(todayStart, -6);\n\nreturn [{ json: {\n  today_ymd:        toYMD(todayStart),\n  yesterday_ymd:    toYMD(yesterdayStart),\n  week_ymd:         toYMD(weekStart),\n  last_week_ymd:    toYMD(lastWeekStart),\n  seven_days_ymd:   toYMD(sevenDaysAgo),\n  now_iso:          now.toISOString()\n} }];"
       },
       "id": "dates-1",
       "name": "Calcular fechas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1400, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.today_ymd }}" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-today",
+      "name": "ZD Hoy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $input.first().json;\nconst dates = $('Calcular fechas').first().json;\nreturn [{ json: { ...dates, zd_today: prev } }];"
+      },
+      "id": "save-today",
+      "name": "Guardar Hoy",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [-1000, 0]
@@ -28,87 +58,97 @@
 
     {
       "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.today_start.substring(0,10) }}" }
+            { "name": "query", "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }}" }
           ]
         },
-        "options": {}
-      },
-      "id": "zd-today",
-      "name": "Zendesk · Tickets hoy",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-760, -360],
-      "credentials": { "zendeskApi": { "id": "REEMPLAZAR", "name": "Zendesk account" } }
-    },
-    {
-      "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.yesterday_start.substring(0,10) }} created<{{ $json.today_start.substring(0,10) }}" }
-          ]
-        },
-        "options": {}
+        "options": { "response": { "response": { "neverError": true } } }
       },
       "id": "zd-yesterday",
-      "name": "Zendesk · Tickets ayer",
+      "name": "ZD Ayer",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-760, -240],
-      "credentials": { "zendeskApi": { "id": "REEMPLAZAR", "name": "Zendesk account" } }
+      "position": [-800, 0]
     },
     {
       "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
+        "jsCode": "const acc = $('Guardar Hoy').first().json;\nreturn [{ json: { ...acc, zd_yesterday: $input.first().json } }];"
+      },
+      "id": "save-yesterday",
+      "name": "Guardar Ayer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.week_start.substring(0,10) }}" }
+            { "name": "query", "value": "=type:ticket created>={{ $json.week_ymd }}" }
           ]
         },
-        "options": {}
+        "options": { "response": { "response": { "neverError": true } } }
       },
       "id": "zd-week",
-      "name": "Zendesk · Tickets semana",
+      "name": "ZD Semana",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-760, -120],
-      "credentials": { "zendeskApi": { "id": "REEMPLAZAR", "name": "Zendesk account" } }
+      "position": [-400, 0]
     },
     {
       "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
+        "jsCode": "const acc = $('Guardar Ayer').first().json;\nreturn [{ json: { ...acc, zd_week: $input.first().json } }];"
+      },
+      "id": "save-week",
+      "name": "Guardar Semana",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.last_week_start.substring(0,10) }} created<{{ $json.week_start.substring(0,10) }}" }
+            { "name": "query", "value": "=type:ticket created>={{ $json.last_week_ymd }} created<{{ $json.week_ymd }}" }
           ]
         },
-        "options": {}
+        "options": { "response": { "response": { "neverError": true } } }
       },
       "id": "zd-lastweek",
-      "name": "Zendesk · Tickets semana anterior",
+      "name": "ZD Semana Anterior",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-760, 0],
-      "credentials": { "zendeskApi": { "id": "REEMPLAZAR", "name": "Zendesk account" } }
+      "position": [0, 0]
     },
     {
       "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
+        "jsCode": "const acc = $('Guardar Semana').first().json;\nreturn [{ json: { ...acc, zd_last_week: $input.first().json } }];"
+      },
+      "id": "save-lastweek",
+      "name": "Guardar Sem. Ant.",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -118,18 +158,28 @@
             { "name": "per_page", "value": "100" }
           ]
         },
-        "options": {}
+        "options": { "response": { "response": { "neverError": true } } }
       },
       "id": "zd-open",
-      "name": "Zendesk · Tickets abiertos",
+      "name": "ZD Abiertos",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-760, 120],
-      "credentials": { "zendeskApi": { "id": "REEMPLAZAR", "name": "Zendesk account" } }
+      "position": [400, 0]
     },
     {
       "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
+        "jsCode": "const acc = $('Guardar Sem. Ant.').first().json;\nreturn [{ json: { ...acc, zd_open: $input.first().json } }];"
+      },
+      "id": "save-open",
+      "name": "Guardar Abiertos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -139,39 +189,59 @@
             { "name": "per_page", "value": "100" }
           ]
         },
-        "options": {}
+        "options": { "response": { "response": { "neverError": true } } }
       },
       "id": "zd-integration",
-      "name": "Zendesk · Tickets integración",
+      "name": "ZD Integración",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-760, 240],
-      "credentials": { "zendeskApi": { "id": "REEMPLAZAR", "name": "Zendesk account" } }
+      "position": [800, 0]
     },
     {
       "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
+        "jsCode": "const acc = $('Guardar Abiertos').first().json;\nreturn [{ json: { ...acc, zd_integration: $input.first().json } }];"
+      },
+      "id": "save-integration",
+      "name": "Guardar Integración",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.seven_days_ago.substring(0,10) }}" },
+            { "name": "query", "value": "=type:ticket created>={{ $json.seven_days_ymd }}" },
             { "name": "per_page", "value": "100" }
           ]
         },
-        "options": {}
+        "options": { "response": { "response": { "neverError": true } } }
       },
       "id": "zd-heatmap",
-      "name": "Zendesk · Tickets 7 días (heatmap)",
+      "name": "ZD Heatmap",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-760, 360],
-      "credentials": { "zendeskApi": { "id": "REEMPLAZAR", "name": "Zendesk account" } }
+      "position": [1200, 0]
     },
     {
       "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/search.json",
+        "jsCode": "const acc = $('Guardar Integración').first().json;\nreturn [{ json: { ...acc, zd_heatmap: $input.first().json } }];"
+      },
+      "id": "save-heatmap",
+      "name": "Guardar Heatmap",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "sendQuery": true,
@@ -181,59 +251,34 @@
             { "name": "per_page", "value": "1" }
           ]
         },
-        "options": {}
+        "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-top-ticket",
-      "name": "Zendesk · Top ticket",
+      "id": "zd-top",
+      "name": "ZD Top Ticket",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-760, 480],
-      "credentials": { "zendeskApi": { "id": "REEMPLAZAR", "name": "Zendesk account" } }
+      "position": [1600, 0]
     },
-
     {
       "parameters": {
-        "url": "https://app.asana.com/api/1.0/users/me/user_task_list",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "asanaApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "workspace", "value": "REEMPLAZAR_WORKSPACE_GID" }
-          ]
-        },
-        "options": {}
+        "jsCode": "const acc = $('Guardar Heatmap').first().json;\nreturn [{ json: { ...acc, zd_top: $input.first().json } }];"
       },
-      "id": "asana-1",
-      "name": "Asana · Tareas (placeholder)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-760, 600],
-      "credentials": { "asanaApi": { "id": "REEMPLAZAR", "name": "Asana account" } }
+      "id": "save-top",
+      "name": "Guardar Top",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 0]
     },
 
     {
       "parameters": {
-        "mode": "combine",
-        "combinationMode": "multiplex",
-        "options": {}
-      },
-      "id": "merge-1",
-      "name": "Merge resultados",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
-      "position": [-360, 120]
-    },
-
-    {
-      "parameters": {
-        "jsCode": "// Consolida todos los resultados en un único JSON para el dashboard\n// Los nodos previos están conectados al merge; recuperamos sus salidas por nombre.\n\nfunction getCount(name) {\n  try { const d = $items(name, 0, 0)[0].json; return d.count ?? (d.results ? d.results.length : 0); }\n  catch(e){ return null; }\n}\nfunction getResults(name) {\n  try { return $items(name, 0, 0)[0].json.results || []; } catch(e){ return []; }\n}\n\nconst today      = getCount('Zendesk · Tickets hoy');\nconst yesterday  = getCount('Zendesk · Tickets ayer');\nconst week       = getCount('Zendesk · Tickets semana');\nconst lastWeek   = getCount('Zendesk · Tickets semana anterior');\nconst open       = getCount('Zendesk · Tickets abiertos');\nconst integration= getCount('Zendesk · Tickets integración');\n\nconst openResults = getResults('Zendesk · Tickets abiertos');\nconst integrationResults = getResults('Zendesk · Tickets integración');\nconst heatmapResults = getResults('Zendesk · Tickets 7 días (heatmap)');\nconst topTicketResults = getResults('Zendesk · Top ticket');\n\n// Pendientes (status=pending)\nconst pending = openResults.filter(t => t.status === 'pending').length;\nconst integrationOpen = integrationResults.filter(t => t.status && t.status !== 'solved' && t.status !== 'closed').length;\n\n// Heatmap 7 días x 24 horas\nconst dayLabels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];\nconst hours = Array.from({length:24}, (_,i) => String(i).padStart(2,'0'));\nconst matrix = {}; // matrix[diaNombre][hh] = count\n\nfor (const d of dayLabels) {\n  matrix[d] = {};\n  for (const h of hours) matrix[d][h] = 0;\n}\nfor (const t of heatmapResults) {\n  if (!t.created_at) continue;\n  const dt = new Date(t.created_at);\n  const jsDay = dt.getDay();        // 0=Dom..6=Sáb\n  const dIdx  = (jsDay + 6) % 7;     // 0=Lun..6=Dom\n  const dName = dayLabels[dIdx];\n  const hh    = String(dt.getHours()).padStart(2,'0');\n  matrix[dName][hh]++;\n}\nconst heatmap = dayLabels.map(d => ({\n  name: d,\n  data: hours.map(h => ({ x: h, y: matrix[d][h] }))\n}));\n\n// Top organizaciones (a partir de tickets abiertos; ideal: ampliar a últimos 30 días)\nconst orgCount = new Map();\nfor (const t of openResults) {\n  const orgId = t.organization_id;\n  if (!orgId) continue;\n  orgCount.set(orgId, (orgCount.get(orgId) || 0) + 1);\n}\n// NOTA: para nombres reales habría que resolver org_id -> nombre vía API.\n// Aquí dejamos el id como placeholder. (Ver nodo 'Resolver orgs' opcional.)\nconst top_orgs = [...orgCount.entries()]\n  .sort((a,b)=>b[1]-a[1])\n  .slice(0,8)\n  .map(([id,count]) => ({ name: `Organización ${id}`, count }));\n\n// Top ticket\nlet top_ticket = null;\nif (topTicketResults.length > 0) {\n  const t = topTicketResults[0];\n  top_ticket = {\n    id: t.id,\n    subject: t.subject || t.raw_subject || '—',\n    status: t.status,\n    priority: t.priority,\n    requester: t.via?.source?.from?.name || null,\n    organization: t.organization_id ? `Organización ${t.organization_id}` : null,\n    comments: t.comment_count || null,\n    updated_at: t.updated_at ? new Date(t.updated_at).toLocaleString('es-ES') : null\n  };\n}\n\n// Asana (placeholder; sustituir por nodos reales)\nconst asana_open = 0;\nconst asana_overdue = 0;\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_today: today,\n  tickets_yesterday: yesterday,\n  tickets_week: week,\n  tickets_last_week: lastWeek,\n  tickets_open: open,\n  tickets_pending: pending,\n  tickets_integration: integration,\n  tickets_integration_open: integrationOpen,\n  heatmap,\n  top_orgs,\n  top_ticket,\n  asana_open,\n  asana_overdue\n} }];"
+        "jsCode": "// Consolida todo en el JSON final\nconst d = $input.first().json;\n\nfunction count(obj){ \n  if (!obj) return 0;\n  if (typeof obj.count === 'number') return obj.count;\n  if (Array.isArray(obj.results)) return obj.results.length;\n  return 0;\n}\nfunction results(obj){\n  if (!obj || !Array.isArray(obj.results)) return [];\n  return obj.results;\n}\n\nconst today       = count(d.zd_today);\nconst yesterday   = count(d.zd_yesterday);\nconst week        = count(d.zd_week);\nconst lastWeek    = count(d.zd_last_week);\nconst open        = count(d.zd_open);\nconst integration = count(d.zd_integration);\n\nconst openRes    = results(d.zd_open);\nconst intRes     = results(d.zd_integration);\nconst heatRes    = results(d.zd_heatmap);\nconst topRes     = results(d.zd_top);\n\nconst pending = openRes.filter(t => t.status === 'pending').length;\nconst integrationOpen = intRes.filter(t => t.status && t.status !== 'solved' && t.status !== 'closed').length;\n\n// Heatmap 7d x 24h\nconst dayLabels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];\nconst hours = Array.from({length:24}, (_,i) => String(i).padStart(2,'0'));\nconst matrix = {};\nfor (const dn of dayLabels) { matrix[dn] = {}; for (const h of hours) matrix[dn][h] = 0; }\nfor (const t of heatRes) {\n  if (!t.created_at) continue;\n  const dt = new Date(t.created_at);\n  const jsDay = dt.getDay();\n  const dIdx  = (jsDay + 6) % 7;\n  const dName = dayLabels[dIdx];\n  const hh    = String(dt.getHours()).padStart(2,'0');\n  matrix[dName][hh]++;\n}\nconst heatmap = dayLabels.map(dn => ({\n  name: dn,\n  data: hours.map(h => ({ x: h, y: matrix[dn][h] }))\n}));\n\n// Top orgs (a partir de tickets abiertos)\nconst orgCount = new Map();\nfor (const t of openRes) {\n  if (!t.organization_id) continue;\n  orgCount.set(t.organization_id, (orgCount.get(t.organization_id) || 0) + 1);\n}\nconst top_orgs = [...orgCount.entries()]\n  .sort((a,b)=>b[1]-a[1])\n  .slice(0,8)\n  .map(([id,count]) => ({ name: `Organización ${id}`, count }));\n\nlet top_ticket = null;\nif (topRes.length > 0) {\n  const t = topRes[0];\n  top_ticket = {\n    id: t.id,\n    subject: t.subject || t.raw_subject || '—',\n    status: t.status,\n    priority: t.priority,\n    requester: t.via?.source?.from?.name || null,\n    organization: t.organization_id ? `Organización ${t.organization_id}` : null,\n    comments: t.comment_count || null,\n    updated_at: t.updated_at ? new Date(t.updated_at).toLocaleString('es-ES') : null\n  };\n}\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_today: today,\n  tickets_yesterday: yesterday,\n  tickets_week: week,\n  tickets_last_week: lastWeek,\n  tickets_open: open,\n  tickets_pending: pending,\n  tickets_integration: integration,\n  tickets_integration_open: integrationOpen,\n  heatmap,\n  top_orgs,\n  top_ticket,\n  asana_open: 0,\n  asana_overdue: 0\n} }];"
       },
       "id": "agg-1",
       "name": "Agregar KPIs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-120, 120]
+      "position": [2000, 0]
     },
     {
       "parameters": {
@@ -252,35 +297,29 @@
       "name": "Responder webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [140, 120]
+      "position": [2200, 0]
     }
   ],
   "connections": {
-    "Webhook KPIs":                       { "main": [[{ "node": "Calcular fechas", "type": "main", "index": 0 }]] },
-    "Calcular fechas": {
-      "main": [[
-        { "node": "Zendesk · Tickets hoy",                "type": "main", "index": 0 },
-        { "node": "Zendesk · Tickets ayer",               "type": "main", "index": 0 },
-        { "node": "Zendesk · Tickets semana",             "type": "main", "index": 0 },
-        { "node": "Zendesk · Tickets semana anterior",    "type": "main", "index": 0 },
-        { "node": "Zendesk · Tickets abiertos",           "type": "main", "index": 0 },
-        { "node": "Zendesk · Tickets integración",        "type": "main", "index": 0 },
-        { "node": "Zendesk · Tickets 7 días (heatmap)",   "type": "main", "index": 0 },
-        { "node": "Zendesk · Top ticket",                 "type": "main", "index": 0 },
-        { "node": "Asana · Tareas (placeholder)",         "type": "main", "index": 0 }
-      ]]
-    },
-    "Zendesk · Tickets hoy":              { "main": [[{ "node": "Merge resultados", "type": "main", "index": 0 }]] },
-    "Zendesk · Tickets ayer":             { "main": [[{ "node": "Merge resultados", "type": "main", "index": 0 }]] },
-    "Zendesk · Tickets semana":           { "main": [[{ "node": "Merge resultados", "type": "main", "index": 0 }]] },
-    "Zendesk · Tickets semana anterior":  { "main": [[{ "node": "Merge resultados", "type": "main", "index": 0 }]] },
-    "Zendesk · Tickets abiertos":         { "main": [[{ "node": "Merge resultados", "type": "main", "index": 0 }]] },
-    "Zendesk · Tickets integración":      { "main": [[{ "node": "Merge resultados", "type": "main", "index": 0 }]] },
-    "Zendesk · Tickets 7 días (heatmap)": { "main": [[{ "node": "Merge resultados", "type": "main", "index": 0 }]] },
-    "Zendesk · Top ticket":               { "main": [[{ "node": "Merge resultados", "type": "main", "index": 0 }]] },
-    "Asana · Tareas (placeholder)":       { "main": [[{ "node": "Merge resultados", "type": "main", "index": 0 }]] },
-    "Merge resultados":                   { "main": [[{ "node": "Agregar KPIs",     "type": "main", "index": 0 }]] },
-    "Agregar KPIs":                       { "main": [[{ "node": "Responder webhook","type": "main", "index": 0 }]] }
+    "Webhook KPIs":         { "main": [[{ "node": "Calcular fechas",   "type": "main", "index": 0 }]] },
+    "Calcular fechas":      { "main": [[{ "node": "ZD Hoy",            "type": "main", "index": 0 }]] },
+    "ZD Hoy":               { "main": [[{ "node": "Guardar Hoy",       "type": "main", "index": 0 }]] },
+    "Guardar Hoy":          { "main": [[{ "node": "ZD Ayer",           "type": "main", "index": 0 }]] },
+    "ZD Ayer":              { "main": [[{ "node": "Guardar Ayer",      "type": "main", "index": 0 }]] },
+    "Guardar Ayer":         { "main": [[{ "node": "ZD Semana",         "type": "main", "index": 0 }]] },
+    "ZD Semana":            { "main": [[{ "node": "Guardar Semana",    "type": "main", "index": 0 }]] },
+    "Guardar Semana":       { "main": [[{ "node": "ZD Semana Anterior","type": "main", "index": 0 }]] },
+    "ZD Semana Anterior":   { "main": [[{ "node": "Guardar Sem. Ant.", "type": "main", "index": 0 }]] },
+    "Guardar Sem. Ant.":    { "main": [[{ "node": "ZD Abiertos",       "type": "main", "index": 0 }]] },
+    "ZD Abiertos":          { "main": [[{ "node": "Guardar Abiertos",  "type": "main", "index": 0 }]] },
+    "Guardar Abiertos":     { "main": [[{ "node": "ZD Integración",    "type": "main", "index": 0 }]] },
+    "ZD Integración":       { "main": [[{ "node": "Guardar Integración","type": "main", "index": 0 }]] },
+    "Guardar Integración":  { "main": [[{ "node": "ZD Heatmap",        "type": "main", "index": 0 }]] },
+    "ZD Heatmap":           { "main": [[{ "node": "Guardar Heatmap",   "type": "main", "index": 0 }]] },
+    "Guardar Heatmap":      { "main": [[{ "node": "ZD Top Ticket",     "type": "main", "index": 0 }]] },
+    "ZD Top Ticket":        { "main": [[{ "node": "Guardar Top",       "type": "main", "index": 0 }]] },
+    "Guardar Top":          { "main": [[{ "node": "Agregar KPIs",      "type": "main", "index": 0 }]] },
+    "Agregar KPIs":         { "main": [[{ "node": "Responder webhook", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {},
