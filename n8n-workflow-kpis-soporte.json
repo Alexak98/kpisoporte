@@ -240,38 +240,22 @@
 
     {
       "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.month_ymd }}" },
-            { "name": "per_page", "value": "100" }
-          ]
-        },
+        "resource": "ticket",
+        "operation": "getAll",
+        "returnAll": true,
         "options": {
-          "pagination": {
-            "pagination": {
-              "paginationMode": "responseContainsNextURL",
-              "nextURL": "={{ $response.body.next_page }}",
-              "completeExpression": "={{ !$response.body?.next_page }}",
-              "limitPagesFetched": true,
-              "maxRequests": 10
-            }
-          },
-          "response": { "response": { "neverError": true } }
+          "query": "=type:ticket created>={{ $json.month_ymd }}"
         }
       },
       "id": "zd-month",
       "name": "ZD Mes",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
       "position": [1900, 840]
     },
     {
       "parameters": {
-        "jsCode": "// Agrega todos los items de la paginación en un único zd_month\nconst acc = $('Guardar Hoy Manual').first().json;\nconst pages = $input.all().map(i => i.json);\nconst allResults = pages.flatMap(p => Array.isArray(p?.results) ? p.results : []);\nconst total = (pages[0] && typeof pages[0].count === 'number') ? pages[0].count : allResults.length;\nreturn [{ json: { ...acc, zd_month: { results: allResults, count: total } } }];"
+        "jsCode": "// El nodo Zendesk emite un item por ticket. Los agrupamos en zd_month.\nconst acc = $('Guardar Hoy Manual').first().json;\nconst allTickets = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, zd_month: { results: allTickets, count: allTickets.length } } }];"
       },
       "id": "save-month",
       "name": "Guardar Mes",
