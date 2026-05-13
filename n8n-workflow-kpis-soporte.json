@@ -275,7 +275,8 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.today_ymd }} -subject:\"Conversation with\"" }
+            { "name": "query", "value": "=type:ticket created>={{ $json.today_ymd }} -subject:\"Conversation with\"" },
+            { "name": "per_page", "value": "100" }
           ]
         },
         "options": { "response": { "response": { "neverError": true } } }
@@ -299,36 +300,32 @@
 
     {
       "parameters": {
-        "jsCode": "// Extrae los IDs de los 20 tickets manuales más recientes de hoy\n// para sacar su tiempo de primera respuesta (Ticket Metrics API).\nconst acc = $input.first().json;\nconst tickets = (acc.zd_today_manual && Array.isArray(acc.zd_today_manual.results))\n  ? acc.zd_today_manual.results : [];\nconst items = tickets\n  .filter(t => t && t.id)\n  .sort((a,b) => new Date(b.created_at) - new Date(a.created_at))\n  .slice(0, 20)\n  .map(t => ({ json: { id: t.id } }));\n// Si no hay tickets manuales hoy, emitimos un item dummy para no romper\n// el flujo (el HTTP siguiente devolverá 404 y se ignora).\nif (items.length === 0) return [{ json: { id: 0 } }];\nreturn items;"
+        "url": "https://soporteyurest.zendesk.com/api/v2/ticket_metrics.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "per_page", "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "extract-frt-ids",
-      "name": "Extraer IDs FRT",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "id": "zd-metrics-list",
+      "name": "ZD Metrics Recientes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [1500, 220]
     },
     {
       "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/{{ $json.id }}/metrics.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "options": { "response": { "response": { "neverError": true } } }
-      },
-      "id": "zd-ticket-metrics",
-      "name": "ZD Ticket Metrics",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1500, 380]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Calcula tiempo medio de primera respuesta (en minutos, calendario)\n// usando reply_time_in_minutes.calendar de cada ticket. Ignora los\n// tickets sin respuesta (valor null o 0).\nconst items = $input.all().map(i => i.json).filter(Boolean);\nconst times = items\n  .map(i => i && i.ticket_metric && i.ticket_metric.reply_time_in_minutes && i.ticket_metric.reply_time_in_minutes.calendar)\n  .filter(v => typeof v === 'number' && v > 0);\nconst sample = times.length;\nconst avgMin = sample ? Math.round(times.reduce((a,b)=>a+b,0) / sample) : null;\n\nconst acc = $('Guardar Hoy Manual').first().json;\nreturn [{ json: { ...acc, frt_avg_min: avgMin, frt_sample: sample } }];"
+        "jsCode": "// Calcula tiempo medio de primera respuesta (FRT) interseccionando\n// los 100 ticket_metrics más recientes con los IDs de los tickets\n// manuales creados hoy. Un único HTTP call, robusto.\nconst acc = $('Guardar Hoy Manual').first().json;\nconst body = $input.first().json || {};\nconst metrics = Array.isArray(body.ticket_metrics) ? body.ticket_metrics : [];\n\nconst todayManualIds = new Set(\n  ((acc.zd_today_manual && acc.zd_today_manual.results) || [])\n    .map(t => t && t.id).filter(Boolean)\n);\n\nconst todayMetrics = metrics.filter(m => m && todayManualIds.has(m.ticket_id));\n\nconst times = todayMetrics\n  .map(m => m && m.reply_time_in_minutes && m.reply_time_in_minutes.calendar)\n  .filter(v => typeof v === 'number' && v > 0);\n\nconst sample = times.length;\nconst avgMin = sample ? Math.round(times.reduce((a,b)=>a+b,0) / sample) : null;\n\nreturn [{ json: { ...acc, frt_avg_min: avgMin, frt_sample: sample, _frt_total_today_manual: todayManualIds.size } }];"
       },
       "id": "calc-frt",
       "name": "Calcular FRT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1500, 540]
+      "position": [1700, 220]
     },
 
     {
@@ -507,9 +504,8 @@
     "ZD Hoy IA":             { "main": [[{ "node": "Guardar Hoy IA",       "type": "main", "index": 0 }]] },
     "Guardar Hoy IA":        { "main": [[{ "node": "ZD Hoy Manual",        "type": "main", "index": 0 }]] },
     "ZD Hoy Manual":         { "main": [[{ "node": "Guardar Hoy Manual",   "type": "main", "index": 0 }]] },
-    "Guardar Hoy Manual":    { "main": [[{ "node": "Extraer IDs FRT",      "type": "main", "index": 0 }]] },
-    "Extraer IDs FRT":       { "main": [[{ "node": "ZD Ticket Metrics",    "type": "main", "index": 0 }]] },
-    "ZD Ticket Metrics":     { "main": [[{ "node": "Calcular FRT",         "type": "main", "index": 0 }]] },
+    "Guardar Hoy Manual":    { "main": [[{ "node": "ZD Metrics Recientes", "type": "main", "index": 0 }]] },
+    "ZD Metrics Recientes":  { "main": [[{ "node": "Calcular FRT",         "type": "main", "index": 0 }]] },
     "Calcular FRT":          { "main": [[{ "node": "ZD Envejecidos",       "type": "main", "index": 0 }]] },
     "ZD Envejecidos":        { "main": [[{ "node": "Guardar Envejecidos",  "type": "main", "index": 0 }]] },
     "Guardar Envejecidos":   { "main": [[{ "node": "ZD Hist",              "type": "main", "index": 0 }]] },
