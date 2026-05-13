@@ -448,7 +448,7 @@
       backlogEl.classList.remove('text-emerald-300','text-rose-300','text-slate-200');
       backlogEl.classList.add(backlog > 0 ? 'text-rose-300' : backlog < 0 ? 'text-emerald-300' : 'text-slate-200');
       document.getElementById('kpiBacklogDetail').textContent =
-        `${d.tickets_today ?? 0} nuevos · ${d.tickets_solved_today ?? 0} resueltos`;
+        `${d.tickets_today_manual ?? 0} nuevos · ${d.tickets_solved_today ?? 0} resueltos · solo humano`;
 
       const slaEl  = document.getElementById('kpiSLA');
       const sla    = d.sla_pct_week;
