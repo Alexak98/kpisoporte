@@ -318,7 +318,23 @@
     }
   }
 
+  function trimSeriesEdges(series) {
+    // Recorta de los extremos las horas cuya suma vertical es 0.
+    // Las horas con 0 en el medio se conservan.
+    if (!Array.isArray(series) || series.length === 0) return series;
+    const cols = series[0].data.length;
+    const colTotals = Array.from({length: cols}, (_, i) =>
+      series.reduce((sum, s) => sum + (s.data[i]?.y || 0), 0));
+    let start = 0;
+    while (start < cols && colTotals[start] === 0) start++;
+    let end = cols - 1;
+    while (end >= start && colTotals[end] === 0) end--;
+    if (start >= cols) return series; // todo a 0 → no recortar
+    return series.map(s => ({ ...s, data: s.data.slice(start, end + 1) }));
+  }
+
   function renderMiniHeatmap(containerId, series, refChart) {
+    series = trimSeriesEdges(series);
     const container = document.getElementById(containerId);
     const h = container.clientHeight || 200;
     const options = {
