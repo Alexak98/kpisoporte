@@ -164,8 +164,42 @@
     </div>
   </section>
 
+  <!-- SECONDARY KPIs · operacional -->
+  <section class="grid grid-cols-3 gap-6 px-10 mt-4 shrink-0">
+    <div class="card p-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg grad-amber flex items-center justify-center text-xl shrink-0">⚠️</div>
+      <div class="flex-1">
+        <div class="title text-[10px]">Sin asignar</div>
+        <div class="flex items-baseline gap-2">
+          <div id="kpiUnassigned" class="kpi-number text-4xl">0</div>
+          <div class="text-xs text-slate-400">tickets abiertos</div>
+        </div>
+      </div>
+    </div>
+    <div class="card p-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg grad-blue flex items-center justify-center text-xl shrink-0">📈</div>
+      <div class="flex-1">
+        <div class="title text-[10px]">Backlog · hoy</div>
+        <div class="flex items-baseline gap-2">
+          <div id="kpiBacklog" class="kpi-number text-4xl">0</div>
+          <div class="text-xs text-slate-400"><span id="kpiBacklogDetail">— nuevos · — resueltos</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card p-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-lg grad-green flex items-center justify-center text-xl shrink-0">🎯</div>
+      <div class="flex-1">
+        <div class="title text-[10px]">SLA · esta semana</div>
+        <div class="flex items-baseline gap-2">
+          <div id="kpiSLA" class="kpi-number text-4xl">—</div>
+          <div class="text-xs text-slate-400"><span id="kpiSLADetail">— incumplidos</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- CHARTS / LISTS -->
-  <section class="grid grid-cols-3 gap-6 px-10 mt-5" style="height: 380px;">
+  <section class="grid grid-cols-3 gap-6 px-10 mt-4" style="height: 340px;">
     <!-- HEATMAP -->
     <div class="card p-6 col-span-2 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
@@ -185,8 +219,8 @@
     </div>
   </section>
 
-  <!-- MINI HEATMAPS IA / MANUAL · este mes -->
-  <section class="grid grid-cols-2 gap-6 px-10 mt-5" style="height: 260px;">
+  <!-- MINI HEATMAPS IA / MANUAL · esta semana -->
+  <section class="grid grid-cols-2 gap-6 px-10 mt-4" style="height: 220px;">
     <div class="card p-5 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-1 shrink-0">
         <div class="text-lg font-bold">🤖 IA · esta semana</div>
@@ -204,8 +238,7 @@
   </section>
 
   <!-- FOOTER -->
-  <footer class="px-10 mt-auto pb-4 flex justify-between items-center text-xs text-slate-500 shrink-0">
-    <div>Fuente: Zendesk · Asana · vía n8n</div>
+  <footer class="px-10 mt-auto pb-4 flex justify-end items-center text-xs text-slate-500 shrink-0 gap-6">
     <div id="errorMsg" class="text-rose-400"></div>
     <div>Próxima actualización en <span id="countdown">10:00</span></div>
   </footer>
@@ -435,6 +468,27 @@
         d.tickets_last_week != null ? `semana ant.: ${d.tickets_last_week}` : 'semana ant.: —';
       document.getElementById('kpiOpenSub').textContent =
         d.tickets_open != null ? `abiertos: ${d.tickets_open}` : 'abiertos: —';
+
+      // Secondary KPIs
+      setNum('kpiUnassigned', d.tickets_unassigned);
+      const backlog = d.backlog_today ?? 0;
+      const backlogEl = document.getElementById('kpiBacklog');
+      backlogEl.textContent = (backlog > 0 ? '+' : '') + backlog;
+      backlogEl.classList.remove('text-emerald-300','text-rose-300','text-slate-200');
+      backlogEl.classList.add(backlog > 0 ? 'text-rose-300' : backlog < 0 ? 'text-emerald-300' : 'text-slate-200');
+      document.getElementById('kpiBacklogDetail').textContent =
+        `${d.tickets_today ?? 0} nuevos · ${d.tickets_solved_today ?? 0} resueltos`;
+
+      const slaEl  = document.getElementById('kpiSLA');
+      const sla    = d.sla_pct_week;
+      const breach = d.sla_breach_week ?? 0;
+      slaEl.textContent = (sla == null) ? '—' : (sla + '%');
+      slaEl.classList.remove('text-emerald-300','text-amber-300','text-rose-300');
+      if (sla != null) {
+        slaEl.classList.add(sla >= 95 ? 'text-emerald-300' : sla >= 85 ? 'text-amber-300' : 'text-rose-300');
+      }
+      document.getElementById('kpiSLADetail').textContent =
+        `${breach} incumplidos · ${d.tickets_week ?? 0} totales`;
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
