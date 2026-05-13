@@ -180,20 +180,31 @@
       </div>
     </div>
 
-    <!-- ASANA -->
+    <!-- IA vs MANUAL -->
     <div class="card p-6 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
-        <div class="text-xl font-bold">Asana · Tareas activas</div>
-        <div class="text-xs text-slate-400">En curso</div>
+        <div class="text-xl font-bold">Origen · hoy</div>
+        <div class="text-xs text-slate-400">IA vs Manual</div>
       </div>
-      <div class="grid grid-cols-2 gap-3 flex-1 min-h-0">
+      <div class="grid grid-cols-2 gap-3 shrink-0">
         <div class="rounded-xl bg-slate-800/40 p-3 flex flex-col justify-center items-center">
-          <div class="text-xs title">Abiertas</div>
-          <div id="asanaOpen" class="text-4xl kpi-number">0</div>
+          <div class="text-xs title">🤖 IA</div>
+          <div id="kpiIA" class="text-4xl kpi-number text-violet-300">0</div>
+          <div id="kpiIAPct" class="text-xs text-slate-400">—</div>
         </div>
         <div class="rounded-xl bg-slate-800/40 p-3 flex flex-col justify-center items-center">
-          <div class="text-xs title">Vencidas</div>
-          <div id="asanaOverdue" class="text-4xl kpi-number text-rose-300">0</div>
+          <div class="text-xs title">👤 Manual</div>
+          <div id="kpiManual" class="text-4xl kpi-number text-emerald-300">0</div>
+          <div id="kpiManualPct" class="text-xs text-slate-400">—</div>
+        </div>
+      </div>
+      <div class="mt-3 flex-1 flex flex-col justify-end min-h-0">
+        <div class="w-full h-3 bg-slate-800/60 rounded-full overflow-hidden flex">
+          <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#7c3aed,#a855f7);width:0%"></div>
+          <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#10b981,#34d399);width:0%"></div>
+        </div>
+        <div class="flex justify-between text-xs text-slate-400 mt-1">
+          <span>IA</span><span>Manual</span>
         </div>
       </div>
     </div>
@@ -378,8 +389,18 @@
       document.getElementById('kpiIntegrationOpen').textContent =
         d.tickets_integration_open != null ? `abiertos: ${d.tickets_integration_open}` : 'abiertos: —';
 
-      setNum('asanaOpen',    d.asana_open);
-      setNum('asanaOverdue', d.asana_overdue);
+      // IA vs Manual (hoy)
+      const ia     = d.tickets_today_ia     ?? 0;
+      const manual = d.tickets_today_manual ?? 0;
+      const totalOrig = ia + manual;
+      setNum('kpiIA',     ia);
+      setNum('kpiManual', manual);
+      const pctIA = totalOrig ? Math.round((ia / totalOrig) * 100) : 0;
+      const pctMa = totalOrig ? 100 - pctIA : 0;
+      document.getElementById('kpiIAPct').textContent     = totalOrig ? `${pctIA}%` : '—';
+      document.getElementById('kpiManualPct').textContent = totalOrig ? `${pctMa}%` : '—';
+      document.getElementById('barIA').style.width     = pctIA + '%';
+      document.getElementById('barManual').style.width = pctMa + '%';
 
       if (Array.isArray(d.heatmap)) renderHeatmap(d.heatmap);
       renderTopOrgs(d.top_orgs || []);
