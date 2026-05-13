@@ -189,15 +189,15 @@
   <section class="grid grid-cols-2 gap-6 px-10 mt-5" style="height: 260px;">
     <div class="card p-5 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-1 shrink-0">
-        <div class="text-lg font-bold">🤖 IA · este mes</div>
-        <div class="text-xs text-slate-400"><span id="miniIAtotal">0</span> tickets · 7d × 24h</div>
+        <div class="text-lg font-bold">🤖 IA · esta semana</div>
+        <div class="text-xs text-slate-400"><span id="miniIAtotal">0</span> tickets · L-V</div>
       </div>
       <div id="heatmapIA" class="flex-1 min-h-0"></div>
     </div>
     <div class="card p-5 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-1 shrink-0">
-        <div class="text-lg font-bold">👤 Manual · este mes</div>
-        <div class="text-xs text-slate-400"><span id="miniManualtotal">0</span> tickets · 7d × 24h</div>
+        <div class="text-lg font-bold">👤 Manual · esta semana</div>
+        <div class="text-xs text-slate-400"><span id="miniManualtotal">0</span> tickets · L-V</div>
       </div>
       <div id="heatmapManual" class="flex-1 min-h-0"></div>
     </div>
@@ -452,8 +452,8 @@
       if (Array.isArray(d.heatmap)) renderHeatmap(d.heatmap);
       if (Array.isArray(d.heatmap_ia))     renderMiniHeatmap('heatmapIA',     d.heatmap_ia,     _refIA);
       if (Array.isArray(d.heatmap_manual)) renderMiniHeatmap('heatmapManual', d.heatmap_manual, _refMa);
-      document.getElementById('miniIAtotal').textContent     = d.tickets_month_ia     ?? 0;
-      document.getElementById('miniManualtotal').textContent = d.tickets_month_manual ?? 0;
+      document.getElementById('miniIAtotal').textContent     = d.tickets_week_ia     ?? 0;
+      document.getElementById('miniManualtotal').textContent = d.tickets_week_manual ?? 0;
       renderTopOrgs(d.top_orgs || []);
 
       const now = new Date();
