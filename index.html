@@ -390,7 +390,6 @@
   setInterval(updateCountdown, 1000);
 
   let hourlyChart = null;
-  let stackedChart = null;
   let firstLoadDone = false;
 
   function hideLoader() {
@@ -451,56 +450,30 @@
     else { hourlyChart = new ApexCharts(container, options); hourlyChart.render(); }
   }
 
-  // === Reparto IA / Manual por día (apilado) ===
+  // === Reparto IA / Manual por día (tabla numérica) ===
   function renderStacked(arr) {
-    const container = document.getElementById('stackedChart');
-    const h = container.clientHeight || 200;
-    const labels = arr.map(x => x.day);
-    const iaD    = arr.map(x => x.ia);
-    const maD    = arr.map(x => x.manual);
-    const pctIA  = arr.map(x => x.pct_ia);
-    const options = {
-      chart: {
-        type:'bar', height:h, width:'100%', stacked:true,
-        toolbar:{ show:false }, background:'transparent', foreColor:'#cbd5e1',
-        fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
-      },
-      series: [
-        { name:'IA',     data: iaD },
-        { name:'Manual', data: maD }
-      ],
-      plotOptions: {
-        bar: {
-          horizontal:false, columnWidth:'45%',
-          borderRadius:6, borderRadiusApplication:'end', borderRadiusWhenStacked:'last',
-          dataLabels: {
-            total: {
-              enabled: true,
-              offsetY: -14,
-              style: { fontSize:'22px', fontWeight:800, color:'#ffffff' }
-            }
-          }
-        }
-      },
-      colors: ['#a855f7', '#10b981'],
-      dataLabels: {
-        enabled: true,
-        style:{ fontSize:'18px', fontWeight:800, colors:['#ffffff'] },
-        formatter: v => v === 0 ? '' : v
-      },
-      xaxis: {
-        categories: labels,
-        labels:{ style:{ colors:'#cbd5e1', fontSize:'16px', fontWeight:700 } },
-        axisBorder:{ show:false }, axisTicks:{ show:false }
-      },
-      yaxis: { labels:{ style:{ colors:'#9bb0d6', fontSize:'12px' } } },
-      grid:  { borderColor:'rgba(155,176,214,0.08)' },
-      legend:{ position:'top', horizontalAlign:'right', fontSize:'13px', labels:{ colors:'#cbd5e1' }, markers:{ size:8 } },
-      tooltip:{ theme:'dark', shared:true, intersect:false,
-        y:{ formatter: (v,_,o) => `${v} (${pctIA[o.dataPointIndex]}% IA del día)` } }
-    };
-    if (stackedChart) stackedChart.updateOptions(options, true, false);
-    else { stackedChart = new ApexCharts(container, options); stackedChart.render(); }
+    const cont = document.getElementById('stackedChart');
+    if (!arr || arr.length === 0) {
+      cont.innerHTML = '<div class="text-slate-500">Sin datos</div>';
+      return;
+    }
+    const header = `
+      <div class="grid grid-cols-5 gap-4 py-2 px-2 text-sm title border-b border-slate-700/60">
+        <div>Día</div>
+        <div class="text-right">IA</div>
+        <div class="text-right">Manual</div>
+        <div class="text-right">Total</div>
+        <div class="text-right">% IA</div>
+      </div>`;
+    const rows = arr.map(x => `
+      <div class="grid grid-cols-5 gap-4 py-2 px-2 items-baseline border-b border-slate-700/20">
+        <div class="font-bold text-lg">${x.day}</div>
+        <div class="text-right font-extrabold text-3xl text-violet-300 kpi-number">${x.ia}</div>
+        <div class="text-right font-extrabold text-3xl text-emerald-300 kpi-number">${x.manual}</div>
+        <div class="text-right font-extrabold text-3xl kpi-number">${x.total}</div>
+        <div class="text-right text-base text-slate-400">${x.pct_ia}%</div>
+      </div>`).join('');
+    cont.innerHTML = header + rows;
   }
 
   // === Sparkline pequeña (inline en cada org) ===
