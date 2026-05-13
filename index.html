@@ -585,8 +585,10 @@
       } else {
         frtEl.classList.add('text-rose-300');
       }
+      const ans = d.frt_answered ?? 0;
+      const pen = d.frt_pending ?? 0;
       document.getElementById('kpiFRTDetail').textContent =
-        frtSample > 0 ? `muestra: ${frtSample} tickets · sin IA` : 'muestra: —';
+        (ans + pen) > 0 ? `${ans} contestados · ${pen} pendientes` : 'sin datos';
 
       const agedEl = document.getElementById('kpiAged');
       const aged   = d.tickets_aged_3d ?? 0;
