@@ -78,9 +78,116 @@
     /* Forzar tamaño del heatmap para que no se desborde */
     #heatmap { width: 100%; height: 100%; overflow: hidden; }
     .apexcharts-canvas { width:100% !important; }
+
+    /* ─── Loader inicial ─── */
+    .loader-overlay {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, rgba(20,30,55,0.97), rgba(8,12,22,0.99));
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      transition: opacity .5s ease;
+    }
+    .loader-overlay.hidden { opacity: 0; pointer-events: none; }
+    .loader-box { text-align: center; }
+    .loader-text {
+      font-size: 28px; font-weight: 700; color: #e6edf7;
+      margin-top: 18px; letter-spacing: .3px;
+    }
+    .loader-subtext { font-size: 15px; color: #94a3b8; margin-top: 6px; }
+    .loader-bar {
+      width: 280px; height: 5px;
+      background: #1e293b; border-radius: 999px;
+      margin: 22px auto 0; overflow: hidden;
+    }
+    .loader-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6 0%, #a855f7 50%, #f59e0b 100%);
+      width: 0%;
+      animation: loaderFill 22s cubic-bezier(.4,.0,.2,1) forwards;
+    }
+    @keyframes loaderFill {
+      0%   { width: 0%; }
+      85%  { width: 92%; }
+      100% { width: 99%; }
+    }
+    .loader-svg { display: block; margin: 0 auto; }
+    .loader-svg .wrench {
+      transform-origin: 100px 100px;
+      animation: tighten 1.6s cubic-bezier(.7,.05,.3,.95) infinite;
+    }
+    @keyframes tighten {
+      0%   { transform: rotate(-35deg); }
+      55%  { transform: rotate(20deg); }
+      65%  { transform: rotate(20deg); }     /* pequeña pausa al apretar */
+      90%  { transform: rotate(-35deg); }    /* vuelta rápida */
+      100% { transform: rotate(-35deg); }
+    }
+    .loader-svg .bolt {
+      transform-origin: 100px 100px;
+      animation: boltTurn 6.4s linear infinite;
+    }
+    @keyframes boltTurn { to { transform: rotate(360deg); } }
+    .loader-svg .spark {
+      transform-origin: 100px 100px;
+      animation: sparkPulse 1.6s ease-in-out infinite;
+      animation-delay: .55s;
+      opacity: 0;
+    }
+    @keyframes sparkPulse {
+      0%, 100% { opacity: 0; }
+      10%      { opacity: 1; }
+      30%      { opacity: 0; }
+    }
   </style>
 </head>
 <body>
+
+<!-- LOADER INICIAL · llave apretando perno -->
+<div id="loader" class="loader-overlay">
+  <div class="loader-box">
+    <svg class="loader-svg" width="200" height="200" viewBox="0 0 200 200">
+      <!-- chispas decorativas que aparecen al final del apriete -->
+      <g class="spark">
+        <circle cx="150" cy="55"  r="2.5" fill="#fbbf24"/>
+        <circle cx="160" cy="80"  r="2"   fill="#f59e0b"/>
+        <circle cx="155" cy="105" r="2.5" fill="#fbbf24"/>
+        <circle cx="148" cy="130" r="2"   fill="#f59e0b"/>
+      </g>
+      <!-- perno hexagonal -->
+      <g class="bolt">
+        <polygon points="100,62 132,80 132,120 100,138 68,120 68,80"
+                 fill="#374151" stroke="#9ca3af" stroke-width="2.5"/>
+        <polygon points="100,76 120,87 120,113 100,124 80,113 80,87"
+                 fill="#1f2937" stroke="#6b7280" stroke-width="1.5"/>
+        <line x1="87" y1="93"  x2="113" y2="107" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"/>
+        <line x1="87" y1="107" x2="113" y2="93"  stroke="#9ca3af" stroke-width="2" stroke-linecap="round"/>
+      </g>
+      <!-- llave inglesa -->
+      <g class="wrench">
+        <!-- mango -->
+        <rect x="10" y="93" width="78" height="14" rx="3"
+              fill="url(#wrenchGrad)" stroke="#1e3a8a" stroke-width="1"/>
+        <!-- agarre (líneas) -->
+        <line x1="22" y1="96"  x2="22" y2="104"  stroke="#1e3a8a" stroke-width="1.2"/>
+        <line x1="30" y1="96"  x2="30" y2="104"  stroke="#1e3a8a" stroke-width="1.2"/>
+        <line x1="38" y1="96"  x2="38" y2="104"  stroke="#1e3a8a" stroke-width="1.2"/>
+        <line x1="46" y1="96"  x2="46" y2="104"  stroke="#1e3a8a" stroke-width="1.2"/>
+        <!-- cabeza/quijada -->
+        <path d="M 86 80 L 116 80 L 116 92 L 102 92 L 102 108 L 116 108 L 116 120 L 86 120 Z"
+              fill="url(#wrenchGrad)" stroke="#1e3a8a" stroke-width="1.5"/>
+      </g>
+      <defs>
+        <linearGradient id="wrenchGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"  stop-color="#60a5fa"/>
+          <stop offset="100%" stop-color="#2563eb"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div class="loader-text">Cargando datos…</div>
+    <div class="loader-subtext">Soporte Técnico · KPIs</div>
+    <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+  </div>
+</div>
 
 <div class="stage" id="stage">
 
@@ -251,6 +358,16 @@
 
   let hourlyChart = null;
   let stackedChart = null;
+  let firstLoadDone = false;
+
+  function hideLoader() {
+    if (firstLoadDone) return;
+    firstLoadDone = true;
+    const el = document.getElementById('loader');
+    if (!el) return;
+    el.classList.add('hidden');
+    setTimeout(() => el.remove(), 600);
+  }
 
   function setStatus(ok, text) {
     const dot = document.getElementById('statusDot');
@@ -458,6 +575,7 @@
       document.getElementById('errorMsg').textContent = 'Error: ' + e.message;
     } finally {
       nextRefreshAt = Date.now() + REFRESH_MS;
+      hideLoader();
     }
   }
 
