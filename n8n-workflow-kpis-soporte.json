@@ -386,28 +386,123 @@
 
     {
       "parameters": {
-        "resource": "ticket",
-        "operation": "getAll",
-        "returnAll": true,
-        "options": {
-          "query": "=type:ticket ((created>={{ $json.sw1_ymd }} created<{{ $json.sw1_end }}) OR (created>={{ $json.sw2_ymd }} created<{{ $json.sw2_end }}) OR (created>={{ $json.sw3_ymd }} created<{{ $json.sw3_end }}) OR (created>={{ $json.sw4_ymd }} created<{{ $json.sw4_end }}))"
-        }
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.sw1_ymd }} created<{{ $json.sw1_end }}" },
+            { "name": "per_page", "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-past-sw",
-      "name": "ZD Past Same Weekday",
-      "type": "n8n-nodes-base.zendesk",
-      "typeVersion": 1,
+      "id": "zd-sw1",
+      "name": "ZD SW 1 (-7d)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [1900, 200]
     },
     {
       "parameters": {
-        "jsCode": "// Agrupa tickets de los 4 mismos días de semana pasados\nconst acc = $('Guardar Hist').first().json;\nconst allTickets = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, zd_past_sw: { results: allTickets, count: allTickets.length } } }];"
+        "jsCode": "const acc = $('Guardar Hist').first().json;\nreturn [{ json: { ...acc, zd_sw1: $input.first().json } }];"
+      },
+      "id": "save-sw1",
+      "name": "Guardar SW1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2050, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.sw2_ymd }} created<{{ $json.sw2_end }}" },
+            { "name": "per_page", "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-sw2",
+      "name": "ZD SW 2 (-14d)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar SW1').first().json;\nreturn [{ json: { ...acc, zd_sw2: $input.first().json } }];"
+      },
+      "id": "save-sw2",
+      "name": "Guardar SW2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2350, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.sw3_ymd }} created<{{ $json.sw3_end }}" },
+            { "name": "per_page", "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-sw3",
+      "name": "ZD SW 3 (-21d)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2500, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar SW2').first().json;\nreturn [{ json: { ...acc, zd_sw3: $input.first().json } }];"
+      },
+      "id": "save-sw3",
+      "name": "Guardar SW3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2650, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.sw4_ymd }} created<{{ $json.sw4_end }}" },
+            { "name": "per_page", "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-sw4",
+      "name": "ZD SW 4 (-28d)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2800, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Consolida los 4 días de semana pasados en zd_past_sw\nconst acc = $('Guardar SW3').first().json;\nconst sw4 = $input.first().json || {};\nconst allResults = [\n  ...((acc.zd_sw1 && acc.zd_sw1.results) || []),\n  ...((acc.zd_sw2 && acc.zd_sw2.results) || []),\n  ...((acc.zd_sw3 && acc.zd_sw3.results) || []),\n  ...((sw4.results) || [])\n];\nreturn [{ json: { ...acc, zd_sw4: sw4, zd_past_sw: { results: allResults, count: allResults.length } } }];"
       },
       "id": "save-past-sw",
       "name": "Guardar Past SW",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2100, 200]
+      "position": [2950, 200]
     },
 
     {
@@ -536,8 +631,14 @@
     "ZD Envejecidos":        { "main": [[{ "node": "Guardar Envejecidos",  "type": "main", "index": 0 }]] },
     "Guardar Envejecidos":   { "main": [[{ "node": "ZD Hist",              "type": "main", "index": 0 }]] },
     "ZD Hist":               { "main": [[{ "node": "Guardar Hist",         "type": "main", "index": 0 }]] },
-    "Guardar Hist":          { "main": [[{ "node": "ZD Past Same Weekday", "type": "main", "index": 0 }]] },
-    "ZD Past Same Weekday":  { "main": [[{ "node": "Guardar Past SW",      "type": "main", "index": 0 }]] },
+    "Guardar Hist":          { "main": [[{ "node": "ZD SW 1 (-7d)",        "type": "main", "index": 0 }]] },
+    "ZD SW 1 (-7d)":         { "main": [[{ "node": "Guardar SW1",          "type": "main", "index": 0 }]] },
+    "Guardar SW1":           { "main": [[{ "node": "ZD SW 2 (-14d)",       "type": "main", "index": 0 }]] },
+    "ZD SW 2 (-14d)":        { "main": [[{ "node": "Guardar SW2",          "type": "main", "index": 0 }]] },
+    "Guardar SW2":           { "main": [[{ "node": "ZD SW 3 (-21d)",       "type": "main", "index": 0 }]] },
+    "ZD SW 3 (-21d)":        { "main": [[{ "node": "Guardar SW3",          "type": "main", "index": 0 }]] },
+    "Guardar SW3":           { "main": [[{ "node": "ZD SW 4 (-28d)",       "type": "main", "index": 0 }]] },
+    "ZD SW 4 (-28d)":        { "main": [[{ "node": "Guardar Past SW",      "type": "main", "index": 0 }]] },
     "Guardar Past SW":       { "main": [[{ "node": "ZD Resueltos Hoy",     "type": "main", "index": 0 }]] },
     "ZD Resueltos Hoy":      { "main": [[{ "node": "Guardar Resueltos Hoy","type": "main", "index": 0 }]] },
     "Guardar Resueltos Hoy": { "main": [[{ "node": "Calcular IDs orgs",    "type": "main", "index": 0 }]] },
