@@ -255,6 +255,7 @@
             "pagination": {
               "paginationMode": "responseContainsNextURL",
               "nextURL": "={{ $response.body.next_page }}",
+              "completeExpression": "={{ !$response.body?.next_page }}",
               "limitPagesFetched": true,
               "maxRequests": 10
             }
