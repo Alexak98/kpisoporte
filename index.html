@@ -444,7 +444,8 @@
       yaxis: { labels:{ style:{ colors:'#9bb0d6', fontSize:'12px' }, formatter: v => Math.round(v) } },
       grid:  { borderColor:'rgba(155,176,214,0.08)' },
       legend:{ position:'top', horizontalAlign:'right', fontSize:'13px', labels:{ colors:'#cbd5e1' }, markers:{ size:8 } },
-      tooltip:{ theme:'dark', shared:true, intersect:false }
+      tooltip:{ enabled:false },
+      states: { hover: { filter: { type:'none' } }, active: { filter: { type:'none' } } }
     };
     if (hourlyChart) hourlyChart.updateOptions(options, true, false);
     else { hourlyChart = new ApexCharts(container, options); hourlyChart.render(); }
