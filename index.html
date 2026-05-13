@@ -192,7 +192,7 @@
 <div class="stage" id="stage">
 
   <!-- HEADER -->
-  <header class="flex items-center justify-between px-10 pt-7 pb-3 shrink-0">
+  <header class="flex items-center justify-between px-10 pt-5 pb-2 shrink-0">
     <div class="flex items-center gap-5">
       <div>
         <div class="text-3xl font-extrabold tracking-tight">Soporte Técnico · KPIs</div>
@@ -286,7 +286,7 @@
   </section>
 
   <!-- SECONDARY KPIs · operacional -->
-  <section class="grid grid-cols-3 gap-6 px-10 mt-4 shrink-0">
+  <section class="grid grid-cols-3 gap-6 px-10 mt-3 shrink-0">
     <div class="card p-5">
       <div class="title text-xl">Backlog · hoy</div>
       <div class="flex items-baseline gap-4 mt-2">
@@ -311,7 +311,7 @@
   </section>
 
   <!-- CHARTS / LISTS -->
-  <section class="grid grid-cols-3 gap-6 px-10 mt-4" style="height: 340px;">
+  <section class="grid grid-cols-3 gap-6 px-10 mt-3" style="height: 280px;">
     <!-- HOURLY COMPARISON -->
     <div class="card p-6 col-span-2 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
@@ -332,9 +332,9 @@
   </section>
 
   <!-- STACKED BAR IA / MANUAL por día · esta semana -->
-  <section class="grid grid-cols-1 gap-6 px-10 mt-4" style="height: 240px;">
-    <div class="card p-5 flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between mb-2 shrink-0">
+  <section class="grid grid-cols-1 gap-6 px-10 mt-3" style="height: 230px;">
+    <div class="card p-4 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between mb-1 shrink-0">
         <div class="text-2xl font-bold">Reparto IA · Manual por día · esta semana</div>
         <div class="text-base text-slate-400">
           IA <span id="weekIA">0</span> · Manual <span id="weekMa">0</span>
@@ -458,7 +458,7 @@
       return;
     }
     const header = `
-      <div class="grid grid-cols-5 gap-4 py-1 px-2 text-xs title border-b border-slate-700/60">
+      <div class="grid grid-cols-5 gap-4 py-0.5 px-2 text-xs title border-b border-slate-700/60">
         <div>Día</div>
         <div class="text-right">IA</div>
         <div class="text-right">Manual</div>
@@ -466,11 +466,11 @@
         <div class="text-right">% IA</div>
       </div>`;
     const rows = arr.map(x => `
-      <div class="grid grid-cols-5 gap-4 py-1 px-2 items-baseline border-b border-slate-700/20">
+      <div class="grid grid-cols-5 gap-4 py-0.5 px-2 items-baseline border-b border-slate-700/20">
         <div class="font-bold text-base">${x.day}</div>
-        <div class="text-right font-extrabold text-2xl text-violet-300 kpi-number">${x.ia}</div>
-        <div class="text-right font-extrabold text-2xl text-emerald-300 kpi-number">${x.manual}</div>
-        <div class="text-right font-extrabold text-2xl kpi-number">${x.total}</div>
+        <div class="text-right font-extrabold text-xl text-violet-300 kpi-number">${x.ia}</div>
+        <div class="text-right font-extrabold text-xl text-emerald-300 kpi-number">${x.manual}</div>
+        <div class="text-right font-extrabold text-xl kpi-number">${x.total}</div>
         <div class="text-right text-sm text-slate-400">${x.pct_ia}%</div>
       </div>`).join('');
     cont.innerHTML = header + rows;
