@@ -321,13 +321,13 @@
       <div id="hourlyChart" class="flex-1 min-h-0"></div>
     </div>
 
-    <!-- TOP ORG -->
+    <!-- TOP CLIENTES -->
     <div class="card p-6 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
-        <div class="text-3xl font-bold">Top organizaciones</div>
+        <div class="text-3xl font-bold">Top Clientes</div>
         <div class="text-base text-slate-400">Este mes</div>
       </div>
-      <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-3 scrollable min-h-0"></div>
+      <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-2 scrollable min-h-0"></div>
     </div>
   </section>
 
@@ -479,7 +479,7 @@
   // === Sparkline pequeña (inline en cada org) ===
   function renderSparkline(container, data) {
     const options = {
-      chart: { type:'area', height:36, width:120, sparkline:{ enabled:true }, animations:{ enabled:false } },
+      chart: { type:'area', height:24, width:100, sparkline:{ enabled:true }, animations:{ enabled:false } },
       stroke: { width:1.5, curve:'smooth', colors:['#60a5fa'] },
       fill:   { type:'gradient', gradient:{ shadeIntensity:1, opacityFrom:0.4, opacityTo:0.05, stops:[0,100] }, colors:['#3b82f6'] },
       series: [{ name:'tickets', data: data }],
@@ -496,18 +496,18 @@
       return;
     }
     const max = Math.max(...orgs.map(o => o.count));
-    cont.innerHTML = orgs.slice(0,8).map((o, i) => {
+    cont.innerHTML = orgs.slice(0,5).map((o, i) => {
       const pct = max ? Math.round((o.count / max) * 100) : 0;
       return `
         <div>
-          <div class="flex justify-between items-center text-base mb-1 gap-2">
+          <div class="flex justify-between items-center text-sm mb-0.5 gap-2">
             <span class="truncate max-w-[55%]" title="${o.name}">${i+1}. ${o.name}</span>
-            <span class="flex items-center gap-3 shrink-0">
+            <span class="flex items-center gap-2 shrink-0">
               <span class="spark" data-spark="${(o.sparkline||[]).join(',')}"></span>
-              <span class="font-bold">${o.count}</span>
+              <span class="font-bold text-base">${o.count}</span>
             </span>
           </div>
-          <div class="w-full h-2 bg-slate-800/60 rounded overflow-hidden">
+          <div class="w-full h-1.5 bg-slate-800/60 rounded overflow-hidden">
             <div class="h-full grad-blue" style="width:${pct}%"></div>
           </div>
         </div>`;
@@ -586,9 +586,8 @@
         frtEl.classList.add('text-rose-300');
       }
       const ans = d.frt_answered ?? 0;
-      const pen = d.frt_pending ?? 0;
       document.getElementById('kpiFRTDetail').textContent =
-        (ans + pen) > 0 ? `${ans} contestados · ${pen} pendientes` : 'sin datos';
+        ans > 0 ? `${ans} contestados · sin IA` : 'sin datos';
 
       const agedEl = document.getElementById('kpiAged');
       const aged   = d.tickets_aged_3d ?? 0;
