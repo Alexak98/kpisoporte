@@ -217,11 +217,52 @@
 
   <!-- KPI ROW -->
   <section class="grid grid-cols-4 gap-6 px-10 mt-1 shrink-0">
-    <div class="card p-6">
+    <!-- TICKETS HOY · con desglose de origen -->
+    <div class="card p-6 flex flex-col col-span-2">
       <div class="title text-xl">Tickets creados hoy</div>
-      <div id="kpiToday" class="kpi-number text-7xl mt-2">0</div>
-      <div id="kpiTodayDelta" class="text-base text-slate-400 mt-1">ayer: —</div>
+      <div class="flex items-stretch gap-6 mt-3 flex-1">
+        <!-- Izquierda: orígenes (etiqueta + número) -->
+        <div class="flex-1 flex flex-col justify-center gap-2">
+          <div class="flex items-center justify-between">
+            <span class="title text-lg text-violet-300">IA</span>
+            <div class="flex items-baseline gap-2">
+              <span id="kpiIA"    class="kpi-number text-4xl text-violet-300">0</span>
+              <span id="kpiIAPct" class="text-sm text-slate-400 w-12 text-right">—</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="title text-lg text-emerald-300">Manual</span>
+            <div class="flex items-baseline gap-2">
+              <span id="kpiManual"    class="kpi-number text-4xl text-emerald-300">0</span>
+              <span id="kpiManualPct" class="text-sm text-slate-400 w-12 text-right">—</span>
+            </div>
+          </div>
+          <div class="w-full h-1.5 bg-slate-800/60 rounded-full overflow-hidden flex mt-1">
+            <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#7c3aed,#a855f7);width:0%"></div>
+            <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#10b981,#34d399);width:0%"></div>
+          </div>
+        </div>
+        <!-- Separador vertical -->
+        <div class="w-px bg-slate-700/50"></div>
+        <!-- Derecha: total grande -->
+        <div class="flex flex-col items-end justify-center">
+          <div class="text-xs title text-slate-500">Total</div>
+          <div id="kpiToday" class="kpi-number text-6xl">0</div>
+        </div>
+      </div>
+      <!-- Pie: ayer con su desglose -->
+      <div class="mt-3 pt-3 border-t border-slate-700/40 flex items-baseline justify-between text-base">
+        <span class="text-slate-400">Ayer</span>
+        <span class="text-slate-300">
+          IA <span id="kpiIAYesterday" class="text-violet-300 font-bold">—</span>
+          ·
+          Manual <span id="kpiManualYesterday" class="text-emerald-300 font-bold">—</span>
+          ·
+          <span id="kpiTodayDelta" class="font-bold">—</span>
+        </span>
+      </div>
     </div>
+
     <div class="card p-6">
       <div class="title text-xl">Tickets esta semana</div>
       <div id="kpiWeek" class="kpi-number text-7xl mt-2">0</div>
@@ -231,31 +272,6 @@
       <div class="title text-xl">Tickets este mes</div>
       <div id="kpiMonth" class="kpi-number text-7xl mt-2">0</div>
       <div id="kpiOpenSub" class="text-base text-slate-400 mt-1">abiertos: —</div>
-    </div>
-    <div class="card p-6 flex flex-col">
-      <div class="title text-xl">Origen · hoy</div>
-      <div class="grid grid-cols-2 gap-3 mt-3">
-        <div>
-          <div class="text-base title">IA</div>
-          <div class="flex items-baseline gap-2">
-            <div id="kpiIA" class="kpi-number text-5xl text-violet-300">0</div>
-            <div id="kpiIAPct" class="text-base text-slate-400">—</div>
-          </div>
-        </div>
-        <div>
-          <div class="text-base title">Manual</div>
-          <div class="flex items-baseline gap-2">
-            <div id="kpiManual" class="kpi-number text-5xl text-emerald-300">0</div>
-            <div id="kpiManualPct" class="text-base text-slate-400">—</div>
-          </div>
-        </div>
-      </div>
-      <div class="mt-3">
-        <div class="w-full h-2 bg-slate-800/60 rounded-full overflow-hidden flex">
-          <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#7c3aed,#a855f7);width:0%"></div>
-          <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#10b981,#34d399);width:0%"></div>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -518,8 +534,12 @@
       setNum('kpiWeek',  d.tickets_week);
       setNum('kpiMonth', d.tickets_month);
 
-      document.getElementById('kpiTodayDelta').textContent =
-        d.tickets_yesterday != null ? `ayer: ${d.tickets_yesterday}` : 'ayer: —';
+      const yIA = d.tickets_yesterday_ia ?? 0;
+      const yMa = d.tickets_yesterday_manual ?? 0;
+      const yTotal = (d.tickets_yesterday != null) ? d.tickets_yesterday : (yIA + yMa);
+      document.getElementById('kpiIAYesterday').textContent     = yIA;
+      document.getElementById('kpiManualYesterday').textContent = yMa;
+      document.getElementById('kpiTodayDelta').textContent      = `total ${yTotal}`;
       document.getElementById('kpiWeekDelta').textContent =
         d.tickets_last_week != null ? `semana ant.: ${d.tickets_last_week}` : 'semana ant.: —';
       document.getElementById('kpiOpenSub').textContent =
