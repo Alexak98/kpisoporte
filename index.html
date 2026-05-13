@@ -136,18 +136,38 @@
       <div id="kpiOpen" class="kpi-number text-7xl mt-2">0</div>
       <div id="kpiPending" class="text-sm text-slate-400 mt-1">pendientes: —</div>
     </div>
-    <div class="card p-6">
+    <div class="card p-6 flex flex-col">
       <div class="flex items-center justify-between">
-        <div class="title text-xs">Tickets de integración</div>
-        <div class="w-9 h-9 rounded-lg grad-purple flex items-center justify-center">🔌</div>
+        <div class="title text-xs">Origen · hoy</div>
+        <div class="w-9 h-9 rounded-lg grad-purple flex items-center justify-center">⚡</div>
       </div>
-      <div id="kpiIntegration" class="kpi-number text-7xl mt-2">0</div>
-      <div id="kpiIntegrationOpen" class="text-sm text-slate-400 mt-1">abiertos: —</div>
+      <div class="grid grid-cols-2 gap-3 mt-3">
+        <div>
+          <div class="text-xs title">🤖 IA</div>
+          <div class="flex items-baseline gap-2">
+            <div id="kpiIA" class="kpi-number text-5xl text-violet-300">0</div>
+            <div id="kpiIAPct" class="text-sm text-slate-400">—</div>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs title">👤 Manual</div>
+          <div class="flex items-baseline gap-2">
+            <div id="kpiManual" class="kpi-number text-5xl text-emerald-300">0</div>
+            <div id="kpiManualPct" class="text-sm text-slate-400">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-3">
+        <div class="w-full h-2 bg-slate-800/60 rounded-full overflow-hidden flex">
+          <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#7c3aed,#a855f7);width:0%"></div>
+          <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#10b981,#34d399);width:0%"></div>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- CHARTS / LISTS -->
-  <section class="grid grid-cols-3 gap-6 px-10 mt-5" style="height: 440px;">
+  <section class="grid grid-cols-3 gap-6 px-10 mt-5 flex-1 min-h-0" style="max-height: 720px;">
     <!-- HEATMAP -->
     <div class="card p-6 col-span-2 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
@@ -164,49 +184,6 @@
         <div class="text-xs text-slate-400">Más solicitudes · este mes</div>
       </div>
       <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-3 scrollable min-h-0"></div>
-    </div>
-  </section>
-
-  <!-- BOTTOM ROW -->
-  <section class="grid grid-cols-3 gap-6 px-10 mt-5" style="height: 240px;">
-    <!-- TOP TICKET -->
-    <div class="card p-6 col-span-2 flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between mb-2 shrink-0">
-        <div class="text-xl font-bold">Top ticket</div>
-        <div class="text-xs text-slate-400">Mayor actividad / prioridad</div>
-      </div>
-      <div id="topTicket" class="flex-1 flex items-center min-h-0">
-        <div class="text-slate-500">Cargando…</div>
-      </div>
-    </div>
-
-    <!-- IA vs MANUAL -->
-    <div class="card p-6 flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between mb-3 shrink-0">
-        <div class="text-xl font-bold">Origen · hoy</div>
-        <div class="text-xs text-slate-400">IA vs Manual</div>
-      </div>
-      <div class="grid grid-cols-2 gap-3 shrink-0">
-        <div class="rounded-xl bg-slate-800/40 p-3 flex flex-col justify-center items-center">
-          <div class="text-xs title">🤖 IA</div>
-          <div id="kpiIA" class="text-4xl kpi-number text-violet-300">0</div>
-          <div id="kpiIAPct" class="text-xs text-slate-400">—</div>
-        </div>
-        <div class="rounded-xl bg-slate-800/40 p-3 flex flex-col justify-center items-center">
-          <div class="text-xs title">👤 Manual</div>
-          <div id="kpiManual" class="text-4xl kpi-number text-emerald-300">0</div>
-          <div id="kpiManualPct" class="text-xs text-slate-400">—</div>
-        </div>
-      </div>
-      <div class="mt-3 flex-1 flex flex-col justify-end min-h-0">
-        <div class="w-full h-3 bg-slate-800/60 rounded-full overflow-hidden flex">
-          <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#7c3aed,#a855f7);width:0%"></div>
-          <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#10b981,#34d399);width:0%"></div>
-        </div>
-        <div class="flex justify-between text-xs text-slate-400 mt-1">
-          <span>IA</span><span>Manual</span>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -343,25 +320,6 @@
     }).join('');
   }
 
-  function renderTopTicket(t) {
-    const cont = document.getElementById('topTicket');
-    if (!t) { cont.innerHTML = '<div class="text-slate-500">Sin datos</div>'; return; }
-    cont.innerHTML = `
-      <div class="w-full">
-        <div class="flex items-center gap-3 mb-2 flex-wrap">
-          <span class="px-2 py-0.5 rounded grad-amber text-xs font-bold">#${t.id ?? '—'}</span>
-          <span class="px-2 py-0.5 rounded bg-slate-700 text-xs">${t.status ?? '—'}</span>
-          <span class="px-2 py-0.5 rounded bg-slate-700 text-xs">prioridad: ${t.priority ?? '—'}</span>
-          <span class="text-xs text-slate-400">${t.organization ?? ''}</span>
-        </div>
-        <div class="text-xl font-bold leading-snug" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${t.subject ?? '—'}</div>
-        <div class="text-sm text-slate-400 mt-2">
-          ${t.requester ?? ''} ${t.requester ? '·' : ''} ${t.updated_at ?? ''}
-          ${t.comments != null ? `· ${t.comments} comentarios` : ''}
-        </div>
-      </div>`;
-  }
-
   function setNum(id, val) {
     document.getElementById(id).textContent = (val ?? 0);
   }
@@ -375,10 +333,9 @@
       if (!text) throw new Error('Respuesta vacía del webhook');
       const d = JSON.parse(text);
 
-      setNum('kpiToday',        d.tickets_today);
-      setNum('kpiWeek',         d.tickets_week);
-      setNum('kpiOpen',         d.tickets_open);
-      setNum('kpiIntegration',  d.tickets_integration);
+      setNum('kpiToday', d.tickets_today);
+      setNum('kpiWeek',  d.tickets_week);
+      setNum('kpiOpen',  d.tickets_open);
 
       document.getElementById('kpiTodayDelta').textContent =
         d.tickets_yesterday != null ? `ayer: ${d.tickets_yesterday}` : 'ayer: —';
@@ -386,8 +343,6 @@
         d.tickets_last_week != null ? `semana ant.: ${d.tickets_last_week}` : 'semana ant.: —';
       document.getElementById('kpiPending').textContent =
         d.tickets_pending != null ? `pendientes: ${d.tickets_pending}` : 'pendientes: —';
-      document.getElementById('kpiIntegrationOpen').textContent =
-        d.tickets_integration_open != null ? `abiertos: ${d.tickets_integration_open}` : 'abiertos: —';
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
@@ -404,7 +359,6 @@
 
       if (Array.isArray(d.heatmap)) renderHeatmap(d.heatmap);
       renderTopOrgs(d.top_orgs || []);
-      renderTopTicket(d.top_ticket);
 
       const now = new Date();
       document.getElementById('lastUpdate').textContent =
