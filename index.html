@@ -165,17 +165,7 @@
   </section>
 
   <!-- SECONDARY KPIs · operacional -->
-  <section class="grid grid-cols-3 gap-6 px-10 mt-4 shrink-0">
-    <div class="card p-4 flex items-center gap-4">
-      <div class="w-10 h-10 rounded-lg grad-amber flex items-center justify-center text-xl shrink-0">⚠️</div>
-      <div class="flex-1">
-        <div class="title text-[10px]">Sin asignar</div>
-        <div class="flex items-baseline gap-2">
-          <div id="kpiUnassigned" class="kpi-number text-4xl">0</div>
-          <div class="text-xs text-slate-400">tickets abiertos</div>
-        </div>
-      </div>
-    </div>
+  <section class="grid grid-cols-2 gap-6 px-10 mt-4 shrink-0">
     <div class="card p-4 flex items-center gap-4">
       <div class="w-10 h-10 rounded-lg grad-blue flex items-center justify-center text-xl shrink-0">📈</div>
       <div class="flex-1">
@@ -470,7 +460,6 @@
         d.tickets_open != null ? `abiertos: ${d.tickets_open}` : 'abiertos: —';
 
       // Secondary KPIs
-      setNum('kpiUnassigned', d.tickets_unassigned);
       const backlog = d.backlog_today ?? 0;
       const backlogEl = document.getElementById('kpiBacklog');
       backlogEl.textContent = (backlog > 0 ? '+' : '') + backlog;
