@@ -167,7 +167,7 @@
   </section>
 
   <!-- CHARTS / LISTS -->
-  <section class="grid grid-cols-3 gap-6 px-10 mt-5 flex-1 min-h-0" style="max-height: 720px;">
+  <section class="grid grid-cols-3 gap-6 px-10 mt-5" style="height: 380px;">
     <!-- HEATMAP -->
     <div class="card p-6 col-span-2 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
@@ -184,6 +184,24 @@
         <div class="text-xs text-slate-400">Más solicitudes · este mes</div>
       </div>
       <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-3 scrollable min-h-0"></div>
+    </div>
+  </section>
+
+  <!-- MINI HEATMAPS IA / MANUAL · este mes -->
+  <section class="grid grid-cols-2 gap-6 px-10 mt-5" style="height: 260px;">
+    <div class="card p-5 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between mb-1 shrink-0">
+        <div class="text-lg font-bold">🤖 IA · este mes</div>
+        <div class="text-xs text-slate-400"><span id="miniIAtotal">0</span> tickets · 7d × 24h</div>
+      </div>
+      <div id="heatmapIA" class="flex-1 min-h-0"></div>
+    </div>
+    <div class="card p-5 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between mb-1 shrink-0">
+        <div class="text-lg font-bold">👤 Manual · este mes</div>
+        <div class="text-xs text-slate-400"><span id="miniManualtotal">0</span> tickets · 7d × 24h</div>
+      </div>
+      <div id="heatmapManual" class="flex-1 min-h-0"></div>
     </div>
   </section>
 
@@ -236,6 +254,8 @@
   setInterval(updateCountdown, 1000);
 
   let heatmapChart = null;
+  let heatmapIAChart = null;
+  let heatmapManualChart = null;
 
   function setStatus(ok, text) {
     const dot = document.getElementById('statusDot');
@@ -298,6 +318,64 @@
     }
   }
 
+  function renderMiniHeatmap(containerId, series, refChart) {
+    const container = document.getElementById(containerId);
+    const h = container.clientHeight || 200;
+    const options = {
+      chart: {
+        type: 'heatmap',
+        height: h,
+        width: '100%',
+        toolbar: { show:false },
+        background:'transparent',
+        foreColor:'#9bb0d6',
+        fontFamily:'Bw Modelica, system-ui, sans-serif',
+        animations: { enabled:false }
+      },
+      dataLabels: {
+        enabled: true,
+        style: { fontSize:'9px', fontWeight:700, colors:['#0b1220'] },
+        formatter: v => (v === 0 ? '' : v)
+      },
+      stroke: { width:1, colors:['#0b1220'] },
+      plotOptions: {
+        heatmap: {
+          radius: 2,
+          useFillColorAsStroke: false,
+          colorScale: {
+            ranges: [
+              { from:0,  to:0,   color:'#1e293b', name:'0' },
+              { from:1,  to:1,   color:'#fde68a', name:'1' },
+              { from:2,  to:3,   color:'#fcd34d', name:'2-3' },
+              { from:4,  to:5,   color:'#fb923c', name:'4-5' },
+              { from:6,  to:8,   color:'#ef4444', name:'6-8' },
+              { from:9,  to:12,  color:'#b91c1c', name:'9-12' },
+              { from:13, to:9999,color:'#7f1d1d', name:'13+' }
+            ]
+          }
+        }
+      },
+      series: series,
+      xaxis: {
+        type:'category',
+        labels:{ style:{ colors:'#9bb0d6', fontSize:'9px' }, rotate:0 },
+        axisBorder:{ show:false }, axisTicks:{ show:false }
+      },
+      yaxis: { labels:{ style:{ colors:'#9bb0d6', fontSize:'10px' }} },
+      grid:  { borderColor:'rgba(155,176,214,0.05)', padding:{ left:0, right:0, top:0, bottom:0 } },
+      legend:{ show:false },
+      tooltip:{ theme:'dark', y:{ formatter: v => `${v} ticket${v === 1 ? '' : 's'}` } }
+    };
+    if (refChart.chart) {
+      refChart.chart.updateOptions(options, true, false);
+    } else {
+      refChart.chart = new ApexCharts(container, options);
+      refChart.chart.render();
+    }
+  }
+  const _refIA = { chart: null };
+  const _refMa = { chart: null };
+
   function renderTopOrgs(orgs) {
     const cont = document.getElementById('topOrgs');
     if (!orgs || orgs.length === 0) {
@@ -358,6 +436,10 @@
       document.getElementById('barManual').style.width = pctMa + '%';
 
       if (Array.isArray(d.heatmap)) renderHeatmap(d.heatmap);
+      if (Array.isArray(d.heatmap_ia))     renderMiniHeatmap('heatmapIA',     d.heatmap_ia,     _refIA);
+      if (Array.isArray(d.heatmap_manual)) renderMiniHeatmap('heatmapManual', d.heatmap_manual, _refMa);
+      document.getElementById('miniIAtotal').textContent     = d.tickets_month_ia     ?? 0;
+      document.getElementById('miniManualtotal').textContent = d.tickets_month_manual ?? 0;
       renderTopOrgs(d.top_orgs || []);
 
       const now = new Date();
