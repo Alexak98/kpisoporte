@@ -167,7 +167,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const acc = $('Guardar Ayer').first().json;\nreturn [{ json: { ...acc, zd_week: $input.first().json } }];"
+        "jsCode": "const acc = $('Guardar Ayer Manual').first().json;\nreturn [{ json: { ...acc, zd_week: $input.first().json } }];"
       },
       "id": "save-week",
       "name": "Guardar Semana",
@@ -375,7 +375,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Guarda los tickets manuales del histórico (28 días) — se combinarán\n// con los de IA en el siguiente save\nconst acc = $('Guardar Hoy Manual').first().json;\nconst manuales = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, _hist_manual: manuales } }];"
+        "jsCode": "// Guarda los tickets manuales del histórico (28 días) — se combinarán\n// con los de IA en el siguiente save. Pull desde 'Guardar Envejecidos'\n// para preservar zd_aged y _frt_* añadidos previamente en la cadena.\nconst acc = $('Guardar Envejecidos').first().json;\nconst manuales = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, _hist_manual: manuales } }];"
       },
       "id": "save-hist-manual",
       "name": "Guardar Hist Manual",
