@@ -334,7 +334,7 @@
         "operation": "getAll",
         "returnAll": true,
         "options": {
-          "query": "=type:ticket status<solved created<{{ $json.aged_ymd }} -subject:\"Conversation with\""
+          "query": "=type:ticket status<solved created<{{ $json.aged_ymd }} -subject:\"Conversation with\" tags:consulta_técnica"
         }
       },
       "id": "zd-aged",
