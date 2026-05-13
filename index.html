@@ -265,13 +265,23 @@
 
     <div class="card p-6">
       <div class="title text-xl">Tickets esta semana</div>
-      <div id="kpiWeek" class="kpi-number text-7xl mt-2">0</div>
-      <div id="kpiWeekDelta" class="text-base text-slate-400 mt-1">semana ant.: —</div>
+      <div id="kpiWeek" class="kpi-number text-6xl mt-2">0</div>
+      <div class="text-base text-slate-300 mt-1">
+        IA <span id="kpiWeekIA"     class="text-violet-300 font-bold">—</span>
+        ·
+        Manual <span id="kpiWeekManual" class="text-emerald-300 font-bold">—</span>
+      </div>
+      <div id="kpiWeekDelta" class="text-sm text-slate-500 mt-1">semana ant.: —</div>
     </div>
     <div class="card p-6">
       <div class="title text-xl">Tickets este mes</div>
-      <div id="kpiMonth" class="kpi-number text-7xl mt-2">0</div>
-      <div id="kpiOpenSub" class="text-base text-slate-400 mt-1">abiertos: —</div>
+      <div id="kpiMonth" class="kpi-number text-6xl mt-2">0</div>
+      <div class="text-base text-slate-300 mt-1">
+        IA <span id="kpiMonthIA"     class="text-violet-300 font-bold">—</span>
+        ·
+        Manual <span id="kpiMonthManual" class="text-emerald-300 font-bold">—</span>
+      </div>
+      <div id="kpiOpenSub" class="text-sm text-slate-500 mt-1">abiertos ahora: —</div>
     </div>
   </section>
 
@@ -299,7 +309,7 @@
     <div class="card p-6 col-span-2 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
         <div class="text-3xl font-bold">Tickets por hora · hoy vs media</div>
-        <div class="text-base text-slate-400">09:00 – 18:00 · media mismo día semana (3 sem)</div>
+        <div class="text-base text-slate-400">09:00 – 18:00 · media mismo día semana (4 sem)</div>
       </div>
       <div id="hourlyChart" class="flex-1 min-h-0"></div>
     </div>
@@ -452,11 +462,23 @@
         { name:'IA',     data: iaD },
         { name:'Manual', data: maD }
       ],
-      plotOptions: { bar: { horizontal:false, columnWidth:'45%', borderRadius:6, borderRadiusApplication:'end', borderRadiusWhenStacked:'last' } },
+      plotOptions: {
+        bar: {
+          horizontal:false, columnWidth:'45%',
+          borderRadius:6, borderRadiusApplication:'end', borderRadiusWhenStacked:'last',
+          dataLabels: {
+            total: {
+              enabled: true,
+              offsetY: -14,
+              style: { fontSize:'22px', fontWeight:800, color:'#ffffff' }
+            }
+          }
+        }
+      },
       colors: ['#a855f7', '#10b981'],
       dataLabels: {
         enabled: true,
-        style:{ fontSize:'13px', fontWeight:700, colors:['#ffffff'] },
+        style:{ fontSize:'18px', fontWeight:800, colors:['#ffffff'] },
         formatter: v => v === 0 ? '' : v
       },
       xaxis: {
@@ -542,8 +564,12 @@
       document.getElementById('kpiTodayDelta').textContent      = `total ${yTotal}`;
       document.getElementById('kpiWeekDelta').textContent =
         d.tickets_last_week != null ? `semana ant.: ${d.tickets_last_week}` : 'semana ant.: —';
+      document.getElementById('kpiWeekIA').textContent     = d.tickets_week_ia     ?? '—';
+      document.getElementById('kpiWeekManual').textContent = d.tickets_week_manual ?? '—';
+      document.getElementById('kpiMonthIA').textContent     = d.tickets_month_ia     ?? '—';
+      document.getElementById('kpiMonthManual').textContent = d.tickets_month_manual ?? '—';
       document.getElementById('kpiOpenSub').textContent =
-        d.tickets_open != null ? `abiertos: ${d.tickets_open}` : 'abiertos: —';
+        d.tickets_open != null ? `abiertos ahora: ${d.tickets_open}` : 'abiertos ahora: —';
 
       // Secondary KPIs
       const backlog = d.backlog_today ?? 0;
