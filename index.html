@@ -533,14 +533,41 @@
     document.getElementById(id).textContent = (val ?? 0);
   }
 
-  async function fetchKPIs() {
-    setStatus(true, 'Actualizando…');
+  async function fetchKPIsOnce(timeoutMs) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      const r = await fetch(N8N_WEBHOOK_URL, { cache:'no-store' });
+      const r = await fetch(N8N_WEBHOOK_URL, { cache:'no-store', signal: ctrl.signal });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const text = await r.text();
       if (!text) throw new Error('Respuesta vacía del webhook');
-      const d = JSON.parse(text);
+      return JSON.parse(text);
+    } finally { clearTimeout(t); }
+  }
+
+  async function fetchKPIs() {
+    setStatus(true, 'Actualizando…');
+    let d;
+    try {
+      // Timeout 90s · si falla, reintenta una vez tras 5s
+      try {
+        d = await fetchKPIsOnce(90000);
+      } catch (e1) {
+        console.warn('Primer intento falló, reintento en 5s:', e1.message);
+        setStatus(true, 'Reintentando…');
+        await new Promise(r => setTimeout(r, 5000));
+        d = await fetchKPIsOnce(90000);
+      }
+    } catch (e) {
+      // Falla definitiva: NO borramos los datos previos en pantalla
+      console.error('Fetch error final:', e);
+      setStatus(false, 'Error al actualizar');
+      document.getElementById('errorMsg').textContent = 'Error: ' + (e && e.message || e);
+      nextRefreshAt = Date.now() + REFRESH_MS;
+      hideLoader();
+      return;
+    }
+    try {
 
       setNum('kpiToday', d.tickets_today);
       setNum('kpiWeek',  d.tickets_week);
