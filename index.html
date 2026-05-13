@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KPIs Soporte Técnico</title>
+
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- ApexCharts (heatmap) -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.1/dist/apexcharts.min.js"></script>
+
+  <style>
+    html, body {
+      background: #0b1220;
+      color: #e6edf7;
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      overflow: hidden;
+    }
+    /* Escala base diseñada a 1920x1080, se reescala a 3840x2160 con transform */
+    .stage {
+      width: 1920px;
+      height: 1080px;
+      transform-origin: top left;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(26,38,67,0.85), rgba(16,24,46,0.85));
+      border: 1px solid rgba(120,140,200,0.15);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    .kpi-number {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -1px;
+    }
+    .grad-blue   { background: linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%); }
+    .grad-green  { background: linear-gradient(135deg,#065f46 0%,#10b981 100%); }
+    .grad-amber  { background: linear-gradient(135deg,#92400e 0%,#f59e0b 100%); }
+    .grad-purple { background: linear-gradient(135deg,#5b21b6 0%,#a855f7 100%); }
+    .pulse-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+      animation: pulse 2s infinite;
+    }
+    .pulse-dot.error { background:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.7);}
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
+      70%  { box-shadow: 0 0 0 14px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .scrollable { scrollbar-width: none; }
+    .scrollable::-webkit-scrollbar { display: none; }
+    .title { color:#9bb0d6; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; }
+  </style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+
+  <!-- HEADER -->
+  <header class="flex items-center justify-between px-10 pt-8 pb-4">
+    <div class="flex items-center gap-5">
+      <div class="w-14 h-14 rounded-2xl grad-blue flex items-center justify-center text-3xl">📊</div>
+      <div>
+        <div class="text-3xl font-bold tracking-tight">Soporte Técnico · KPIs</div>
+        <div class="text-sm text-slate-400">Zendesk + Asana · Auto-refresh cada 10 min</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-10">
+      <div class="text-right">
+        <div class="text-xs title">Hora actual</div>
+        <div id="now" class="text-4xl font-bold kpi-number">--:--:--</div>
+        <div id="today" class="text-sm text-slate-400">--</div>
+      </div>
+      <div class="text-right">
+        <div class="text-xs title">Última actualización</div>
+        <div id="lastUpdate" class="text-2xl font-semibold kpi-number text-emerald-300">--:--:--</div>
+        <div class="flex items-center gap-2 justify-end mt-1">
+          <span id="statusDot" class="pulse-dot"></span>
+          <span id="statusText" class="text-xs text-slate-400">Esperando datos…</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI ROW -->
+  <section class="grid grid-cols-4 gap-6 px-10 mt-2">
+    <div class="card p-6">
+      <div class="flex items-center justify-between">
+        <div class="title text-xs">Tickets creados hoy</div>
+        <div class="w-9 h-9 rounded-lg grad-blue flex items-center justify-center">🎫</div>
+      </div>
+      <div id="kpiToday" class="kpi-number text-7xl font-extrabold mt-2">0</div>
+      <div id="kpiTodayDelta" class="text-sm text-slate-400 mt-1">vs ayer: —</div>
+    </div>
+    <div class="card p-6">
+      <div class="flex items-center justify-between">
+        <div class="title text-xs">Tickets esta semana</div>
+        <div class="w-9 h-9 rounded-lg grad-green flex items-center justify-center">📅</div>
+      </div>
+      <div id="kpiWeek" class="kpi-number text-7xl font-extrabold mt-2">0</div>
+      <div id="kpiWeekDelta" class="text-sm text-slate-400 mt-1">vs semana anterior: —</div>
+    </div>
+    <div class="card p-6">
+      <div class="flex items-center justify-between">
+        <div class="title text-xs">Tickets abiertos</div>
+        <div class="w-9 h-9 rounded-lg grad-amber flex items-center justify-center">⏳</div>
+      </div>
+      <div id="kpiOpen" class="kpi-number text-7xl font-extrabold mt-2">0</div>
+      <div id="kpiPending" class="text-sm text-slate-400 mt-1">pendientes: —</div>
+    </div>
+    <div class="card p-6">
+      <div class="flex items-center justify-between">
+        <div class="title text-xs">Tickets de integración</div>
+        <div class="w-9 h-9 rounded-lg grad-purple flex items-center justify-center">🔌</div>
+      </div>
+      <div id="kpiIntegration" class="kpi-number text-7xl font-extrabold mt-2">0</div>
+      <div id="kpiIntegrationOpen" class="text-sm text-slate-400 mt-1">abiertos: —</div>
+    </div>
+  </section>
+
+  <!-- CHARTS / LISTS -->
+  <section class="grid grid-cols-3 gap-6 px-10 mt-6" style="height: 560px;">
+    <!-- HEATMAP -->
+    <div class="card p-6 col-span-2 flex flex-col">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-xl font-bold">Tickets por hora · últimos 7 días</div>
+        <div class="text-xs text-slate-400">Volumen por franja horaria</div>
+      </div>
+      <div id="heatmap" class="flex-1"></div>
+    </div>
+
+    <!-- TOP ORG -->
+    <div class="card p-6 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xl font-bold">Top organizaciones</div>
+        <div class="text-xs text-slate-400">Más solicitudes (mes)</div>
+      </div>
+      <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-3 scrollable"></div>
+    </div>
+  </section>
+
+  <!-- BOTTOM ROW -->
+  <section class="grid grid-cols-3 gap-6 px-10 mt-6" style="height: 280px;">
+    <!-- TOP TICKET -->
+    <div class="card p-6 col-span-2 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xl font-bold">Top ticket</div>
+        <div class="text-xs text-slate-400">Mayor actividad / prioridad</div>
+      </div>
+      <div id="topTicket" class="flex-1 flex items-center">
+        <div class="text-slate-500">Cargando…</div>
+      </div>
+    </div>
+
+    <!-- ASANA -->
+    <div class="card p-6 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xl font-bold">Asana · Tareas activas</div>
+        <div class="text-xs text-slate-400">En curso</div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 flex-1">
+        <div class="rounded-xl bg-slate-800/40 p-3 flex flex-col justify-center items-center">
+          <div class="text-xs title">Abiertas</div>
+          <div id="asanaOpen" class="text-4xl font-bold kpi-number">0</div>
+        </div>
+        <div class="rounded-xl bg-slate-800/40 p-3 flex flex-col justify-center items-center">
+          <div class="text-xs title">Vencidas</div>
+          <div id="asanaOverdue" class="text-4xl font-bold kpi-number text-rose-300">0</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="px-10 mt-4 flex justify-between items-center text-xs text-slate-500">
+    <div>Fuente: Zendesk · Asana · vía n8n</div>
+    <div id="errorMsg" class="text-rose-400"></div>
+    <div>Próxima actualización en <span id="countdown">10:00</span></div>
+  </footer>
+
+</div>
+
+<script>
+  // ====== CONFIGURACIÓN ======
+  // Sustituye por la URL del webhook de n8n
+  const N8N_WEBHOOK_URL = 'https://TU-N8N.dominio.com/webhook/kpis-soporte';
+  const REFRESH_MS = 10 * 60 * 1000; // 10 minutos
+  // ===========================
+
+  // Escalado a la resolución de la TV (4K, FHD, etc.)
+  function fitStage() {
+    const stage = document.getElementById('stage');
+    const sx = window.innerWidth  / 1920;
+    const sy = window.innerHeight / 1080;
+    const s = Math.min(sx, sy);
+    stage.style.transform = `scale(${s})`;
+    // centrar
+    stage.style.left = ((window.innerWidth  - 1920 * s) / 2) + 'px';
+    stage.style.top  = ((window.innerHeight - 1080 * s) / 2) + 'px';
+  }
+  window.addEventListener('resize', fitStage);
+  fitStage();
+
+  // Reloj
+  const fmt2 = n => String(n).padStart(2,'0');
+  function updateClock() {
+    const d = new Date();
+    document.getElementById('now').textContent =
+      `${fmt2(d.getHours())}:${fmt2(d.getMinutes())}:${fmt2(d.getSeconds())}`;
+    document.getElementById('today').textContent =
+      d.toLocaleDateString('es-ES', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Countdown a próxima actualización
+  let nextRefreshAt = Date.now() + REFRESH_MS;
+  function updateCountdown() {
+    const ms = Math.max(0, nextRefreshAt - Date.now());
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    document.getElementById('countdown').textContent = `${fmt2(m)}:${fmt2(s)}`;
+  }
+  setInterval(updateCountdown, 1000);
+
+  // Estado
+  let heatmapChart = null;
+
+  function setStatus(ok, text) {
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    dot.classList.toggle('error', !ok);
+    txt.textContent = text;
+  }
+
+  function renderHeatmap(matrix) {
+    // matrix: array de 7 objetos { name: 'Lun', data: [{x:'00', y:n}, ...] }
+    const options = {
+      chart: { type: 'heatmap', toolbar: { show:false }, background:'transparent', foreColor:'#9bb0d6' },
+      dataLabels: { enabled:false },
+      colors: ['#3b82f6'],
+      plotOptions: {
+        heatmap: {
+          radius: 4,
+          colorScale: {
+            ranges: [
+              { from:0,  to:0,  color:'#1e293b', name:'0' },
+              { from:1,  to:3,  color:'#1e3a8a', name:'1-3' },
+              { from:4,  to:8,  color:'#2563eb', name:'4-8' },
+              { from:9,  to:15, color:'#60a5fa', name:'9-15' },
+              { from:16, to:999,color:'#fbbf24', name:'16+' },
+            ]
+          }
+        }
+      },
+      series: matrix,
+      xaxis: { type:'category', labels:{ style:{ colors:'#9bb0d6' }} },
+      grid:  { borderColor:'rgba(155,176,214,0.1)' },
+      tooltip:{ theme:'dark' }
+    };
+    if (heatmapChart) { heatmapChart.updateOptions(options); }
+    else {
+      heatmapChart = new ApexCharts(document.getElementById('heatmap'), options);
+      heatmapChart.render();
+    }
+  }
+
+  function renderTopOrgs(orgs) {
+    const cont = document.getElementById('topOrgs');
+    if (!orgs || orgs.length === 0) {
+      cont.innerHTML = '<div class="text-slate-500">Sin datos</div>';
+      return;
+    }
+    const max = Math.max(...orgs.map(o => o.count));
+    cont.innerHTML = orgs.slice(0,8).map((o, i) => {
+      const pct = max ? Math.round((o.count / max) * 100) : 0;
+      return `
+        <div>
+          <div class="flex justify-between text-sm mb-1">
+            <span class="truncate max-w-[70%]" title="${o.name}">${i+1}. ${o.name}</span>
+            <span class="font-semibold">${o.count}</span>
+          </div>
+          <div class="w-full h-2 bg-slate-800/60 rounded overflow-hidden">
+            <div class="h-full grad-blue" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderTopTicket(t) {
+    const cont = document.getElementById('topTicket');
+    if (!t) { cont.innerHTML = '<div class="text-slate-500">Sin datos</div>'; return; }
+    cont.innerHTML = `
+      <div class="w-full">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="px-2 py-0.5 rounded grad-amber text-xs font-bold">#${t.id ?? '—'}</span>
+          <span class="px-2 py-0.5 rounded bg-slate-700 text-xs">${t.status ?? '—'}</span>
+          <span class="px-2 py-0.5 rounded bg-slate-700 text-xs">prioridad: ${t.priority ?? '—'}</span>
+          <span class="text-xs text-slate-400">${t.organization ?? ''}</span>
+        </div>
+        <div class="text-2xl font-bold leading-snug line-clamp-2">${t.subject ?? '—'}</div>
+        <div class="text-sm text-slate-400 mt-2">
+          ${t.requester ?? ''} ${t.requester ? '·' : ''} ${t.updated_at ?? ''}
+          ${t.comments != null ? `· ${t.comments} comentarios` : ''}
+        </div>
+      </div>`;
+  }
+
+  function setNum(id, val, fallback='0') {
+    document.getElementById(id).textContent = (val ?? fallback);
+  }
+
+  async function fetchKPIs() {
+    setStatus(true, 'Actualizando…');
+    try {
+      const r = await fetch(N8N_WEBHOOK_URL, { cache:'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+
+      setNum('kpiToday',        d.tickets_today);
+      setNum('kpiWeek',         d.tickets_week);
+      setNum('kpiOpen',         d.tickets_open);
+      setNum('kpiIntegration',  d.tickets_integration);
+
+      document.getElementById('kpiTodayDelta').textContent =
+        d.tickets_yesterday != null ? `ayer: ${d.tickets_yesterday}` : 'vs ayer: —';
+      document.getElementById('kpiWeekDelta').textContent =
+        d.tickets_last_week != null ? `semana ant.: ${d.tickets_last_week}` : 'vs semana anterior: —';
+      document.getElementById('kpiPending').textContent =
+        d.tickets_pending != null ? `pendientes: ${d.tickets_pending}` : 'pendientes: —';
+      document.getElementById('kpiIntegrationOpen').textContent =
+        d.tickets_integration_open != null ? `abiertos: ${d.tickets_integration_open}` : 'abiertos: —';
+
+      setNum('asanaOpen',    d.asana_open);
+      setNum('asanaOverdue', d.asana_overdue);
+
+      if (Array.isArray(d.heatmap)) renderHeatmap(d.heatmap);
+      renderTopOrgs(d.top_orgs || []);
+      renderTopTicket(d.top_ticket);
+
+      const now = new Date();
+      document.getElementById('lastUpdate').textContent =
+        `${fmt2(now.getHours())}:${fmt2(now.getMinutes())}:${fmt2(now.getSeconds())}`;
+      document.getElementById('errorMsg').textContent = '';
+      setStatus(true, 'Datos actualizados');
+    } catch (e) {
+      console.error(e);
+      setStatus(false, 'Error al actualizar');
+      document.getElementById('errorMsg').textContent = 'Error: ' + e.message;
+    } finally {
+      nextRefreshAt = Date.now() + REFRESH_MS;
+    }
+  }
+
+  // Primera carga + intervalo
+  fetchKPIs();
+  setInterval(fetchKPIs, REFRESH_MS);
+</script>
+</body>
+</html>
