@@ -272,13 +272,53 @@
 
     {
       "parameters": {
-        "jsCode": "// Consolida todo en el JSON final\nconst d = $input.first().json;\n\nfunction count(obj){ \n  if (!obj) return 0;\n  if (typeof obj.count === 'number') return obj.count;\n  if (Array.isArray(obj.results)) return obj.results.length;\n  return 0;\n}\nfunction results(obj){\n  if (!obj || !Array.isArray(obj.results)) return [];\n  return obj.results;\n}\n\nconst today       = count(d.zd_today);\nconst yesterday   = count(d.zd_yesterday);\nconst week        = count(d.zd_week);\nconst lastWeek    = count(d.zd_last_week);\nconst open        = count(d.zd_open);\nconst integration = count(d.zd_integration);\n\nconst openRes    = results(d.zd_open);\nconst intRes     = results(d.zd_integration);\nconst heatRes    = results(d.zd_heatmap);\nconst topRes     = results(d.zd_top);\n\nconst pending = openRes.filter(t => t.status === 'pending').length;\nconst integrationOpen = intRes.filter(t => t.status && t.status !== 'solved' && t.status !== 'closed').length;\n\n// Heatmap 7d x 24h\nconst dayLabels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];\nconst hours = Array.from({length:24}, (_,i) => String(i).padStart(2,'0'));\nconst matrix = {};\nfor (const dn of dayLabels) { matrix[dn] = {}; for (const h of hours) matrix[dn][h] = 0; }\nfor (const t of heatRes) {\n  if (!t.created_at) continue;\n  const dt = new Date(t.created_at);\n  const jsDay = dt.getDay();\n  const dIdx  = (jsDay + 6) % 7;\n  const dName = dayLabels[dIdx];\n  const hh    = String(dt.getHours()).padStart(2,'0');\n  matrix[dName][hh]++;\n}\nconst heatmap = dayLabels.map(dn => ({\n  name: dn,\n  data: hours.map(h => ({ x: h, y: matrix[dn][h] }))\n}));\n\n// Top orgs (a partir de tickets abiertos)\nconst orgCount = new Map();\nfor (const t of openRes) {\n  if (!t.organization_id) continue;\n  orgCount.set(t.organization_id, (orgCount.get(t.organization_id) || 0) + 1);\n}\nconst top_orgs = [...orgCount.entries()]\n  .sort((a,b)=>b[1]-a[1])\n  .slice(0,8)\n  .map(([id,count]) => ({ name: `Organización ${id}`, count }));\n\nlet top_ticket = null;\nif (topRes.length > 0) {\n  const t = topRes[0];\n  top_ticket = {\n    id: t.id,\n    subject: t.subject || t.raw_subject || '—',\n    status: t.status,\n    priority: t.priority,\n    requester: t.via?.source?.from?.name || null,\n    organization: t.organization_id ? `Organización ${t.organization_id}` : null,\n    comments: t.comment_count || null,\n    updated_at: t.updated_at ? new Date(t.updated_at).toLocaleString('es-ES') : null\n  };\n}\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_today: today,\n  tickets_yesterday: yesterday,\n  tickets_week: week,\n  tickets_last_week: lastWeek,\n  tickets_open: open,\n  tickets_pending: pending,\n  tickets_integration: integration,\n  tickets_integration_open: integrationOpen,\n  heatmap,\n  top_orgs,\n  top_ticket,\n  asana_open: 0,\n  asana_overdue: 0\n} }];"
+        "jsCode": "// Extrae los IDs de las top 8 orgs (a partir de tickets abiertos)\nconst d = $input.first().json;\nconst openRes = (d.zd_open && Array.isArray(d.zd_open.results)) ? d.zd_open.results : [];\nconst topRes  = (d.zd_top  && Array.isArray(d.zd_top.results))  ? d.zd_top.results  : [];\n\nconst orgCount = new Map();\nfor (const t of openRes) {\n  if (!t.organization_id) continue;\n  orgCount.set(t.organization_id, (orgCount.get(t.organization_id) || 0) + 1);\n}\nconst top = [...orgCount.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);\nconst ids = new Set(top.map(([id])=>id));\nif (topRes[0] && topRes[0].organization_id) ids.add(topRes[0].organization_id);\n\nreturn [{ json: { ...d, org_ids_csv: [...ids].join(','), top_orgs_raw: top } }];"
+      },
+      "id": "calc-orgs",
+      "name": "Calcular IDs orgs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/organizations/show_many.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "ids", "value": "={{ $json.org_ids_csv }}" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-orgs",
+      "name": "ZD Organizaciones",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Calcular IDs orgs').first().json;\nreturn [{ json: { ...acc, zd_orgs: $input.first().json } }];"
+      },
+      "id": "save-orgs",
+      "name": "Guardar Orgs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2400, 0]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Consolida todo en el JSON final\nconst d = $input.first().json;\n\nfunction count(obj){ \n  if (!obj) return 0;\n  if (typeof obj.count === 'number') return obj.count;\n  if (Array.isArray(obj.results)) return obj.results.length;\n  return 0;\n}\nfunction results(obj){\n  if (!obj || !Array.isArray(obj.results)) return [];\n  return obj.results;\n}\n\nconst today       = count(d.zd_today);\nconst yesterday   = count(d.zd_yesterday);\nconst week        = count(d.zd_week);\nconst lastWeek    = count(d.zd_last_week);\nconst open        = count(d.zd_open);\nconst integration = count(d.zd_integration);\n\nconst openRes    = results(d.zd_open);\nconst intRes     = results(d.zd_integration);\nconst heatRes    = results(d.zd_heatmap);\nconst topRes     = results(d.zd_top);\n\nconst pending = openRes.filter(t => t.status === 'pending').length;\nconst integrationOpen = intRes.filter(t => t.status && t.status !== 'solved' && t.status !== 'closed').length;\n\n// Heatmap 7d x 24h\nconst dayLabels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];\nconst hours = Array.from({length:24}, (_,i) => String(i).padStart(2,'0'));\nconst matrix = {};\nfor (const dn of dayLabels) { matrix[dn] = {}; for (const h of hours) matrix[dn][h] = 0; }\nfor (const t of heatRes) {\n  if (!t.created_at) continue;\n  const dt = new Date(t.created_at);\n  const jsDay = dt.getDay();\n  const dIdx  = (jsDay + 6) % 7;\n  const dName = dayLabels[dIdx];\n  const hh    = String(dt.getHours()).padStart(2,'0');\n  matrix[dName][hh]++;\n}\nconst heatmap = dayLabels.map(dn => ({\n  name: dn,\n  data: hours.map(h => ({ x: h, y: matrix[dn][h] }))\n}));\n\n// Mapa de id -> nombre de organización (resuelto vía /organizations/show_many)\nconst orgMap = new Map();\nconst orgsResolved = (d.zd_orgs && Array.isArray(d.zd_orgs.organizations)) ? d.zd_orgs.organizations : [];\nfor (const o of orgsResolved) { if (o && o.id) orgMap.set(o.id, o.name); }\nfunction orgName(id){ return orgMap.get(id) || `Organización ${id}`; }\n\n// Top orgs con nombre real\nconst topOrgsRaw = Array.isArray(d.top_orgs_raw) ? d.top_orgs_raw : [];\nconst top_orgs = topOrgsRaw.map(([id,count]) => ({ name: orgName(id), count }));\n\nlet top_ticket = null;\nif (topRes.length > 0) {\n  const t = topRes[0];\n  top_ticket = {\n    id: t.id,\n    subject: t.subject || t.raw_subject || '—',\n    status: t.status,\n    priority: t.priority,\n    requester: t.via?.source?.from?.name || null,\n    organization: t.organization_id ? orgName(t.organization_id) : null,\n    comments: t.comment_count || null,\n    updated_at: t.updated_at ? new Date(t.updated_at).toLocaleString('es-ES') : null\n  };\n}\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_today: today,\n  tickets_yesterday: yesterday,\n  tickets_week: week,\n  tickets_last_week: lastWeek,\n  tickets_open: open,\n  tickets_pending: pending,\n  tickets_integration: integration,\n  tickets_integration_open: integrationOpen,\n  heatmap,\n  top_orgs,\n  top_ticket,\n  asana_open: 0,\n  asana_overdue: 0\n} }];"
       },
       "id": "agg-1",
       "name": "Agregar KPIs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 0]
+      "position": [2600, 0]
     },
     {
       "parameters": {
@@ -297,7 +337,7 @@
       "name": "Responder webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2200, 0]
+      "position": [2800, 0]
     }
   ],
   "connections": {
@@ -318,7 +358,10 @@
     "ZD Heatmap":           { "main": [[{ "node": "Guardar Heatmap",   "type": "main", "index": 0 }]] },
     "Guardar Heatmap":      { "main": [[{ "node": "ZD Top Ticket",     "type": "main", "index": 0 }]] },
     "ZD Top Ticket":        { "main": [[{ "node": "Guardar Top",       "type": "main", "index": 0 }]] },
-    "Guardar Top":          { "main": [[{ "node": "Agregar KPIs",      "type": "main", "index": 0 }]] },
+    "Guardar Top":          { "main": [[{ "node": "Calcular IDs orgs", "type": "main", "index": 0 }]] },
+    "Calcular IDs orgs":    { "main": [[{ "node": "ZD Organizaciones", "type": "main", "index": 0 }]] },
+    "ZD Organizaciones":    { "main": [[{ "node": "Guardar Orgs",      "type": "main", "index": 0 }]] },
+    "Guardar Orgs":         { "main": [[{ "node": "Agregar KPIs",      "type": "main", "index": 0 }]] },
     "Agregar KPIs":         { "main": [[{ "node": "Responder webhook", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
