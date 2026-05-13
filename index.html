@@ -596,9 +596,9 @@
       document.getElementById('kpiBacklogDetail').textContent =
         `${d.tickets_today_manual ?? 0} nuevos · ${d.tickets_solved_today ?? 0} resueltos · solo humano`;
 
-      // FRT (tiempo medio de respuesta hoy)
+      // FRT (mediana de tiempo de respuesta hoy)
       const frtEl     = document.getElementById('kpiFRT');
-      const frtMin    = d.frt_avg_min;
+      const frtMin    = d.frt_median;
       const frtSample = d.frt_sample ?? 0;
       const fmtFRT = m => {
         if (m == null) return '—';
