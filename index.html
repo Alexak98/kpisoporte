@@ -594,13 +594,24 @@
     }
     try {
 
-      setNum('kpiToday', d.tickets_today);
-      setNum('kpiWeek',  d.tickets_week);
-      setNum('kpiMonth', d.tickets_month);
+      // El total se calcula como IA + Manual para que la suma cuadre
+      // (las queries totales pueden devolver un nº ligeramente distinto
+      // si un ticket cambia de subject entre las 3 consultas)
+      const todayIA = d.tickets_today_ia ?? 0;
+      const todayMa = d.tickets_today_manual ?? 0;
+      setNum('kpiToday', todayIA + todayMa);
+
+      const weekIA = d.tickets_week_ia ?? 0;
+      const weekMa = d.tickets_week_manual ?? 0;
+      setNum('kpiWeek', (weekIA + weekMa) || (d.tickets_week ?? 0));
+
+      const monthIA = d.tickets_month_ia ?? 0;
+      const monthMa = d.tickets_month_manual ?? 0;
+      setNum('kpiMonth', (monthIA + monthMa) || (d.tickets_month ?? 0));
 
       const yIA = d.tickets_yesterday_ia ?? 0;
       const yMa = d.tickets_yesterday_manual ?? 0;
-      const yTotal = (d.tickets_yesterday != null) ? d.tickets_yesterday : (yIA + yMa);
+      const yTotal = yIA + yMa;  // siempre suma del desglose, así siempre cuadra
       document.getElementById('kpiIAYesterday').textContent     = yIA;
       document.getElementById('kpiManualYesterday').textContent = yMa;
       document.getElementById('kpiTodayDelta').textContent      = `total ${yTotal}`;
