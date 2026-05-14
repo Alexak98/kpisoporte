@@ -296,10 +296,17 @@
     </div>
     <div class="card p-4">
       <div class="title text-base">Tiempo respuesta · hoy</div>
-      <div class="flex items-baseline gap-2 mt-1">
-        <div id="kpiFRT" class="kpi-number text-4xl">—</div>
-        <div class="text-sm text-slate-400"><span id="kpiFRTDetail">muestra: —</span></div>
+      <div class="grid grid-cols-2 gap-3 mt-1">
+        <div>
+          <div class="text-[10px] title text-slate-500">MEDIA</div>
+          <div id="kpiFRTAvg" class="kpi-number text-3xl">—</div>
+        </div>
+        <div>
+          <div class="text-[10px] title text-slate-500">MEDIANA</div>
+          <div id="kpiFRTMedian" class="kpi-number text-3xl">—</div>
+        </div>
       </div>
+      <div class="text-sm text-slate-400 mt-0.5"><span id="kpiFRTDetail">muestra: —</span></div>
     </div>
     <div class="card p-4">
       <div class="title text-base">Tickets +5 días</div>
@@ -633,10 +640,12 @@
       document.getElementById('kpiBacklogDetail').textContent =
         `${d.tickets_today_manual ?? 0} nuevos · ${d.tickets_solved_today ?? 0} resueltos · solo humano`;
 
-      // FRT (mediana de tiempo de respuesta hoy)
-      const frtEl     = document.getElementById('kpiFRT');
-      const frtMin    = d.frt_median;
-      const frtSample = d.frt_sample ?? 0;
+      // FRT (media + mediana de tiempo de respuesta hoy)
+      const frtAvgEl    = document.getElementById('kpiFRTAvg');
+      const frtMedianEl = document.getElementById('kpiFRTMedian');
+      const frtAvg      = d.frt_avg_min;
+      const frtMedian   = d.frt_median;
+      const frtSample   = d.frt_sample ?? 0;
       const fmtFRT = m => {
         if (m == null) return '—';
         if (m < 60)   return m + ' min';
@@ -647,17 +656,17 @@
         const rh = h % 24;
         return rh ? `${days}d ${rh}h` : `${days}d`;
       };
-      frtEl.textContent = fmtFRT(frtMin);
-      frtEl.classList.remove('text-emerald-300','text-amber-300','text-rose-300','text-slate-200');
-      if (frtMin == null) {
-        frtEl.classList.add('text-slate-200');
-      } else if (frtMin < 15) {
-        frtEl.classList.add('text-emerald-300');
-      } else if (frtMin < 30) {
-        frtEl.classList.add('text-amber-300');
-      } else {
-        frtEl.classList.add('text-rose-300');
-      }
+      const colorize = (el, m) => {
+        el.classList.remove('text-emerald-300','text-amber-300','text-rose-300','text-slate-200');
+        if (m == null) el.classList.add('text-slate-200');
+        else if (m < 15) el.classList.add('text-emerald-300');
+        else if (m < 30) el.classList.add('text-amber-300');
+        else el.classList.add('text-rose-300');
+      };
+      frtAvgEl.textContent    = fmtFRT(frtAvg);
+      frtMedianEl.textContent = fmtFRT(frtMedian);
+      colorize(frtAvgEl,    frtAvg);
+      colorize(frtMedianEl, frtMedian);
       const ans = d.frt_answered ?? 0;
       document.getElementById('kpiFRTDetail').textContent =
         ans > 0 ? `${ans} contestados · sin IA` : 'sin datos';
