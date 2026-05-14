@@ -21,7 +21,7 @@
         "operation": "getAll",
         "returnAll": true,
         "options": {
-          "query": "type:ticket status:open"
+          "query": "type:ticket status:open tags:consulta_técnica"
         }
       },
       "id": "zd-open",
