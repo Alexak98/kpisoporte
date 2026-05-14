@@ -216,9 +216,9 @@
   </header>
 
   <!-- KPI ROW -->
-  <section class="grid grid-cols-4 gap-4 px-10 mt-1 shrink-0">
-    <!-- TICKETS HOY · compacto con desglose de origen -->
-    <div class="card p-5 flex flex-col">
+  <section class="grid grid-cols-5 gap-4 px-10 mt-1 shrink-0">
+    <!-- TICKETS HOY · ocupa 2 columnas (40% del ancho) -->
+    <div class="card p-5 flex flex-col col-span-2">
       <div class="title text-xl">Tickets creados hoy</div>
       <div class="flex items-baseline justify-between mt-1">
         <div id="kpiToday" class="kpi-number text-6xl">0</div>
@@ -272,8 +272,6 @@
     <div class="card p-5">
       <div class="title text-xl">Esperando respuesta</div>
       <div id="kpiWaiting" class="kpi-number text-6xl mt-1">—</div>
-      <div class="text-base text-slate-300 mt-1">cliente fue el último</div>
-      <div id="kpiWaitingDetail" class="text-sm text-slate-500 mt-1">en curso · consulta técnica</div>
     </div>
   </section>
 
@@ -770,9 +768,6 @@
       else if (n <= 3)    el.classList.add('text-emerald-300');
       else if (n <= 10)   el.classList.add('text-amber-300');
       else                el.classList.add('text-rose-300');
-      const tot = d.tickets_open_total ?? '—';
-      document.getElementById('kpiWaitingDetail').textContent =
-        `de ${tot} en curso · consulta técnica`;
     } catch (e) {
       console.warn('Waiting fetch falló:', e && e.message);
     }
