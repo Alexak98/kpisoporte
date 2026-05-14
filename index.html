@@ -309,9 +309,35 @@
       </div>
     </div>
     <div class="card p-4">
-      <div class="title text-base">Incidencias DEV</div>
-      <div class="flex items-baseline gap-2 mt-1">
-        <div id="kpiIncidencias" class="kpi-number text-4xl">0</div>
+      <div class="flex items-baseline justify-between">
+        <div class="title text-base">Incidencias DEV</div>
+        <div id="kpiIncidencias" class="kpi-number text-3xl">0</div>
+      </div>
+      <!-- Barra apilada por antigüedad -->
+      <div class="mt-2 w-full h-2 bg-slate-800/60 rounded-full overflow-hidden flex">
+        <div id="incBarLt30"   class="h-full" style="background:#10b981;width:0%"></div>
+        <div id="incBar30_60"  class="h-full" style="background:#f59e0b;width:0%"></div>
+        <div id="incBar60_100" class="h-full" style="background:#f97316;width:0%"></div>
+        <div id="incBarGt100"  class="h-full" style="background:#dc2626;width:0%"></div>
+      </div>
+      <!-- Leyenda con números -->
+      <div class="grid grid-cols-4 gap-1 mt-1.5 text-center">
+        <div>
+          <div id="incCntLt30"   class="kpi-number text-lg text-emerald-300">0</div>
+          <div class="text-[10px] text-slate-500 uppercase">&lt;30d</div>
+        </div>
+        <div>
+          <div id="incCnt30_60"  class="kpi-number text-lg text-amber-300">0</div>
+          <div class="text-[10px] text-slate-500 uppercase">30-59d</div>
+        </div>
+        <div>
+          <div id="incCnt60_100" class="kpi-number text-lg text-orange-400">0</div>
+          <div class="text-[10px] text-slate-500 uppercase">60-99d</div>
+        </div>
+        <div>
+          <div id="incCntGt100"  class="kpi-number text-lg text-rose-400">0</div>
+          <div class="text-[10px] text-slate-500 uppercase">100+d</div>
+        </div>
       </div>
     </div>
   </section>
@@ -633,14 +659,21 @@
       else if (aged <= 10) agedEl.classList.add('text-amber-300');
       else                 agedEl.classList.add('text-rose-300');
 
-      // Incidencias dev abiertas (sin filtro de tiempo)
+      // Incidencias dev abiertas (sin filtro de tiempo) + desglose por antigüedad
       const incEl = document.getElementById('kpiIncidencias');
       const inc   = d.tickets_incidencias_dev ?? 0;
       incEl.textContent = inc;
-      incEl.classList.remove('text-emerald-300','text-amber-300','text-rose-300','text-slate-200');
-      if (inc <= 5)       incEl.classList.add('text-emerald-300');
-      else if (inc <= 20) incEl.classList.add('text-amber-300');
-      else                incEl.classList.add('text-rose-300');
+
+      const b = d.incidencias_buckets || { lt30:0, b30_60:0, b60_100:0, gt100:0 };
+      document.getElementById('incCntLt30').textContent   = b.lt30;
+      document.getElementById('incCnt30_60').textContent  = b.b30_60;
+      document.getElementById('incCnt60_100').textContent = b.b60_100;
+      document.getElementById('incCntGt100').textContent  = b.gt100;
+      const total = (b.lt30 + b.b30_60 + b.b60_100 + b.gt100) || 1;
+      document.getElementById('incBarLt30').style.width   = (b.lt30   / total * 100) + '%';
+      document.getElementById('incBar30_60').style.width  = (b.b30_60 / total * 100) + '%';
+      document.getElementById('incBar60_100').style.width = (b.b60_100/ total * 100) + '%';
+      document.getElementById('incBarGt100').style.width  = (b.gt100  / total * 100) + '%';
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
