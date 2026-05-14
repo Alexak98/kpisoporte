@@ -1,0 +1,144 @@
+{
+  "name": "Sync Check Aged (Zendesk +5d vs Asana)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "sync-check-aged",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook Sync Check Aged",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-800, 0],
+      "webhookId": "sync-check-aged"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calcula aged_ymd = today - 5d (mismo umbral que el KPI '+5 días')\nconst now = new Date();\nconst todayYMD = now.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' });\nconst d = new Date(todayYMD + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 5);\nconst agedYMD = d.toISOString().substring(0,10);\nreturn [{ json: { today_ymd: todayYMD, aged_ymd: agedYMD } }];"
+      },
+      "id": "dates",
+      "name": "Calcular fechas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-650, 0]
+    },
+    {
+      "parameters": {
+        "resource": "ticket",
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "=type:ticket status<solved created<{{ $json.aged_ymd }} -subject:\"Conversation with\" tags:consulta_técnica"
+        }
+      },
+      "id": "zd-aged",
+      "name": "ZD Aged Consulta Técnica",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [-500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construye el Set de IDs Zendesk aged abiertos\nconst tickets = $input.all().map(i => i.json).filter(Boolean);\nconst zdIds = new Set(tickets.map(t => String(t.id)).filter(Boolean));\nreturn [{ json: { _zd_open_ids: [...zdIds], _zd_open_total: zdIds.size, _zd_tickets: tickets } }];"
+      },
+      "id": "save-zd",
+      "name": "Save ZD Aged",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-350, 0]
+    },
+
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {
+          "opt_fields": "={{ [\"gid\",\"name\",\"completed\",\"completed_at\",\"permalink_url\",\"html_notes\"] }}",
+          "section": "=1207479621563558"
+        }
+      },
+      "id": "asana-tasks",
+      "name": "Asana Tasks Section",
+      "type": "n8n-nodes-base.asana",
+      "typeVersion": 1,
+      "position": [-200, 0],
+      "credentials": {
+        "asanaOAuth2Api": { "id": "lg7A3NxFXWdmTBae", "name": "Asana account" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pre-extract zendesk_id desde NAME o HTML_NOTES de TODAS las tareas\n// (igual que en sync-check)\nconst tasks = $input.all().map(i => i.json).filter(Boolean);\nconst cutoff = Date.now() - 365 * 86400000;\n\nfunction findZdId(s) {\n  if (!s) return null;\n  const m = String(s).match(/#\\s*(\\d{2,7})/);\n  return m ? m[1] : null;\n}\n\nconst out = [];\nfor (const t of tasks) {\n  if (!t) continue;\n  if (t.completed === true && t.completed_at) {\n    if (new Date(t.completed_at).getTime() < cutoff) continue;\n  }\n  const zdId = findZdId(t.name) || findZdId(t.html_notes);\n  out.push({ ...t, _zd_id: zdId || null });\n}\nreturn out.map(t => ({ json: t }));"
+      },
+      "id": "preextract",
+      "name": "Todas + Pre-extract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/tasks/{{ $json.gid }}/attachments?opt_fields=name",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaOAuth2Api",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "get-attachments",
+      "name": "Get Attachments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 0],
+      "credentials": {
+        "asanaOAuth2Api": { "id": "lg7A3NxFXWdmTBae", "name": "Asana account" }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cruza los Zendesk aged contra Asana. Clasifica cada Zendesk ID\n// (los 37) en 3 categorías exclusivas.\nconst tasks = $('Todas + Pre-extract').all().map(i => i.json);\nconst attResults = $input.all().map(i => i.json);\nconst zdData = $('Save ZD Aged').first().json;\nconst zdOpenIds = (zdData._zd_open_ids || []).map(String);\nconst zdTickets = zdData._zd_tickets || [];\nconst zdInfoById = new Map(zdTickets.map(t => [String(t.id), t]));\n\nlet srcName = 0, srcAtt = 0;\nconst byZdId = new Map();\n\nfor (let i = 0; i < tasks.length; i++) {\n  const task = tasks[i];\n  let zdId = task._zd_id || null;\n  if (zdId) {\n    srcName++;\n  } else {\n    const attResp = attResults[i] || {};\n    const atts = Array.isArray(attResp.data) ? attResp.data : [];\n    for (const att of atts) {\n      const name = att && att.name ? String(att.name) : '';\n      const m = name.match(/#\\s*(\\d{2,7})/);\n      if (m) { zdId = m[1]; srcAtt++; break; }\n    }\n  }\n  if (!zdId) continue;\n  const existing = byZdId.get(String(zdId));\n  if (!existing || (task.completed && !existing.completed)) {\n    byZdId.set(String(zdId), task);\n  }\n}\n\nconst zd_completed = [];\nconst zd_in_progress = [];\nconst zd_no_asana = [];\n\nfunction ageDays(createdAt){\n  if (!createdAt) return null;\n  return Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);\n}\n\nfor (const zdIdStr of zdOpenIds) {\n  const t = byZdId.get(zdIdStr);\n  const zdId = parseInt(zdIdStr, 10);\n  const zdInfo = zdInfoById.get(zdIdStr) || {};\n  const base = {\n    zendesk_id: zdId,\n    zendesk_subject: zdInfo.subject || '',\n    zendesk_status: zdInfo.status || '',\n    zendesk_age_days: ageDays(zdInfo.created_at),\n    zendesk_url: `https://soporteyurest.zendesk.com/agent/tickets/${zdId}`\n  };\n  if (!t) {\n    zd_no_asana.push(base);\n  } else if (t.completed === true) {\n    zd_completed.push({\n      ...base,\n      asana_gid: t.gid,\n      asana_name: t.name,\n      asana_url: t.permalink_url,\n      asana_completed_at: t.completed_at\n    });\n  } else {\n    zd_in_progress.push({\n      ...base,\n      asana_gid: t.gid,\n      asana_name: t.name,\n      asana_url: t.permalink_url\n    });\n  }\n}\n\nzd_completed.sort((a,b) => (b.asana_completed_at || '').localeCompare(a.asana_completed_at || ''));\nzd_no_asana.sort((a,b) => (b.zendesk_age_days || 0) - (a.zendesk_age_days || 0));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  zendesk_aged_total: zdOpenIds.length,\n  asana_tasks_analyzed: tasks.length,\n  resolved_from_name_notes: srcName,\n  resolved_from_attachments: srcAtt,\n  zd_completed_in_asana_count: zd_completed.length,\n  zd_in_progress_count: zd_in_progress.length,\n  zd_no_asana_count: zd_no_asana.length,\n  zd_completed_in_asana_ids_csv: zd_completed.map(x => x.zendesk_id).join(','),\n  zd_in_progress_ids_csv: zd_in_progress.map(x => x.zendesk_id).join(','),\n  zd_no_asana_ids_csv: zd_no_asana.map(x => x.zendesk_id).join(','),\n  zd_completed_in_asana: zd_completed,\n  zd_in_progress: zd_in_progress,\n  zd_no_asana: zd_no_asana\n} }];"
+      },
+      "id": "cross-ref",
+      "name": "Cross Reference",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Cache-Control", "value": "no-store" }
+            ]
+          }
+        }
+      },
+      "id": "resp-1",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook Sync Check Aged":  { "main": [[{ "node": "Calcular fechas",            "type": "main", "index": 0 }]] },
+    "Calcular fechas":          { "main": [[{ "node": "ZD Aged Consulta Técnica",   "type": "main", "index": 0 }]] },
+    "ZD Aged Consulta Técnica": { "main": [[{ "node": "Save ZD Aged",               "type": "main", "index": 0 }]] },
+    "Save ZD Aged":             { "main": [[{ "node": "Asana Tasks Section",        "type": "main", "index": 0 }]] },
+    "Asana Tasks Section":      { "main": [[{ "node": "Todas + Pre-extract",        "type": "main", "index": 0 }]] },
+    "Todas + Pre-extract":      { "main": [[{ "node": "Get Attachments",            "type": "main", "index": 0 }]] },
+    "Get Attachments":          { "main": [[{ "node": "Cross Reference",            "type": "main", "index": 0 }]] },
+    "Cross Reference":          { "main": [[{ "node": "Respond",                    "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "active": false,
+  "meta": { "templateCredsSetupCompleted": false }
+}
