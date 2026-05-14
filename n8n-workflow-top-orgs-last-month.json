@@ -1,0 +1,141 @@
+{
+  "name": "KPIs Soporte - Top Orgs Mes Anterior (cached)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "hours", "hoursInterval": 6 }
+          ]
+        }
+      },
+      "id": "cron",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1400, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mes anterior completo en zona Madrid: [last_month_ymd, last_month_end_ymd).\nconst now = new Date();\nfunction madridYMD(d){ return d.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' }); }\nfunction ymdToDate(s){ return new Date(s + 'T00:00:00Z'); }\nfunction ymdFromDate(d){ return d.toISOString().substring(0,10); }\nconst todayYMD = madridYMD(now);\nconst [yy, mm] = todayYMD.split('-');\nconst monthYMD = `${yy}-${mm}-01`;\nconst _prev    = ymdToDate(monthYMD); _prev.setUTCMonth(_prev.getUTCMonth() - 1);\nconst lastMonthYMD    = ymdFromDate(_prev);\nconst lastMonthEndYMD = monthYMD;\nreturn [{ json: { last_month_ymd: lastMonthYMD, last_month_end_ymd: lastMonthEndYMD } }];"
+      },
+      "id": "dates",
+      "name": "Calcular fechas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1200, -200]
+    },
+    {
+      "parameters": {
+        "resource": "ticket",
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "=type:ticket created>={{ $json.last_month_ymd }} created<{{ $json.last_month_end_ymd }}"
+        }
+      },
+      "id": "zd-hist-lm",
+      "name": "ZD Hist Mes Anterior",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [-1000, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calcula top 8 orgs del mes anterior y prepara CSV de IDs para resolver nombres.\nconst dates = $('Calcular fechas').first().json;\nconst tickets = $input.all().map(i => i.json).filter(Boolean);\nconst m = new Map();\nfor (const t of tickets) {\n  if (!t || !t.organization_id) continue;\n  m.set(t.organization_id, (m.get(t.organization_id) || 0) + 1);\n}\nconst top = [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);\nconst ids = top.map(([id])=>id);\nreturn [{ json: { ...dates, _top_raw: top, org_ids_csv: ids.join(',') || '0', _ticket_count: tickets.length } }];"
+      },
+      "id": "calc-top",
+      "name": "Calcular Top",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-800, -200]
+    },
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/organizations/show_many.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "ids", "value": "={{ $json.org_ids_csv }}" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-orgs",
+      "name": "ZD Organizaciones",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-600, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resuelve nombres + GUARDA EL RESULTADO EN STATIC DATA del workflow.\n// El webhook leerá esta caché y responderá al instante.\nconst acc  = $('Calcular Top').first().json;\nconst body = $input.first().json || {};\nconst orgs = Array.isArray(body.organizations) ? body.organizations : [];\nconst orgMap = new Map();\nfor (const o of orgs) { if (o && o.id) orgMap.set(o.id, o.name); }\nconst top_orgs_last_month = (acc._top_raw || []).map(([id, count]) => ({\n  name: orgMap.get(id) || `Organización ${id}`,\n  count\n}));\nconst payload = {\n  generated_at:       new Date().toISOString(),\n  last_month_ymd:     acc.last_month_ymd,\n  last_month_end_ymd: acc.last_month_end_ymd,\n  ticket_count:       acc._ticket_count,\n  top_orgs_last_month\n};\nconst staticData = $getWorkflowStaticData('global');\nstaticData.cached_payload = payload;\nstaticData.cached_at      = payload.generated_at;\nreturn [{ json: { saved: true, ...payload } }];"
+      },
+      "id": "save-cache",
+      "name": "Guardar en caché",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, -200]
+    },
+
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "kpis-top-orgs-last-month",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook Top Orgs LM",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1400, 200],
+      "webhookId": "kpis-top-orgs-last-month"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lee el último resultado cacheado por el Schedule Trigger.\n// Si la caché está vacía (primer arranque), devuelve estructura vacía y _stale=true.\nconst staticData = $getWorkflowStaticData('global');\nconst cached = staticData.cached_payload || null;\nif (!cached) {\n  return [{ json: {\n    generated_at: null,\n    cached_at: null,\n    _stale: true,\n    _hint: 'Cache vacía. Lanza manualmente el Schedule Trigger una vez.',\n    top_orgs_last_month: []\n  } }];\n}\nreturn [{ json: { ...cached, cached_at: staticData.cached_at, _stale: false } }];"
+      },
+      "id": "read-cache",
+      "name": "Leer caché",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1200, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Cache-Control", "value": "no-store" }
+            ]
+          }
+        }
+      },
+      "id": "resp",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-1000, 200]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger":   { "main": [[{ "node": "Calcular fechas",    "type": "main", "index": 0 }]] },
+    "Calcular fechas":    { "main": [[{ "node": "ZD Hist Mes Anterior","type": "main", "index": 0 }]] },
+    "ZD Hist Mes Anterior":{ "main": [[{ "node": "Calcular Top",      "type": "main", "index": 0 }]] },
+    "Calcular Top":       { "main": [[{ "node": "ZD Organizaciones",  "type": "main", "index": 0 }]] },
+    "ZD Organizaciones":  { "main": [[{ "node": "Guardar en caché",   "type": "main", "index": 0 }]] },
+
+    "Webhook Top Orgs LM":{ "main": [[{ "node": "Leer caché",         "type": "main", "index": 0 }]] },
+    "Leer caché":         { "main": [[{ "node": "Respond",            "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "active": false,
+  "meta": { "templateCredsSetupCompleted": false }
+}

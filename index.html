@@ -394,9 +394,11 @@
   const N8N_WEBHOOK_URL         = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte';        // heavy
   const N8N_WEBHOOK_URL_LIGHT   = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte-light';  // light
   const N8N_WEBHOOK_URL_WAITING = 'https://n8n-soporte.data.yurest.dev/webhook/needs-agent-reply';   // esperando agente
-  const REFRESH_MS         = 5 * 60 * 1000;   // heavy: 5 min (charts, sparklines)
-  const REFRESH_MS_LIGHT   = 1 * 60 * 1000;   // light: 1 min (counters, FRT, aged, incidencias)
-  const REFRESH_MS_WAITING = 5 * 60 * 1000;   // waiting: 5 min (N+1 queries, costoso)
+  const N8N_WEBHOOK_URL_LM_ORGS = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-top-orgs-last-month'; // top orgs mes anterior
+  const REFRESH_MS         = 5 * 60 * 1000;    // heavy: 5 min (charts, sparklines)
+  const REFRESH_MS_LIGHT   = 1 * 60 * 1000;    // light: 1 min (counters, FRT, aged, incidencias)
+  const REFRESH_MS_WAITING = 5 * 60 * 1000;    // waiting: 5 min (N+1 queries, costoso)
+  const REFRESH_MS_LM_ORGS = 30 * 60 * 1000;   // top orgs mes ant: 30 min (datos casi estáticos)
   // ===========================
 
   function fitStage() {
@@ -719,9 +721,8 @@
     if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
     document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
     document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
-    renderTopOrgs(d.top_orgs || [],            { containerId: 'topOrgs',          sparkline: true });
-    // Mes anterior (sin sparkline para ahorrar espacio en media columna)
-    renderTopOrgs(d.top_orgs_last_month || [], { containerId: 'topOrgsLastMonth', sparkline: false });
+    renderTopOrgs(d.top_orgs || [], { containerId: 'topOrgs', sparkline: true });
+    // Mes anterior se carga desde su propio webhook (fetchTopOrgsLastMonth) para no recargar el heavy.
   }
 
   // Fetch LIGHT: solo counters. Timeout corto, no muestra loader.
@@ -771,6 +772,17 @@
     }
   }
 
+  // Fetch del Top Clientes del mes anterior (webhook separado, lento por paginación Zendesk del mes completo).
+  // Refresh largo (30 min): los datos del mes anterior apenas cambian — no se justifica pegar más al backend.
+  async function fetchTopOrgsLastMonth() {
+    try {
+      const d = await fetchOnce(N8N_WEBHOOK_URL_LM_ORGS, 90000);
+      renderTopOrgs(d.top_orgs_last_month || [], { containerId: 'topOrgsLastMonth', sparkline: false });
+    } catch (e) {
+      console.warn('Top orgs mes ant fetch falló:', e && e.message);
+    }
+  }
+
   // Fetch del KPI 'Esperando respuesta agente' (webhook separado, costoso)
   async function fetchWaiting() {
     try {
@@ -789,15 +801,22 @@
   }
 
   // Esperar a que la fuente cargue antes del primer render para que el chart use medidas correctas
+  function bootFetch() {
+    fitStage();
+    fetchKPIs();
+    fetchWaiting();
+    fetchTopOrgsLastMonth();
+  }
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => { fitStage(); fetchKPIs(); fetchWaiting(); });
+    document.fonts.ready.then(bootFetch);
   } else {
-    fitStage(); fetchKPIs(); fetchWaiting();
+    bootFetch();
   }
   // Loops independientes
-  setInterval(fetchKPIsLight, REFRESH_MS_LIGHT);     // 1 min
-  setInterval(fetchKPIs,      REFRESH_MS);           // 5 min
-  setInterval(fetchWaiting,   REFRESH_MS_WAITING);   // 5 min
+  setInterval(fetchKPIsLight,         REFRESH_MS_LIGHT);     // 1 min
+  setInterval(fetchKPIs,              REFRESH_MS);           // 5 min
+  setInterval(fetchWaiting,           REFRESH_MS_WAITING);   // 5 min
+  setInterval(fetchTopOrgsLastMonth,  REFRESH_MS_LM_ORGS);   // 30 min
 </script>
 </body>
 </html>
