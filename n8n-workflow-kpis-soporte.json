@@ -356,27 +356,22 @@
 
     {
       "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "query", "value": "type:ticket status<solved tags:incidencia_dev" },
-            { "name": "per_page", "value": "100" }
-          ]
-        },
-        "options": { "response": { "response": { "neverError": true } } }
+        "resource": "ticket",
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "type:ticket status<solved tags:incidencia_dev"
+        }
       },
       "id": "zd-incidencias",
       "name": "ZD Incidencias Dev",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
       "position": [1500, 980]
     },
     {
       "parameters": {
-        "jsCode": "const acc = $('Guardar Envejecidos').first().json;\nreturn [{ json: { ...acc, zd_incidencias: $input.first().json } }];"
+        "jsCode": "// Recoge todas las incidencias dev (Zendesk native emite uno por item)\nconst acc = $('Guardar Envejecidos').first().json;\nconst all = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, zd_incidencias: { results: all, count: all.length } } }];"
       },
       "id": "save-incidencias",
       "name": "Guardar Incidencias",
