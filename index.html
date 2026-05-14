@@ -216,56 +216,41 @@
   </header>
 
   <!-- KPI ROW -->
-  <section class="grid grid-cols-4 gap-6 px-10 mt-1 shrink-0">
-    <!-- TICKETS HOY · con desglose de origen -->
-    <div class="card p-6 flex flex-col col-span-2">
+  <section class="grid grid-cols-4 gap-4 px-10 mt-1 shrink-0">
+    <!-- TICKETS HOY · compacto con desglose de origen -->
+    <div class="card p-5 flex flex-col">
       <div class="title text-xl">Tickets creados hoy</div>
-      <div class="flex items-stretch gap-6 mt-3 flex-1">
-        <!-- Izquierda: orígenes (etiqueta + número) -->
-        <div class="flex-1 flex flex-col justify-center gap-2">
-          <div class="flex items-center justify-between">
-            <span class="title text-lg text-violet-300">IA</span>
-            <div class="flex items-baseline gap-2">
-              <span id="kpiIA"    class="kpi-number text-4xl text-violet-300">0</span>
-              <span id="kpiIAPct" class="text-sm text-slate-400 w-12 text-right">—</span>
-            </div>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="title text-lg text-emerald-300">Manual</span>
-            <div class="flex items-baseline gap-2">
-              <span id="kpiManual"    class="kpi-number text-4xl text-emerald-300">0</span>
-              <span id="kpiManualPct" class="text-sm text-slate-400 w-12 text-right">—</span>
-            </div>
-          </div>
-          <div class="w-full h-1.5 bg-slate-800/60 rounded-full overflow-hidden flex mt-1">
-            <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#7c3aed,#a855f7);width:0%"></div>
-            <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#10b981,#34d399);width:0%"></div>
-          </div>
-        </div>
-        <!-- Separador vertical -->
-        <div class="w-px bg-slate-700/50"></div>
-        <!-- Derecha: total grande -->
-        <div class="flex flex-col items-end justify-center">
-          <div class="text-xs title text-slate-500">Total</div>
-          <div id="kpiToday" class="kpi-number text-6xl">0</div>
-        </div>
+      <div class="flex items-baseline justify-between mt-1">
+        <div id="kpiToday" class="kpi-number text-6xl">0</div>
+        <div class="text-sm text-slate-400">total</div>
       </div>
-      <!-- Pie: ayer con su desglose -->
-      <div class="mt-3 pt-3 border-t border-slate-700/40 flex items-baseline justify-between text-base">
-        <span class="text-slate-400">Ayer</span>
-        <span class="text-slate-300">
-          IA <span id="kpiIAYesterday" class="text-violet-300 font-bold">—</span>
-          ·
-          Manual <span id="kpiManualYesterday" class="text-emerald-300 font-bold">—</span>
-          ·
-          <span id="kpiTodayDelta" class="font-bold">—</span>
+      <div class="flex items-baseline justify-between text-base mt-1">
+        <span class="text-violet-300">
+          IA <span id="kpiIA"    class="font-bold">0</span>
+          <span id="kpiIAPct"   class="text-xs text-slate-400">—</span>
         </span>
+        <span class="text-emerald-300">
+          Manual <span id="kpiManual"    class="font-bold">0</span>
+          <span id="kpiManualPct" class="text-xs text-slate-400">—</span>
+        </span>
+      </div>
+      <div class="w-full h-1.5 bg-slate-800/60 rounded-full overflow-hidden flex mt-1">
+        <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#7c3aed,#a855f7);width:0%"></div>
+        <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#10b981,#34d399);width:0%"></div>
+      </div>
+      <div class="mt-2 pt-2 border-t border-slate-700/40 text-xs text-slate-400">
+        Ayer:
+        IA <span id="kpiIAYesterday" class="text-violet-300 font-bold">—</span>
+        ·
+        Man <span id="kpiManualYesterday" class="text-emerald-300 font-bold">—</span>
+        ·
+        <span id="kpiTodayDelta" class="font-bold text-slate-300">—</span>
       </div>
     </div>
 
-    <div class="card p-6">
+    <div class="card p-5">
       <div class="title text-xl">Tickets esta semana</div>
-      <div id="kpiWeek" class="kpi-number text-6xl mt-2">0</div>
+      <div id="kpiWeek" class="kpi-number text-6xl mt-1">0</div>
       <div class="text-base text-slate-300 mt-1">
         IA <span id="kpiWeekIA"     class="text-violet-300 font-bold">—</span>
         ·
@@ -273,15 +258,22 @@
       </div>
       <div id="kpiWeekDelta" class="text-sm text-slate-500 mt-1">semana ant.: —</div>
     </div>
-    <div class="card p-6">
+    <div class="card p-5">
       <div class="title text-xl">Tickets este mes</div>
-      <div id="kpiMonth" class="kpi-number text-6xl mt-2">0</div>
+      <div id="kpiMonth" class="kpi-number text-6xl mt-1">0</div>
       <div class="text-base text-slate-300 mt-1">
         IA <span id="kpiMonthIA"     class="text-violet-300 font-bold">—</span>
         ·
         Manual <span id="kpiMonthManual" class="text-emerald-300 font-bold">—</span>
       </div>
       <div id="kpiOpenSub" class="text-sm text-slate-500 mt-1">abiertos ahora: —</div>
+    </div>
+    <!-- NUEVO: Esperando respuesta agente -->
+    <div class="card p-5">
+      <div class="title text-xl">Esperando respuesta</div>
+      <div id="kpiWaiting" class="kpi-number text-6xl mt-1">—</div>
+      <div class="text-base text-slate-300 mt-1">cliente fue el último</div>
+      <div id="kpiWaitingDetail" class="text-sm text-slate-500 mt-1">en curso · consulta técnica</div>
     </div>
   </section>
 
@@ -393,10 +385,12 @@
 
 <script>
   // ====== CONFIGURACIÓN ======
-  const N8N_WEBHOOK_URL       = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte';        // heavy
-  const N8N_WEBHOOK_URL_LIGHT = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte-light';  // light
-  const REFRESH_MS       = 5 * 60 * 1000;   // heavy: 5 min (charts, sparklines)
-  const REFRESH_MS_LIGHT = 1 * 60 * 1000;   // light: 1 min (counters, FRT, aged, incidencias)
+  const N8N_WEBHOOK_URL         = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte';        // heavy
+  const N8N_WEBHOOK_URL_LIGHT   = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte-light';  // light
+  const N8N_WEBHOOK_URL_WAITING = 'https://n8n-soporte.data.yurest.dev/webhook/needs-agent-reply';   // esperando agente
+  const REFRESH_MS         = 5 * 60 * 1000;   // heavy: 5 min (charts, sparklines)
+  const REFRESH_MS_LIGHT   = 1 * 60 * 1000;   // light: 1 min (counters, FRT, aged, incidencias)
+  const REFRESH_MS_WAITING = 5 * 60 * 1000;   // waiting: 5 min (N+1 queries, costoso)
   // ===========================
 
   function fitStage() {
@@ -764,15 +758,36 @@
     }
   }
 
+  // Fetch del KPI 'Esperando respuesta agente' (webhook separado, costoso)
+  async function fetchWaiting() {
+    try {
+      const d = await fetchOnce(N8N_WEBHOOK_URL_WAITING, 90000);
+      const n = d.needs_agent_reply_count ?? null;
+      const el = document.getElementById('kpiWaiting');
+      el.textContent = n != null ? n : '—';
+      el.classList.remove('text-emerald-300','text-amber-300','text-rose-300','text-slate-200');
+      if (n == null)      el.classList.add('text-slate-200');
+      else if (n <= 3)    el.classList.add('text-emerald-300');
+      else if (n <= 10)   el.classList.add('text-amber-300');
+      else                el.classList.add('text-rose-300');
+      const tot = d.tickets_open_total ?? '—';
+      document.getElementById('kpiWaitingDetail').textContent =
+        `de ${tot} en curso · consulta técnica`;
+    } catch (e) {
+      console.warn('Waiting fetch falló:', e && e.message);
+    }
+  }
+
   // Esperar a que la fuente cargue antes del primer render para que el chart use medidas correctas
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => { fitStage(); fetchKPIs(); });
+    document.fonts.ready.then(() => { fitStage(); fetchKPIs(); fetchWaiting(); });
   } else {
-    fitStage(); fetchKPIs();
+    fitStage(); fetchKPIs(); fetchWaiting();
   }
-  // Loops independientes: light cada 1 min, heavy cada 5 min
-  setInterval(fetchKPIsLight, REFRESH_MS_LIGHT);
-  setInterval(fetchKPIs,      REFRESH_MS);
+  // Loops independientes
+  setInterval(fetchKPIsLight, REFRESH_MS_LIGHT);     // 1 min
+  setInterval(fetchKPIs,      REFRESH_MS);           // 5 min
+  setInterval(fetchWaiting,   REFRESH_MS_WAITING);   // 5 min
 </script>
 </body>
 </html>
