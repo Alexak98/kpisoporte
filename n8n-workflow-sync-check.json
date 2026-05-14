@@ -1,0 +1,133 @@
+{
+  "name": "Sync Check Zendesk-Asana (Incidencias DEV)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "sync-check",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook Sync Check",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-800, 0],
+      "webhookId": "sync-check"
+    },
+
+    {
+      "parameters": {
+        "resource": "ticket",
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "type:ticket status<solved tags:incidencia_dev"
+        }
+      },
+      "id": "zd-incidencias",
+      "name": "ZD Incidencias Open",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [-600, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construye el Set de IDs Zendesk abiertos\nconst tickets = $input.all().map(i => i.json).filter(Boolean);\nconst zdIds = new Set(tickets.map(t => String(t.id)).filter(Boolean));\nreturn [{ json: { _zd_open_ids: [...zdIds], _zd_open_total: zdIds.size } }];"
+      },
+      "id": "save-zd",
+      "name": "Save ZD Open",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, 0]
+    },
+
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {
+          "opt_fields": "={{ [\"gid\",\"name\",\"completed\",\"completed_at\",\"permalink_url\"] }}",
+          "section": "=1207479621563558"
+        }
+      },
+      "id": "asana-tasks",
+      "name": "Asana Tasks Section",
+      "type": "n8n-nodes-base.asana",
+      "typeVersion": 1,
+      "position": [-200, 0],
+      "credentials": {
+        "asanaOAuth2Api": { "id": "lg7A3NxFXWdmTBae", "name": "Asana account" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filtra solo tareas Asana COMPLETADAS — solo ellas pueden generar\n// desincronización con Zendesk (Asana finalizado, Zendesk aún abierto)\nconst tasks = $input.all().map(i => i.json).filter(Boolean);\nconst completed = tasks.filter(t => t && t.completed === true);\nreturn completed.map(t => ({ json: t }));"
+      },
+      "id": "filter-completed",
+      "name": "Solo Completadas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://app.asana.com/api/1.0/tasks/{{ $json.gid }}/attachments?opt_fields=name",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "asanaOAuth2Api",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "get-attachments",
+      "name": "Get Attachments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 0],
+      "credentials": {
+        "asanaOAuth2Api": { "id": "lg7A3NxFXWdmTBae", "name": "Asana account" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Por cada tarea Asana completada, extrae zendesk_id de los attachments\n// nombrados 'Ticket #NNNN', luego cruza con los Zendesk abiertos para\n// detectar desincronizaciones.\nconst tasks = $('Solo Completadas').all().map(i => i.json);\nconst attResults = $input.all().map(i => i.json);\nconst zdData = $('Save ZD Open').first().json;\nconst zdOpenIds = new Set((zdData._zd_open_ids || []).map(String));\n\nconst mismatches = [];\nconst noMatch = [];          // Asana completed sin Zendesk attachment legible\nconst zdMatched = new Set(); // IDs Zendesk que SÍ tienen tarea completada\n\nfor (let i = 0; i < tasks.length; i++) {\n  const task = tasks[i];\n  const attResp = attResults[i] || {};\n  const atts = Array.isArray(attResp.data) ? attResp.data : [];\n\n  let zdId = null;\n  for (const att of atts) {\n    const name = att && att.name ? String(att.name) : '';\n    const m = name.match(/#\\s*(\\d+)/);\n    if (m) { zdId = m[1]; break; }\n  }\n\n  if (!zdId) {\n    noMatch.push({\n      asana_gid: task.gid, asana_name: task.name,\n      asana_url: task.permalink_url,\n      asana_completed_at: task.completed_at\n    });\n    continue;\n  }\n\n  if (zdOpenIds.has(String(zdId))) {\n    mismatches.push({\n      zendesk_id: parseInt(zdId, 10),\n      zendesk_url: `https://soporteyurest.zendesk.com/agent/tickets/${zdId}`,\n      asana_gid: task.gid,\n      asana_name: task.name,\n      asana_url: task.permalink_url,\n      asana_completed_at: task.completed_at\n    });\n    zdMatched.add(String(zdId));\n  }\n}\n\n// IDs Zendesk abiertos QUE NO tienen tarea Asana completada localizada\n// (pueden estar en otra sección, sin attachment, o legítimamente en curso)\nconst zdOpenNotInAsanaCompleted = [...zdOpenIds].filter(id => !zdMatched.has(id));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  zendesk_open_total: zdOpenIds.size,\n  asana_completed_total: tasks.length,\n  mismatches_total: mismatches.length,\n  mismatches_ids_csv: mismatches.map(m => m.zendesk_id).join(','),\n  mismatches: mismatches.sort((a,b) => (b.asana_completed_at || '').localeCompare(a.asana_completed_at || '')),\n  asana_completed_sin_ticket_legible: noMatch,\n  zendesk_abiertos_sin_asana_completada: zdOpenNotInAsanaCompleted\n} }];"
+      },
+      "id": "cross-ref",
+      "name": "Cross Reference",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Cache-Control", "value": "no-store" }
+            ]
+          }
+        }
+      },
+      "id": "resp-1",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [600, 0]
+    }
+  ],
+  "connections": {
+    "Webhook Sync Check":  { "main": [[{ "node": "ZD Incidencias Open", "type": "main", "index": 0 }]] },
+    "ZD Incidencias Open": { "main": [[{ "node": "Save ZD Open",        "type": "main", "index": 0 }]] },
+    "Save ZD Open":        { "main": [[{ "node": "Asana Tasks Section", "type": "main", "index": 0 }]] },
+    "Asana Tasks Section": { "main": [[{ "node": "Solo Completadas",    "type": "main", "index": 0 }]] },
+    "Solo Completadas":    { "main": [[{ "node": "Get Attachments",     "type": "main", "index": 0 }]] },
+    "Get Attachments":     { "main": [[{ "node": "Cross Reference",     "type": "main", "index": 0 }]] },
+    "Cross Reference":     { "main": [[{ "node": "Respond",             "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "active": false,
+  "meta": { "templateCredsSetupCompleted": false }
+}
