@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Mes anterior completo en zona Madrid: [last_month_ymd, last_month_end_ymd).\nconst now = new Date();\nfunction madridYMD(d){ return d.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' }); }\nfunction ymdToDate(s){ return new Date(s + 'T00:00:00Z'); }\nfunction ymdFromDate(d){ return d.toISOString().substring(0,10); }\nconst todayYMD = madridYMD(now);\nconst [yy, mm] = todayYMD.split('-');\nconst monthYMD = `${yy}-${mm}-01`;\nconst _prev    = ymdToDate(monthYMD); _prev.setUTCMonth(_prev.getUTCMonth() - 1);\nconst lastMonthYMD    = ymdFromDate(_prev);\nconst lastMonthEndYMD = monthYMD;\nreturn [{ json: { last_month_ymd: lastMonthYMD, last_month_end_ymd: lastMonthEndYMD } }];"
+        "jsCode": "// Rangos en zona Madrid:\n//   Mes anterior: [last_month_ymd, last_month_end_ymd)\n//   Semana anterior (lunes-domingo): [last_week_ymd, week_ymd)\nconst now = new Date();\nfunction madridYMD(d){ return d.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' }); }\nfunction madridDow(d){\n  const wd = new Intl.DateTimeFormat('en-US', { timeZone:'Europe/Madrid', weekday:'short' }).format(d);\n  return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n}\nfunction ymdToDate(s){ return new Date(s + 'T00:00:00Z'); }\nfunction ymdFromDate(d){ return d.toISOString().substring(0,10); }\nfunction addDays(s,n){ const d = ymdToDate(s); d.setUTCDate(d.getUTCDate()+n); return ymdFromDate(d); }\nconst todayYMD = madridYMD(now);\nconst [yy, mm] = todayYMD.split('-');\nconst monthYMD = `${yy}-${mm}-01`;\nconst _prev    = ymdToDate(monthYMD); _prev.setUTCMonth(_prev.getUTCMonth() - 1);\nconst lastMonthYMD    = ymdFromDate(_prev);\nconst lastMonthEndYMD = monthYMD;\nconst weekYMD     = addDays(todayYMD, -madridDow(now));\nconst lastWeekYMD = addDays(weekYMD, -7);\nreturn [{ json: { last_month_ymd: lastMonthYMD, last_month_end_ymd: lastMonthEndYMD, week_ymd: weekYMD, last_week_ymd: lastWeekYMD } }];"
       },
       "id": "dates",
       "name": "Calcular fechas",
@@ -27,11 +27,51 @@
     },
     {
       "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_end_ymd }}" },
+            { "name": "per_page", "value": "1" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-mes-ant-count",
+      "name": "ZD Mes Ant Count",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-900, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_week_ymd }} created<{{ $('Calcular fechas').first().json.week_ymd }}" },
+            { "name": "per_page", "value": "1" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-sem-ant-count",
+      "name": "ZD Sem Ant Count",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-850, 0]
+    },
+    {
+      "parameters": {
         "resource": "ticket",
         "operation": "getAll",
         "returnAll": true,
         "options": {
-          "query": "=type:ticket created>={{ $json.last_month_ymd }} created<{{ $json.last_month_end_ymd }}"
+          "query": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_end_ymd }}"
         }
       },
       "id": "zd-hist-lm",
@@ -71,7 +111,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Resuelve nombres + GUARDA EL RESULTADO EN STATIC DATA del workflow.\n// El webhook leerá esta caché y responderá al instante.\nconst acc  = $('Calcular Top').first().json;\nconst body = $input.first().json || {};\nconst orgs = Array.isArray(body.organizations) ? body.organizations : [];\nconst orgMap = new Map();\nfor (const o of orgs) { if (o && o.id) orgMap.set(o.id, o.name); }\nconst top_orgs_last_month = (acc._top_raw || []).map(([id, count]) => ({\n  name: orgMap.get(id) || `Organización ${id}`,\n  count\n}));\nconst payload = {\n  generated_at:       new Date().toISOString(),\n  last_month_ymd:     acc.last_month_ymd,\n  last_month_end_ymd: acc.last_month_end_ymd,\n  ticket_count:       acc._ticket_count,\n  top_orgs_last_month\n};\nconst staticData = $getWorkflowStaticData('global');\nstaticData.cached_payload = payload;\nstaticData.cached_at      = payload.generated_at;\nreturn [{ json: { saved: true, ...payload } }];"
+        "jsCode": "// Resuelve nombres + lee counts de mes/semana anterior + GUARDA EN STATIC DATA.\nconst dates = $('Calcular fechas').first().json;\nconst acc   = $('Calcular Top').first().json;\nconst body  = $input.first().json || {};\nconst orgs  = Array.isArray(body.organizations) ? body.organizations : [];\nconst orgMap = new Map();\nfor (const o of orgs) { if (o && o.id) orgMap.set(o.id, o.name); }\nconst top_orgs_last_month = (acc._top_raw || []).map(([id, count]) => ({\n  name: orgMap.get(id) || `Organización ${id}`,\n  count\n}));\n// search.json con per_page=1 devuelve el campo 'count' total sin paginar.\nconst monthCountBody = $('ZD Mes Ant Count').first().json || {};\nconst weekCountBody  = $('ZD Sem Ant Count').first().json || {};\nconst tickets_last_month = typeof monthCountBody.count === 'number' ? monthCountBody.count : null;\nconst tickets_last_week  = typeof weekCountBody.count  === 'number' ? weekCountBody.count  : null;\nconst payload = {\n  generated_at:       new Date().toISOString(),\n  last_month_ymd:     dates.last_month_ymd,\n  last_month_end_ymd: dates.last_month_end_ymd,\n  last_week_ymd:      dates.last_week_ymd,\n  week_ymd:           dates.week_ymd,\n  ticket_count_paginated: acc._ticket_count,\n  tickets_last_month,\n  tickets_last_week,\n  top_orgs_last_month\n};\nconst staticData = $getWorkflowStaticData('global');\nstaticData.cached_payload = payload;\nstaticData.cached_at      = payload.generated_at;\nreturn [{ json: { saved: true, ...payload } }];"
       },
       "id": "save-cache",
       "name": "Guardar en caché",
@@ -96,7 +136,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Lee el último resultado cacheado por el Schedule Trigger.\n// Si la caché está vacía (primer arranque), devuelve estructura vacía y _stale=true.\nconst staticData = $getWorkflowStaticData('global');\nconst cached = staticData.cached_payload || null;\nif (!cached) {\n  return [{ json: {\n    generated_at: null,\n    cached_at: null,\n    _stale: true,\n    _hint: 'Cache vacía. Lanza manualmente el Schedule Trigger una vez.',\n    top_orgs_last_month: []\n  } }];\n}\nreturn [{ json: { ...cached, cached_at: staticData.cached_at, _stale: false } }];"
+        "jsCode": "// Lee el último resultado cacheado por el Schedule Trigger.\n// Si la caché está vacía (primer arranque), devuelve estructura vacía y _stale=true.\nconst staticData = $getWorkflowStaticData('global');\nconst cached = staticData.cached_payload || null;\nif (!cached) {\n  return [{ json: {\n    generated_at: null,\n    cached_at: null,\n    _stale: true,\n    _hint: 'Cache vacía. Lanza manualmente el Schedule Trigger una vez.',\n    top_orgs_last_month: [],\n    tickets_last_month: null,\n    tickets_last_week:  null\n  } }];\n}\nreturn [{ json: { ...cached, cached_at: staticData.cached_at, _stale: false } }];"
       },
       "id": "read-cache",
       "name": "Leer caché",
@@ -126,7 +166,9 @@
   ],
   "connections": {
     "Schedule Trigger":   { "main": [[{ "node": "Calcular fechas",    "type": "main", "index": 0 }]] },
-    "Calcular fechas":    { "main": [[{ "node": "ZD Hist Mes Anterior","type": "main", "index": 0 }]] },
+    "Calcular fechas":    { "main": [[{ "node": "ZD Mes Ant Count",   "type": "main", "index": 0 }]] },
+    "ZD Mes Ant Count":   { "main": [[{ "node": "ZD Sem Ant Count",   "type": "main", "index": 0 }]] },
+    "ZD Sem Ant Count":   { "main": [[{ "node": "ZD Hist Mes Anterior","type": "main", "index": 0 }]] },
     "ZD Hist Mes Anterior":{ "main": [[{ "node": "Calcular Top",      "type": "main", "index": 0 }]] },
     "Calcular Top":       { "main": [[{ "node": "ZD Organizaciones",  "type": "main", "index": 0 }]] },
     "ZD Organizaciones":  { "main": [[{ "node": "Guardar en caché",   "type": "main", "index": 0 }]] },

@@ -256,7 +256,7 @@
         ·
         Manual <span id="kpiWeekManual" class="text-emerald-300 font-bold">—</span>
       </div>
-      <div id="kpiWeekDelta" class="text-sm text-slate-500 mt-1">semana ant.: —</div>
+      <div id="kpiWeekDelta" class="text-sm text-slate-500 mt-1">vs sem. ant. —</div>
     </div>
     <div class="card p-5">
       <div class="title text-xl">Tickets este mes</div>
@@ -266,7 +266,7 @@
         ·
         Manual <span id="kpiMonthManual" class="text-emerald-300 font-bold">—</span>
       </div>
-      <div id="kpiOpenSub" class="text-sm text-slate-500 mt-1">abiertos ahora: —</div>
+      <div id="kpiMonthDelta" class="text-sm text-slate-500 mt-1">vs mes ant. —</div>
     </div>
     <!-- NUEVO: Esperando respuesta agente -->
     <div class="card p-5">
@@ -574,6 +574,37 @@
     document.getElementById(id).textContent = (val ?? 0);
   }
 
+  // Estado compartido para coordinar el delta vs periodo anterior:
+  // 'actual' viene de light, 'previo' viene del webhook cacheado de mes/semana ant.
+  // Cualquiera de los dos fetches dispara el render — el segundo en llegar lo completa.
+  const _kpiState = { weekNow: null, monthNow: null, weekPrev: null, monthPrev: null };
+
+  // Render de un sub-KPI "▲ +12 (+5%) · vs sem. ant. 245" con color por dirección.
+  function renderDeltaVs(id, current, previous, label) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('text-emerald-300','text-rose-300','text-slate-400','text-slate-500');
+    if (previous == null || current == null) {
+      el.textContent = `vs ${label} —`;
+      el.classList.add('text-slate-500');
+      return;
+    }
+    const diff = current - previous;
+    const pct  = previous > 0 ? Math.round((diff / previous) * 100) : null;
+    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '·';
+    const sign  = diff > 0 ? '+' : '';
+    const pctTxt = pct != null ? ` (${sign}${pct}%)` : '';
+    el.innerHTML = `<span class="font-bold">${arrow} ${sign}${diff}</span>${pctTxt} · vs ${label} ${previous}`;
+    if (diff > 0)      el.classList.add('text-rose-300');
+    else if (diff < 0) el.classList.add('text-emerald-300');
+    else               el.classList.add('text-slate-400');
+  }
+
+  function tryRenderDeltas() {
+    renderDeltaVs('kpiWeekDelta',  _kpiState.weekNow,  _kpiState.weekPrev,  'sem. ant.');
+    renderDeltaVs('kpiMonthDelta', _kpiState.monthNow, _kpiState.monthPrev, 'mes ant.');
+  }
+
   async function fetchOnce(url, timeoutMs) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -610,14 +641,14 @@
       document.getElementById('kpiIAYesterday').textContent     = yIA;
       document.getElementById('kpiManualYesterday').textContent = yMa;
       document.getElementById('kpiTodayDelta').textContent      = `total ${yTotal}`;
-      document.getElementById('kpiWeekDelta').textContent =
-        d.tickets_last_week != null ? `semana ant.: ${d.tickets_last_week}` : 'semana ant.: —';
       document.getElementById('kpiWeekIA').textContent     = d.tickets_week_ia     ?? '—';
       document.getElementById('kpiWeekManual').textContent = d.tickets_week_manual ?? '—';
       document.getElementById('kpiMonthIA').textContent     = d.tickets_month_ia     ?? '—';
       document.getElementById('kpiMonthManual').textContent = d.tickets_month_manual ?? '—';
-      document.getElementById('kpiOpenSub').textContent =
-        d.tickets_open != null ? `abiertos ahora: ${d.tickets_open}` : 'abiertos ahora: —';
+      // Alimenta el estado de deltas con el total actual (suma IA+Manual; fallback al campo total).
+      _kpiState.weekNow  = (weekIA  + weekMa) || (d.tickets_week  ?? null);
+      _kpiState.monthNow = (monthIA + monthMa) || (d.tickets_month ?? null);
+      tryRenderDeltas();
 
       // Secondary KPIs
       const backlog = d.backlog_today ?? 0;
@@ -778,6 +809,10 @@
     try {
       const d = await fetchOnce(N8N_WEBHOOK_URL_LM_ORGS, 90000);
       renderTopOrgs(d.top_orgs_last_month || [], { containerId: 'topOrgsLastMonth', sparkline: false });
+      // Cacheado: counts de mes y semana anterior se recalculan diariamente a 03:00.
+      _kpiState.weekPrev  = d.tickets_last_week  ?? null;
+      _kpiState.monthPrev = d.tickets_last_month ?? null;
+      tryRenderDeltas();
     } catch (e) {
       console.warn('Top orgs mes ant fetch falló:', e && e.message);
     }
