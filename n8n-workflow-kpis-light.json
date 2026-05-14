@@ -1,0 +1,517 @@
+{
+  "name": "KPIs Soporte - LIGHT (counters)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "kpis-soporte-light",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook KPIs Light",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1800, 0],
+      "webhookId": "kpis-soporte-light"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nfunction madridYMD(d){ return d.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' }); }\nfunction madridDow(d){\n  const wd = new Intl.DateTimeFormat('en-US', { timeZone:'Europe/Madrid', weekday:'short' }).format(d);\n  return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n}\nfunction ymdToDate(s){ return new Date(s + 'T00:00:00Z'); }\nfunction ymdFromDate(d){ return d.toISOString().substring(0,10); }\nfunction addDays(s,n){ const d = ymdToDate(s); d.setUTCDate(d.getUTCDate()+n); return ymdFromDate(d); }\nconst todayYMD     = madridYMD(now);\nconst daysSinceMon = madridDow(now);\nconst weekYMD      = addDays(todayYMD, -daysSinceMon);\nconst lastWeekYMD  = addDays(weekYMD, -7);\nconst yesterdayYMD = addDays(todayYMD, -1);\nconst [yy, mm]     = todayYMD.split('-');\nconst monthYMD     = `${yy}-${mm}-01`;\nconst agedYMD      = addDays(todayYMD, -5);\nreturn [{ json: {\n  today_ymd: todayYMD, yesterday_ymd: yesterdayYMD,\n  week_ymd: weekYMD, last_week_ymd: lastWeekYMD,\n  month_ymd: monthYMD, aged_ymd: agedYMD,\n  now_iso: now.toISOString()\n} }];"
+      },
+      "id": "dates",
+      "name": "Calcular fechas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1600, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.today_ymd }} subject:\"Conversation with\"" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-hoy-ia",
+      "name": "ZD Hoy IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1400, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Calcular fechas').first().json;\nreturn [{ json: { ...acc, zd_today_ia: $input.first().json } }];"
+      },
+      "id": "save-hoy-ia",
+      "name": "Guardar Hoy IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1250, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.today_ymd }} -subject:\"Conversation with\"" },
+            { "name": "per_page", "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-hoy-manual",
+      "name": "ZD Hoy Manual",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1100, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Hoy IA').first().json;\nreturn [{ json: { ...acc, zd_today_manual: $input.first().json } }];"
+      },
+      "id": "save-hoy-manual",
+      "name": "Guardar Hoy Manual",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-950, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }} subject:\"Conversation with\"" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-ayer-ia",
+      "name": "ZD Ayer IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-800, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Hoy Manual').first().json;\nreturn [{ json: { ...acc, zd_yesterday_ia: $input.first().json } }];"
+      },
+      "id": "save-ayer-ia",
+      "name": "Guardar Ayer IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-650, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }} -subject:\"Conversation with\"" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-ayer-manual",
+      "name": "ZD Ayer Manual",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Ayer IA').first().json;\nreturn [{ json: { ...acc, zd_yesterday_manual: $input.first().json } }];"
+      },
+      "id": "save-ayer-manual",
+      "name": "Guardar Ayer Manual",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-350, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.week_ymd }} subject:\"Conversation with\"" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-week-ia",
+      "name": "ZD Semana IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Ayer Manual').first().json;\nreturn [{ json: { ...acc, zd_week_ia: $input.first().json } }];"
+      },
+      "id": "save-week-ia",
+      "name": "Guardar Semana IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-50, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.week_ymd }} -subject:\"Conversation with\"" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-week-manual",
+      "name": "ZD Semana Manual",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [100, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Semana IA').first().json;\nreturn [{ json: { ...acc, zd_week_manual: $input.first().json } }];"
+      },
+      "id": "save-week-manual",
+      "name": "Guardar Semana Manual",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [250, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.last_week_ymd }} created<{{ $json.week_ymd }}" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-lastweek",
+      "name": "ZD Semana Anterior",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Semana Manual').first().json;\nreturn [{ json: { ...acc, zd_last_week: $input.first().json } }];"
+      },
+      "id": "save-lastweek",
+      "name": "Guardar Sem. Ant.",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [550, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.month_ymd }} subject:\"Conversation with\"" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-month-ia",
+      "name": "ZD Mes IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Sem. Ant.').first().json;\nreturn [{ json: { ...acc, zd_month_ia: $input.first().json } }];"
+      },
+      "id": "save-month-ia",
+      "name": "Guardar Mes IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket created>={{ $json.month_ymd }} -subject:\"Conversation with\"" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-month-manual",
+      "name": "ZD Mes Manual",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Mes IA').first().json;\nreturn [{ json: { ...acc, zd_month_manual: $input.first().json } }];"
+      },
+      "id": "save-month-manual",
+      "name": "Guardar Mes Manual",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1150, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "type:ticket status<solved" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-open",
+      "name": "ZD Abiertos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Mes Manual').first().json;\nreturn [{ json: { ...acc, zd_open: $input.first().json } }];"
+      },
+      "id": "save-open",
+      "name": "Guardar Abiertos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket solved>={{ $json.today_ymd }} -subject:\"Conversation with\"" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-solved-today",
+      "name": "ZD Resueltos Hoy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Abiertos').first().json;\nreturn [{ json: { ...acc, zd_solved_today: $input.first().json } }];"
+      },
+      "id": "save-solved-today",
+      "name": "Guardar Resueltos Hoy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1750, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "=type:ticket status<solved created<{{ $json.aged_ymd }} -subject:\"Conversation with\" tags:consulta_técnica" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-aged",
+      "name": "ZD Envejecidos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1900, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Resueltos Hoy').first().json;\nreturn [{ json: { ...acc, zd_aged: $input.first().json } }];"
+      },
+      "id": "save-aged",
+      "name": "Guardar Envejecidos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2050, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "query", "value": "type:ticket status<solved tags:incidencia_dev" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-incidencias",
+      "name": "ZD Incidencias Dev",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acc = $('Guardar Envejecidos').first().json;\nreturn [{ json: { ...acc, zd_incidencias: $input.first().json } }];"
+      },
+      "id": "save-incidencias",
+      "name": "Guardar Incidencias",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2350, 0]
+    },
+
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/ticket_metrics.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "per_page", "value": "100" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "zd-metrics",
+      "name": "ZD Metrics Recientes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "let acc = $('Guardar Incidencias').first().json || {};\nconst body = $input.first().json || {};\nconst metrics = Array.isArray(body.ticket_metrics) ? body.ticket_metrics : [];\nconst manualResults = (acc.zd_today_manual && acc.zd_today_manual.results) || [];\nconst todayManualIds = new Set(manualResults.map(t => t && t.id != null ? String(t.id) : null).filter(Boolean));\nconst todayMetrics = metrics.filter(m => m && m.ticket_id != null && todayManualIds.has(String(m.ticket_id)));\nconst times = todayMetrics.map(m => m && m.reply_time_in_minutes && m.reply_time_in_minutes.calendar).filter(v => typeof v === 'number' && v > 0);\nconst sample = times.length;\nconst avgMin = sample ? Math.round(times.reduce((a,b)=>a+b,0) / sample) : null;\nconst sorted = times.slice().sort((a,b)=>a-b);\nconst median = sample ? sorted[Math.floor(sample/2)] : null;\nconst minV = sample ? sorted[0] : null;\nconst maxV = sample ? sorted[sorted.length-1] : null;\nreturn [{ json: { ...acc, frt_avg_min: avgMin, frt_sample: sample, frt_answered: sample, frt_pending: todayMetrics.length - sample, frt_min: minV, frt_max: maxV, frt_median: median } }];"
+      },
+      "id": "calc-frt",
+      "name": "Calcular FRT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2650, 0]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Agregar todos los counters en el JSON final (sin histRes-dependent)\nconst d = $input.first().json;\nfunction count(o){ return (o && (typeof o.count === 'number' ? o.count : (Array.isArray(o.results) ? o.results.length : 0))) || 0; }\nfunction results(o){ return (o && Array.isArray(o.results)) ? o.results : []; }\n\nconst today_ia      = count(d.zd_today_ia);\nconst today_manual  = count(d.zd_today_manual);\nconst yesterday_ia  = count(d.zd_yesterday_ia);\nconst yesterday_man = count(d.zd_yesterday_manual);\nconst week_ia       = count(d.zd_week_ia);\nconst week_manual   = count(d.zd_week_manual);\nconst last_week     = count(d.zd_last_week);\nconst month_ia      = count(d.zd_month_ia);\nconst month_manual  = count(d.zd_month_manual);\nconst open          = count(d.zd_open);\nconst solved_today  = count(d.zd_solved_today);\nconst aged          = count(d.zd_aged);\nconst incidencias   = count(d.zd_incidencias);\n\n// Incidencias buckets desde results (HTTP search devuelve hasta 100)\nconst incRes = results(d.zd_incidencias);\nconst incidencias_list = incRes.map(t => ({\n  id: t.id,\n  subject: t.subject || '(sin asunto)',\n  status: t.status,\n  priority: t.priority,\n  created_at: t.created_at,\n  organization_id: t.organization_id,\n  age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n  url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n}));\nconst incidencias_buckets = { lt30:0, b30_60:0, b60_100:0, gt100:0 };\nfor (const t of incidencias_list) {\n  const a = t.age_days || 0;\n  if (a < 30) incidencias_buckets.lt30++;\n  else if (a < 60) incidencias_buckets.b30_60++;\n  else if (a < 100) incidencias_buckets.b60_100++;\n  else incidencias_buckets.gt100++;\n}\n\n// Aged list (puede traer hasta 100 — la HTTP search no pagina)\nconst agedRes = results(d.zd_aged);\nconst aged_tickets_list = agedRes\n  .filter(t => t && t.id)\n  .sort((a,b) => new Date(a.created_at) - new Date(b.created_at))\n  .map(t => ({\n    id: t.id,\n    subject: t.subject || '(sin asunto)',\n    status: t.status,\n    priority: t.priority,\n    created_at: t.created_at,\n    organization_id: t.organization_id,\n    age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n  }));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  _workflow_version: 'light-v1',\n  _light: true,\n  // Tickets counters\n  tickets_today: today_ia + today_manual,\n  tickets_today_ia: today_ia,\n  tickets_today_manual: today_manual,\n  tickets_yesterday: yesterday_ia + yesterday_man,\n  tickets_yesterday_ia: yesterday_ia,\n  tickets_yesterday_manual: yesterday_man,\n  tickets_week: week_ia + week_manual,\n  tickets_week_ia: week_ia,\n  tickets_week_manual: week_manual,\n  tickets_last_week: last_week,\n  tickets_month: month_ia + month_manual,\n  tickets_month_ia: month_ia,\n  tickets_month_manual: month_manual,\n  tickets_open: open,\n  tickets_solved_today: solved_today,\n  backlog_today: today_manual - solved_today,\n  // Operativos\n  tickets_aged_3d: aged,\n  tickets_incidencias_dev: incidencias,\n  aged_tickets_list,\n  incidencias_list,\n  incidencias_buckets,\n  // FRT\n  frt_avg_min: d.frt_avg_min ?? null,\n  frt_sample: d.frt_sample ?? 0,\n  frt_answered: d.frt_answered ?? 0,\n  frt_pending: d.frt_pending ?? 0,\n  frt_min: d.frt_min ?? null,\n  frt_max: d.frt_max ?? null,\n  frt_median: d.frt_median ?? null\n} }];"
+      },
+      "id": "agg-1",
+      "name": "Agregar KPIs Light",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2800, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Cache-Control", "value": "no-store" }
+            ]
+          }
+        }
+      },
+      "id": "resp-1",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2950, 0]
+    }
+  ],
+  "connections": {
+    "Webhook KPIs Light":  { "main": [[{ "node": "Calcular fechas",      "type": "main", "index": 0 }]] },
+    "Calcular fechas":     { "main": [[{ "node": "ZD Hoy IA",            "type": "main", "index": 0 }]] },
+    "ZD Hoy IA":           { "main": [[{ "node": "Guardar Hoy IA",       "type": "main", "index": 0 }]] },
+    "Guardar Hoy IA":      { "main": [[{ "node": "ZD Hoy Manual",        "type": "main", "index": 0 }]] },
+    "ZD Hoy Manual":       { "main": [[{ "node": "Guardar Hoy Manual",   "type": "main", "index": 0 }]] },
+    "Guardar Hoy Manual":  { "main": [[{ "node": "ZD Ayer IA",           "type": "main", "index": 0 }]] },
+    "ZD Ayer IA":          { "main": [[{ "node": "Guardar Ayer IA",      "type": "main", "index": 0 }]] },
+    "Guardar Ayer IA":     { "main": [[{ "node": "ZD Ayer Manual",       "type": "main", "index": 0 }]] },
+    "ZD Ayer Manual":      { "main": [[{ "node": "Guardar Ayer Manual",  "type": "main", "index": 0 }]] },
+    "Guardar Ayer Manual": { "main": [[{ "node": "ZD Semana IA",         "type": "main", "index": 0 }]] },
+    "ZD Semana IA":        { "main": [[{ "node": "Guardar Semana IA",    "type": "main", "index": 0 }]] },
+    "Guardar Semana IA":   { "main": [[{ "node": "ZD Semana Manual",     "type": "main", "index": 0 }]] },
+    "ZD Semana Manual":    { "main": [[{ "node": "Guardar Semana Manual","type": "main", "index": 0 }]] },
+    "Guardar Semana Manual":{ "main":[[{ "node": "ZD Semana Anterior",   "type": "main", "index": 0 }]] },
+    "ZD Semana Anterior":  { "main": [[{ "node": "Guardar Sem. Ant.",    "type": "main", "index": 0 }]] },
+    "Guardar Sem. Ant.":   { "main": [[{ "node": "ZD Mes IA",            "type": "main", "index": 0 }]] },
+    "ZD Mes IA":           { "main": [[{ "node": "Guardar Mes IA",       "type": "main", "index": 0 }]] },
+    "Guardar Mes IA":      { "main": [[{ "node": "ZD Mes Manual",        "type": "main", "index": 0 }]] },
+    "ZD Mes Manual":       { "main": [[{ "node": "Guardar Mes Manual",   "type": "main", "index": 0 }]] },
+    "Guardar Mes Manual":  { "main": [[{ "node": "ZD Abiertos",          "type": "main", "index": 0 }]] },
+    "ZD Abiertos":         { "main": [[{ "node": "Guardar Abiertos",     "type": "main", "index": 0 }]] },
+    "Guardar Abiertos":    { "main": [[{ "node": "ZD Resueltos Hoy",     "type": "main", "index": 0 }]] },
+    "ZD Resueltos Hoy":    { "main": [[{ "node": "Guardar Resueltos Hoy","type": "main", "index": 0 }]] },
+    "Guardar Resueltos Hoy":{ "main":[[{ "node": "ZD Envejecidos",       "type": "main", "index": 0 }]] },
+    "ZD Envejecidos":      { "main": [[{ "node": "Guardar Envejecidos",  "type": "main", "index": 0 }]] },
+    "Guardar Envejecidos": { "main": [[{ "node": "ZD Incidencias Dev",   "type": "main", "index": 0 }]] },
+    "ZD Incidencias Dev":  { "main": [[{ "node": "Guardar Incidencias",  "type": "main", "index": 0 }]] },
+    "Guardar Incidencias": { "main": [[{ "node": "ZD Metrics Recientes", "type": "main", "index": 0 }]] },
+    "ZD Metrics Recientes":{ "main": [[{ "node": "Calcular FRT",         "type": "main", "index": 0 }]] },
+    "Calcular FRT":        { "main": [[{ "node": "Agregar KPIs Light",   "type": "main", "index": 0 }]] },
+    "Agregar KPIs Light":  { "main": [[{ "node": "Respond",              "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "active": false,
+  "meta": { "templateCredsSetupCompleted": false }
+}

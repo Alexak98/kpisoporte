@@ -393,8 +393,10 @@
 
 <script>
   // ====== CONFIGURACIÓN ======
-  const N8N_WEBHOOK_URL = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte';
-  const REFRESH_MS = 5 * 60 * 1000;
+  const N8N_WEBHOOK_URL       = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte';        // heavy
+  const N8N_WEBHOOK_URL_LIGHT = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte-light';  // light
+  const REFRESH_MS       = 5 * 60 * 1000;   // heavy: 5 min (charts, sparklines)
+  const REFRESH_MS_LIGHT = 1 * 60 * 1000;   // light: 1 min (counters, FRT, aged, incidencias)
   // ===========================
 
   function fitStage() {
@@ -419,7 +421,7 @@
   setInterval(updateClock, 1000);
   updateClock();
 
-  let nextRefreshAt = Date.now() + REFRESH_MS;
+  let nextRefreshAt = Date.now() + REFRESH_MS_LIGHT;
   function updateCountdown() {
     const ms = Math.max(0, nextRefreshAt - Date.now());
     const m = Math.floor(ms / 60000);
@@ -565,11 +567,11 @@
     document.getElementById(id).textContent = (val ?? 0);
   }
 
-  async function fetchKPIsOnce(timeoutMs) {
+  async function fetchOnce(url, timeoutMs) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      const r = await fetch(N8N_WEBHOOK_URL, { cache:'no-store', signal: ctrl.signal });
+      const r = await fetch(url, { cache:'no-store', signal: ctrl.signal });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const text = await r.text();
       if (!text) throw new Error('Respuesta vacía del webhook');
@@ -577,30 +579,9 @@
     } finally { clearTimeout(t); }
   }
 
-  async function fetchKPIs() {
-    setStatus(true, 'Actualizando…');
-    let d;
-    try {
-      // Timeout 90s · si falla, reintenta una vez tras 5s
-      try {
-        d = await fetchKPIsOnce(90000);
-      } catch (e1) {
-        console.warn('Primer intento falló, reintento en 5s:', e1.message);
-        setStatus(true, 'Reintentando…');
-        await new Promise(r => setTimeout(r, 5000));
-        d = await fetchKPIsOnce(90000);
-      }
-    } catch (e) {
-      // Falla definitiva: NO borramos los datos previos en pantalla
-      console.error('Fetch error final:', e);
-      setStatus(false, 'Error al actualizar');
-      document.getElementById('errorMsg').textContent = 'Error: ' + (e && e.message || e);
-      nextRefreshAt = Date.now() + REFRESH_MS;
-      hideLoader();
-      return;
-    }
-    try {
-
+  // Aplica los KPIs ligeros (counters, FRT, aged, incidencias, origen).
+  // Tanto fetch light como heavy llaman a esta función.
+  function applyLightData(d) {
       // El total se calcula como IA + Manual para que la suma cuadre
       // (las queries totales pueden devolver un nº ligeramente distinto
       // si un ticket cambia de subject entre las 3 consultas)
@@ -720,23 +701,65 @@
       document.getElementById('barIA').style.width     = pctIA + '%';
       document.getElementById('barManual').style.width = pctMa + '%';
 
-      if (Array.isArray(d.hourly_today))   renderHourly(d.hourly_today);
-      if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
-      document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
-      document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
-      renderTopOrgs(d.top_orgs || []);
-
       const now = new Date();
       document.getElementById('lastUpdate').textContent =
         `${fmt2(now.getHours())}:${fmt2(now.getMinutes())}:${fmt2(now.getSeconds())}`;
       document.getElementById('errorMsg').textContent = '';
       setStatus(true, 'Datos actualizados');
+  }
+
+  // Aplica los KPIs pesados (charts + top orgs). Solo viene en heavy.
+  function applyHeavyData(d) {
+    if (Array.isArray(d.hourly_today))   renderHourly(d.hourly_today);
+    if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
+    document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
+    document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
+    renderTopOrgs(d.top_orgs || []);
+  }
+
+  // Fetch LIGHT: solo counters. Timeout corto, no muestra loader.
+  async function fetchKPIsLight() {
+    try {
+      const d = await fetchOnce(N8N_WEBHOOK_URL_LIGHT, 45000);
+      applyLightData(d);
+      setStatus(true, 'Datos actualizados');
+      document.getElementById('errorMsg').textContent = '';
+    } catch (e) {
+      console.warn('Light fetch falló:', e && e.message);
+      setStatus(false, 'Error light');
+    } finally {
+      nextRefreshAt = Date.now() + REFRESH_MS_LIGHT;
+    }
+  }
+
+  // Fetch HEAVY: counters + charts + top orgs. Con loader y retry.
+  async function fetchKPIs() {
+    setStatus(true, 'Actualizando…');
+    let d;
+    try {
+      try {
+        d = await fetchOnce(N8N_WEBHOOK_URL, 90000);
+      } catch (e1) {
+        console.warn('Heavy fetch primer intento falló, reintento:', e1.message);
+        setStatus(true, 'Reintentando…');
+        await new Promise(r => setTimeout(r, 5000));
+        d = await fetchOnce(N8N_WEBHOOK_URL, 90000);
+      }
+    } catch (e) {
+      console.error('Heavy fetch falló:', e);
+      setStatus(false, 'Error al actualizar');
+      document.getElementById('errorMsg').textContent = 'Error: ' + (e && e.message || e);
+      hideLoader();
+      return;
+    }
+    try {
+      applyLightData(d);
+      applyHeavyData(d);
     } catch (e) {
       console.error(e);
-      setStatus(false, 'Error al actualizar');
+      setStatus(false, 'Error al renderizar');
       document.getElementById('errorMsg').textContent = 'Error: ' + e.message;
     } finally {
-      nextRefreshAt = Date.now() + REFRESH_MS;
       hideLoader();
     }
   }
@@ -747,7 +770,9 @@
   } else {
     fitStage(); fetchKPIs();
   }
-  setInterval(fetchKPIs, REFRESH_MS);
+  // Loops independientes: light cada 1 min, heavy cada 5 min
+  setInterval(fetchKPIsLight, REFRESH_MS_LIGHT);
+  setInterval(fetchKPIs,      REFRESH_MS);
 </script>
 </body>
 </html>
