@@ -48,7 +48,7 @@
         "operation": "getAll",
         "returnAll": true,
         "filters": {
-          "opt_fields": "={{ [\"gid\",\"name\",\"completed\",\"completed_at\",\"permalink_url\"] }}",
+          "opt_fields": "={{ [\"gid\",\"name\",\"completed\",\"completed_at\",\"permalink_url\",\"html_notes\"] }}",
           "section": "=1207479621563558"
         }
       },
@@ -63,10 +63,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// Filtra solo tareas Asana COMPLETADAS — solo ellas pueden generar\n// desincronización con Zendesk (Asana finalizado, Zendesk aún abierto)\nconst tasks = $input.all().map(i => i.json).filter(Boolean);\nconst completed = tasks.filter(t => t && t.completed === true);\nreturn completed.map(t => ({ json: t }));"
+        "jsCode": "// 1) Solo tareas COMPLETADAS en los ÚLTIMOS 180 DÍAS (reduce volumen)\n// 2) Intenta extraer zendesk_id desde NAME o HTML_NOTES (sin HTTP extra)\n// 3) Las que no se puedan resolver así pasan por separado a fetch attachments\nconst tasks = $input.all().map(i => i.json).filter(Boolean);\nconst cutoff = Date.now() - 180 * 86400000;\n\nfunction findZdId(s) {\n  if (!s) return null;\n  const m = String(s).match(/#\\s*(\\d{2,7})/);\n  return m ? m[1] : null;\n}\n\nconst withId = [];     // tareas con zendesk_id ya extraído\nconst needAtt = [];    // necesitan HTTP a attachments\nfor (const t of tasks) {\n  if (!t || t.completed !== true) continue;\n  if (!t.completed_at || new Date(t.completed_at).getTime() < cutoff) continue;\n  const zdId = findZdId(t.name) || findZdId(t.html_notes);\n  if (zdId) {\n    withId.push({ ...t, _zd_id: zdId, _src: 'name_or_notes' });\n  } else {\n    needAtt.push({ ...t });\n  }\n}\nreturn [\n  ...withId.map(t => ({ json: t })),\n  ...needAtt.map(t => ({ json: t }))\n];"
       },
       "id": "filter-completed",
-      "name": "Solo Completadas",
+      "name": "Solo Completadas (180d) + Pre-extract",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [0, 0]
@@ -85,11 +85,12 @@
       "position": [200, 0],
       "credentials": {
         "asanaOAuth2Api": { "id": "lg7A3NxFXWdmTBae", "name": "Asana account" }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "// Por cada tarea Asana completada, extrae zendesk_id de los attachments\n// nombrados 'Ticket #NNNN', luego cruza con los Zendesk abiertos para\n// detectar desincronizaciones.\nconst tasks = $('Solo Completadas').all().map(i => i.json);\nconst attResults = $input.all().map(i => i.json);\nconst zdData = $('Save ZD Open').first().json;\nconst zdOpenIds = new Set((zdData._zd_open_ids || []).map(String));\n\nconst mismatches = [];\nconst noMatch = [];          // Asana completed sin Zendesk attachment legible\nconst zdMatched = new Set(); // IDs Zendesk que SÍ tienen tarea completada\n\nfor (let i = 0; i < tasks.length; i++) {\n  const task = tasks[i];\n  const attResp = attResults[i] || {};\n  const atts = Array.isArray(attResp.data) ? attResp.data : [];\n\n  let zdId = null;\n  for (const att of atts) {\n    const name = att && att.name ? String(att.name) : '';\n    const m = name.match(/#\\s*(\\d+)/);\n    if (m) { zdId = m[1]; break; }\n  }\n\n  if (!zdId) {\n    noMatch.push({\n      asana_gid: task.gid, asana_name: task.name,\n      asana_url: task.permalink_url,\n      asana_completed_at: task.completed_at\n    });\n    continue;\n  }\n\n  if (zdOpenIds.has(String(zdId))) {\n    mismatches.push({\n      zendesk_id: parseInt(zdId, 10),\n      zendesk_url: `https://soporteyurest.zendesk.com/agent/tickets/${zdId}`,\n      asana_gid: task.gid,\n      asana_name: task.name,\n      asana_url: task.permalink_url,\n      asana_completed_at: task.completed_at\n    });\n    zdMatched.add(String(zdId));\n  }\n}\n\n// IDs Zendesk abiertos QUE NO tienen tarea Asana completada localizada\n// (pueden estar en otra sección, sin attachment, o legítimamente en curso)\nconst zdOpenNotInAsanaCompleted = [...zdOpenIds].filter(id => !zdMatched.has(id));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  zendesk_open_total: zdOpenIds.size,\n  asana_completed_total: tasks.length,\n  mismatches_total: mismatches.length,\n  mismatches_ids_csv: mismatches.map(m => m.zendesk_id).join(','),\n  mismatches: mismatches.sort((a,b) => (b.asana_completed_at || '').localeCompare(a.asana_completed_at || '')),\n  asana_completed_sin_ticket_legible: noMatch,\n  zendesk_abiertos_sin_asana_completada: zdOpenNotInAsanaCompleted\n} }];"
+        "jsCode": "// Cruza Asana completadas (con zendesk_id resuelto vía name/notes o\n// attachments) contra los IDs Zendesk abiertos. Detecta desincronizaciones.\nconst tasks = $('Solo Completadas (180d) + Pre-extract').all().map(i => i.json);\nconst attResults = $input.all().map(i => i.json);\nconst zdData = $('Save ZD Open').first().json;\nconst zdOpenIds = new Set((zdData._zd_open_ids || []).map(String));\n\nconst mismatches = [];\nconst noMatch = [];\nconst zdMatched = new Set();\nlet srcName = 0, srcAtt = 0;\n\nfor (let i = 0; i < tasks.length; i++) {\n  const task = tasks[i];\n  let zdId = task._zd_id || null;\n  if (zdId) {\n    srcName++;\n  } else {\n    // Caer al attachment correspondiente por índice\n    const attResp = attResults[i] || {};\n    const atts = Array.isArray(attResp.data) ? attResp.data : [];\n    for (const att of atts) {\n      const name = att && att.name ? String(att.name) : '';\n      const m = name.match(/#\\s*(\\d{2,7})/);\n      if (m) { zdId = m[1]; srcAtt++; break; }\n    }\n  }\n\n  if (!zdId) {\n    noMatch.push({\n      asana_gid: task.gid, asana_name: task.name,\n      asana_url: task.permalink_url,\n      asana_completed_at: task.completed_at\n    });\n    continue;\n  }\n\n  if (zdOpenIds.has(String(zdId))) {\n    mismatches.push({\n      zendesk_id: parseInt(zdId, 10),\n      zendesk_url: `https://soporteyurest.zendesk.com/agent/tickets/${zdId}`,\n      asana_gid: task.gid,\n      asana_name: task.name,\n      asana_url: task.permalink_url,\n      asana_completed_at: task.completed_at,\n      _source: task._zd_id ? 'name_or_notes' : 'attachment'\n    });\n    zdMatched.add(String(zdId));\n  }\n}\n\nconst zdOpenNotInAsanaCompleted = [...zdOpenIds].filter(id => !zdMatched.has(id));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  zendesk_open_total: zdOpenIds.size,\n  asana_completed_180d_total: tasks.length,\n  resolved_from_name_notes: srcName,\n  resolved_from_attachments: srcAtt,\n  mismatches_total: mismatches.length,\n  mismatches_ids_csv: mismatches.map(m => m.zendesk_id).join(','),\n  mismatches: mismatches.sort((a,b) => (b.asana_completed_at || '').localeCompare(a.asana_completed_at || '')),\n  asana_completed_sin_ticket_legible: noMatch,\n  zendesk_abiertos_sin_asana_completada: zdOpenNotInAsanaCompleted\n} }];"
       },
       "id": "cross-ref",
       "name": "Cross Reference",
@@ -121,8 +122,8 @@
     "Webhook Sync Check":  { "main": [[{ "node": "ZD Incidencias Open", "type": "main", "index": 0 }]] },
     "ZD Incidencias Open": { "main": [[{ "node": "Save ZD Open",        "type": "main", "index": 0 }]] },
     "Save ZD Open":        { "main": [[{ "node": "Asana Tasks Section", "type": "main", "index": 0 }]] },
-    "Asana Tasks Section": { "main": [[{ "node": "Solo Completadas",    "type": "main", "index": 0 }]] },
-    "Solo Completadas":    { "main": [[{ "node": "Get Attachments",     "type": "main", "index": 0 }]] },
+    "Asana Tasks Section": { "main": [[{ "node": "Solo Completadas (180d) + Pre-extract", "type": "main", "index": 0 }]] },
+    "Solo Completadas (180d) + Pre-extract": { "main": [[{ "node": "Get Attachments", "type": "main", "index": 0 }]] },
     "Get Attachments":     { "main": [[{ "node": "Cross Reference",     "type": "main", "index": 0 }]] },
     "Cross Reference":     { "main": [[{ "node": "Respond",             "type": "main", "index": 0 }]] }
   },
