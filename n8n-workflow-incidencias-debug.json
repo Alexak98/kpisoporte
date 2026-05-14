@@ -1,0 +1,72 @@
+{
+  "name": "Incidencias DEV - Debug",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "incidencias-debug",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-1",
+      "name": "Webhook Incidencias Debug",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-600, 0],
+      "webhookId": "incidencias-debug"
+    },
+    {
+      "parameters": {
+        "resource": "ticket",
+        "operation": "getAll",
+        "returnAll": true,
+        "options": {
+          "query": "type:ticket status<solved tags:incidencia_dev"
+        }
+      },
+      "id": "zd-incidencias",
+      "name": "ZD Incidencias Dev",
+      "type": "n8n-nodes-base.zendesk",
+      "typeVersion": 1,
+      "position": [-400, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Limpia y ordena la lista de incidencias dev para depuración\nconst all = $input.all().map(i => i.json).filter(Boolean);\nconst now = Date.now();\n\nconst tickets = all\n  .filter(t => t && t.id)\n  .map(t => ({\n    id: t.id,\n    subject: (t.subject || '(sin asunto)').trim(),\n    status: t.status,\n    priority: t.priority,\n    created_at: t.created_at,\n    updated_at: t.updated_at,\n    organization_id: t.organization_id,\n    requester_id: t.requester_id,\n    assignee_id: t.assignee_id,\n    tags: t.tags || [],\n    age_days: t.created_at ? Math.floor((now - new Date(t.created_at).getTime()) / 86400000) : null,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n  }))\n  .sort((a,b) => (b.age_days || 0) - (a.age_days || 0));  // más antiguos primero\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  total: tickets.length,\n  ids: tickets.map(t => t.id),\n  ids_csv: tickets.map(t => t.id).join(','),\n  tickets: tickets\n} }];"
+      },
+      "id": "agg-1",
+      "name": "Aggregate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Cache-Control", "value": "no-store" }
+            ]
+          }
+        }
+      },
+      "id": "resp-1",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    }
+  ],
+  "connections": {
+    "Webhook Incidencias Debug": { "main": [[{ "node": "ZD Incidencias Dev", "type": "main", "index": 0 }]] },
+    "ZD Incidencias Dev":        { "main": [[{ "node": "Aggregate",          "type": "main", "index": 0 }]] },
+    "Aggregate":                 { "main": [[{ "node": "Respond",            "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "active": false,
+  "meta": { "templateCredsSetupCompleted": false }
+}
