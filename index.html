@@ -664,7 +664,19 @@
       const inc   = d.tickets_incidencias_dev ?? 0;
       incEl.textContent = inc;
 
-      const b = d.incidencias_buckets || { lt30:0, b30_60:0, b60_100:0, gt100:0 };
+      // Buckets: prefer backend si existe, sino calcular desde incidencias_list
+      let b = d.incidencias_buckets;
+      if (!b || (!b.lt30 && !b.b30_60 && !b.b60_100 && !b.gt100)) {
+        b = { lt30:0, b30_60:0, b60_100:0, gt100:0 };
+        const lst = d.incidencias_list || [];
+        for (const t of lst) {
+          const a = t.age_days ?? 0;
+          if (a < 30) b.lt30++;
+          else if (a < 60) b.b30_60++;
+          else if (a < 100) b.b60_100++;
+          else b.gt100++;
+        }
+      }
       document.getElementById('incCntLt30').textContent   = b.lt30;
       document.getElementById('incCnt30_60').textContent  = b.b30_60;
       document.getElementById('incCnt60_100').textContent = b.b60_100;
