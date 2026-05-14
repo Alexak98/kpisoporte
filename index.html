@@ -350,13 +350,21 @@
       <div id="hourlyChart" class="flex-1 min-h-0"></div>
     </div>
 
-    <!-- TOP CLIENTES -->
+    <!-- TOP CLIENTES · este mes vs mes anterior -->
     <div class="card p-4 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="text-2xl font-bold">Top Clientes</div>
-        <div class="text-sm text-slate-400">Este mes</div>
       </div>
-      <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-1.5 scrollable min-h-0"></div>
+      <div class="grid grid-cols-2 gap-3 flex-1 min-h-0 overflow-hidden">
+        <div class="flex flex-col min-h-0">
+          <div class="text-xs title text-slate-400 mb-1 shrink-0">Este mes</div>
+          <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
+        </div>
+        <div class="flex flex-col min-h-0">
+          <div class="text-xs title text-slate-400 mb-1 shrink-0">Mes anterior</div>
+          <div id="topOrgsLastMonth" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -523,32 +531,37 @@
     chart.render();
   }
 
-  function renderTopOrgs(orgs) {
-    const cont = document.getElementById('topOrgs');
+  // orgs: [{name, count, sparkline?}], opts.containerId, opts.sparkline (default true)
+  // Se usa para renderizar dos listas (este mes / mes anterior) en media columna cada una.
+  function renderTopOrgs(orgs, opts = {}) {
+    const containerId = opts.containerId || 'topOrgs';
+    const showSpark   = opts.sparkline !== false;
+    const cont = document.getElementById(containerId);
+    if (!cont) return;
     if (!orgs || orgs.length === 0) {
-      cont.innerHTML = '<div class="text-slate-500">Sin datos</div>';
+      cont.innerHTML = '<div class="text-slate-500 text-xs">Sin datos</div>';
       return;
     }
     const max = Math.max(...orgs.map(o => o.count));
     cont.innerHTML = orgs.slice(0,5).map((o, i) => {
       const pct = max ? Math.max(20, Math.round((o.count / max) * 100)) : 0;
+      const sparkHtml = showSpark
+        ? `<span class="spark" data-spark="${(o.sparkline||[]).join(',')}"></span>`
+        : '';
       return `
         <div class="relative flex-1 min-h-0 rounded-lg overflow-hidden bg-slate-800/40">
-          <!-- Fondo coloreado al % -->
           <div class="absolute inset-y-0 left-0 grad-blue" style="width:${pct}%"></div>
-          <!-- Contenido encima -->
-          <div class="relative h-full flex items-center justify-between px-3">
-            <span class="font-bold text-white truncate text-base drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" title="${o.name}">
+          <div class="relative h-full flex items-center justify-between px-2">
+            <span class="font-bold text-white truncate text-sm drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" title="${o.name}">
               ${i+1}. ${o.name}
             </span>
-            <span class="flex items-center gap-2 shrink-0">
-              <span class="spark" data-spark="${(o.sparkline||[]).join(',')}"></span>
-              <span class="font-extrabold text-white text-xl kpi-number drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">${o.count}</span>
+            <span class="flex items-center gap-1.5 shrink-0">
+              ${sparkHtml}
+              <span class="font-extrabold text-white text-base kpi-number drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">${o.count}</span>
             </span>
           </div>
         </div>`;
     }).join('');
-    // Renderizar sparklines tras inyectar el HTML
     cont.querySelectorAll('.spark').forEach(el => {
       const arr = (el.dataset.spark || '').split(',').filter(Boolean).map(n => parseInt(n,10) || 0);
       if (arr.length) renderSparkline(el, arr);
@@ -706,7 +719,9 @@
     if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
     document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
     document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
-    renderTopOrgs(d.top_orgs || []);
+    renderTopOrgs(d.top_orgs || [],            { containerId: 'topOrgs',          sparkline: true });
+    // Mes anterior (sin sparkline para ahorrar espacio en media columna)
+    renderTopOrgs(d.top_orgs_last_month || [], { containerId: 'topOrgsLastMonth', sparkline: false });
   }
 
   // Fetch LIGHT: solo counters. Timeout corto, no muestra loader.
