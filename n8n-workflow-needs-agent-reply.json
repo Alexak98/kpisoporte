@@ -1,5 +1,5 @@
 {
-  "name": "Tickets esperando respuesta agente (debug)",
+  "name": "Tickets esperando respuesta agente",
   "nodes": [
     {
       "parameters": {
@@ -12,90 +12,8 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-800, 0],
+      "position": [-600, 0],
       "webhookId": "needs-agent-reply"
-    },
-    {
-      "parameters": {
-        "resource": "ticket",
-        "operation": "getAll",
-        "returnAll": true,
-        "options": {
-          "query": "type:ticket status:open tags:consulta_técnica"
-        }
-      },
-      "id": "zd-open",
-      "name": "ZD Tickets Open",
-      "type": "n8n-nodes-base.zendesk",
-      "typeVersion": 1,
-      "position": [-600, 0]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Limita a los N más recientes actualizados para acotar coste.\n// Cambia este número si quieres más profundidad.\nconst MAX = 100;\nconst tickets = $input.all().map(i => i.json).filter(t => t && t.id);\ntickets.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at));\nconst limited = tickets.slice(0, MAX);\nreturn limited.map(t => ({ json: t }));"
-      },
-      "id": "limit",
-      "name": "Limitar a 100",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-450, 0]
-    },
-    {
-      "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/{{ $json.id }}/comments.json?sort_order=desc&per_page=20",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "options": { "response": { "response": { "neverError": true } } }
-      },
-      "id": "get-comment",
-      "name": "Last Comment",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-250, 0],
-      "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Pase 1: para cada ticket, mira el último comentario PÚBLICO y compara con\n// requester_id. Tickets sin comentario público (típicamente native_messaging)\n// se acumulan en pendingMetrics para resolverlos en pase 2 con ticket_metrics.\nconst tickets = $('Limitar a 100').all().map(i => i.json);\nconst commentResps = $input.all().map(i => i.json);\n\nconst matches = [];\nconst pendingMetrics = []; // tickets que necesitan resolución vía ticket_metrics\nconst skippedDebug = [];\nlet lastByUser = 0, lastByAgent = 0;\n\nconst ticketByIdJson = {};\nfor (const t of tickets) ticketByIdJson[t.id] = t;\n\nfor (let i = 0; i < tickets.length; i++) {\n  const t = tickets[i];\n  const cr = commentResps[i] || {};\n  const allComments = Array.isArray(cr.comments) ? cr.comments : [];\n  const last = allComments.find(c => c && c.public === true);\n  if (!last) {\n    pendingMetrics.push(t.id);\n    skippedDebug.push({\n      ticket_id: t.id,\n      subject: t.subject,\n      requester_id: t.requester_id,\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`,\n      total_comments_returned: allComments.length,\n      last_5: allComments.slice(0, 5).map(c => ({\n        created_at: c.created_at, public: c.public, author_id: c.author_id,\n        is_requester: c.author_id === t.requester_id, type: c.type,\n        channel: (c.via && c.via.channel) || null,\n        body_preview: (c.body || c.html_body || '').toString().replace(/<[^>]+>/g,'').slice(0, 60)\n      }))\n    });\n    continue;\n  }\n  const userIsLast = (last.author_id === t.requester_id);\n  if (userIsLast) lastByUser++; else lastByAgent++;\n  if (userIsLast) {\n    const ageDays = t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null;\n    const sinceLastDays = last.created_at ? Math.floor((Date.now() - new Date(last.created_at).getTime()) / 86400000) : null;\n    matches.push({\n      ticket_id: t.id, subject: t.subject, status: t.status,\n      age_days: ageDays, days_since_user_updated: sinceLastDays,\n      last_comment_at: last.created_at, last_author_id: last.author_id,\n      requester_id: t.requester_id, assignee_id: t.assignee_id,\n      is_public: true, source: 'comment',\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    });\n  }\n}\n\n// CSV de IDs pendientes para que el siguiente nodo HTTP haga show_many con metric_sets.\n// Si no hay pendientes, usamos '0' (devuelve tickets vacíos sin error).\nconst pendingCsv = pendingMetrics.length ? pendingMetrics.join(',') : '0';\n\nreturn [{ json: {\n  _pre_matches: matches,\n  _ticket_by_id: ticketByIdJson,\n  _last_by_user_count: lastByUser,\n  _last_by_agent_count: lastByAgent,\n  _skipped_debug: skippedDebug,\n  _pending_metrics_ids: pendingMetrics,\n  _tickets_open_total: tickets.length,\n  pending_ids_csv: pendingCsv\n} }];"
-      },
-      "id": "aggregate",
-      "name": "Cross Reference",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-50, 0]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Emite 1 item por ticket pendiente para que el HTTP siguiente haga audits por cada uno.\n// Si no hay pendientes emite un dummy (id=0) para no romper la cadena.\nconst pre = $input.first().json;\nconst ids = pre._pending_metrics_ids || [];\nconst tickets = pre._ticket_by_id || {};\nconst items = ids.map(id => tickets[id]).filter(Boolean);\nif (items.length === 0) return [{ json: { id: 0, _dummy: true } }];\nreturn items.map(t => ({ json: t }));"
-      },
-      "id": "split-pending",
-      "name": "Split Pending",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [50, 0]
-    },
-    {
-      "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/{{ $json.id }}/audits.json?sort_order=desc&per_page=20",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "options": { "response": { "response": { "neverError": true } } }
-      },
-      "id": "audits-skipped",
-      "name": "ZD Audits Skipped",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [150, 0]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Pase 2: para los tickets saltados (sin comentario público — típicamente native_messaging),\n// usa la Audits API. Cada audit tiene author_id real, incluyendo agentes no-asignados.\n// Buscamos el último audit con author_id válido (no system/trigger) y comparamos con requester_id.\nconst pre = $('Cross Reference').first().json;\nconst splitItems = $('Split Pending').all().map(i => i.json);\nconst auditResps = $input.all().map(i => i.json);\n\nconst matches = [...(pre._pre_matches || [])];\nlet auditAdded = 0;\nconst auditDebug = [];\n\nfor (let i = 0; i < splitItems.length; i++) {\n  const t = splitItems[i];\n  if (!t || !t.id || t.id === 0) continue; // dummy\n  const audits = (auditResps[i] && Array.isArray(auditResps[i].audits)) ? auditResps[i].audits : [];\n  const lastReal = audits.find(a => a && typeof a.author_id === 'number' && a.author_id > 0);\n  const lastIsRequester = lastReal ? (lastReal.author_id === t.requester_id) : null;\n  // Debug SIEMPRE: incluye los que no se contaron para entender por qué.\n  auditDebug.push({\n    ticket_id: t.id,\n    requester_id: t.requester_id,\n    audits_returned: audits.length,\n    all_author_ids: audits.map(a => (a && a.author_id != null) ? a.author_id : null),\n    via_channels: audits.map(a => (a && a.via && a.via.channel) || null),\n    last_audit_author_id: lastReal ? lastReal.author_id : null,\n    last_audit_created_at: lastReal ? lastReal.created_at : null,\n    is_requester: lastIsRequester,\n    matched: lastIsRequester === true\n  });\n  if (!lastReal) continue;\n  if (lastIsRequester) {\n    const ageDays = t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null;\n    const lastTime = new Date(lastReal.created_at).getTime();\n    const sinceLastDays = Math.floor((Date.now() - lastTime) / 86400000);\n    matches.push({\n      ticket_id: t.id, subject: t.subject, status: t.status,\n      age_days: ageDays, days_since_user_updated: sinceLastDays,\n      last_comment_at: lastReal.created_at,\n      last_author_id: lastReal.author_id,\n      requester_id: t.requester_id, assignee_id: t.assignee_id,\n      is_public: null, source: 'audit',\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    });\n    auditAdded++;\n  }\n}\n\nmatches.sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_open_total: pre._tickets_open_total,\n  tickets_resolved_via_comments: (pre._pre_matches || []).length + (pre._last_by_agent_count || 0),\n  tickets_resolved_via_audits_fallback: (pre._pending_metrics_ids || []).length,\n  audits_added_to_matches: auditAdded,\n  last_by_user_count:  pre._last_by_user_count,\n  last_by_agent_count: pre._last_by_agent_count,\n  needs_agent_reply_count: matches.length,\n  needs_agent_reply_ids_csv: matches.map(m => m.ticket_id).join(','),\n  needs_agent_reply: matches,\n  _skipped_debug: pre._skipped_debug,\n  _audit_debug: auditDebug\n} }];"
-      },
-      "id": "combine",
-      "name": "Combinar Comments+Audits",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [350, 0]
     },
     {
       "parameters": {
@@ -108,17 +26,17 @@
       "name": "ZD View Execute",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [450, 0]
+      "position": [-400, 0]
     },
     {
       "parameters": {
-        "jsCode": "// Diagnóstico: ejecuta la vista del usuario y expone columnas + valores únicos\n// del campo 'updater type'. La idea: identificar el nombre exacto del campo\n// que Zendesk usa para 'Tipo de actualización' y poder filtrar a 'Requester'.\nconst pre = $('Combinar Comments+Audits').first().json;\nconst body = $input.first().json || {};\nconst columns = Array.isArray(body.columns) ? body.columns : [];\nconst rows    = Array.isArray(body.rows)    ? body.rows    : [];\n\n// Recoge para cada columna sus valores únicos (top 10) para que veamos qué hay.\nconst columnsAnalysis = columns.map(c => {\n  const seen = new Set();\n  for (const r of rows) {\n    const v = r[c.id];\n    if (v != null) seen.add(typeof v === 'object' ? JSON.stringify(v).slice(0,60) : String(v).slice(0,60));\n    if (seen.size > 10) break;\n  }\n  return { id: c.id, title: c.title, sample_values: [...seen] };\n});\n\n// Heurística: busca una columna que parezca el updater type y filtra a requester-like.\nconst updaterCol = columns.find(c => /update.*type|updater|tipo.*actualizaci/i.test((c.title || '') + ' ' + (c.id || '')));\nlet viewNeeds = [];\nif (updaterCol) {\n  for (const r of rows) {\n    const v = String(r[updaterCol.id] || '');\n    if (/requester|end[- ]?user|solicitante|usuario.?final|user/i.test(v)) {\n      const t = r.ticket || r;\n      viewNeeds.push({ ticket_id: t.id || r.ticket_id, subject: t.subject || r.subject, updater_value: v });\n    }\n  }\n}\n\n// Devuelve la respuesta combinada: lo del flujo actual + diagnóstico de la vista.\nreturn [{ json: {\n  ...pre,\n  _view_diagnostic: {\n    total_rows: rows.length,\n    columns: columnsAnalysis,\n    updater_col_detected: updaterCol ? { id: updaterCol.id, title: updaterCol.title } : null,\n    view_needs_count: viewNeeds.length,\n    view_needs_ids: viewNeeds.map(n => n.ticket_id),\n    view_needs_sample: viewNeeds.slice(0,3)\n  }\n} }];"
+        "jsCode": "// La Zendesk View 27247269055517 expone la columna 'updated_by_type' con valor\n// 'Usuario final' o 'Agente'. Esta es la fuente de verdad porque Zendesk la calcula\n// internamente con conocimiento de Sunshine Conversations (cosa que nosotros no\n// podemos hacer fiablemente desde audits o comments — todos los audits del canal\n// native_messaging vienen con author_id=-1).\nconst body = $input.first().json || {};\nconst rows = Array.isArray(body.rows) ? body.rows : [];\n\nconst needs = [];\nfor (const r of rows) {\n  if (r.updated_by_type !== 'Usuario final') continue;\n  const ticketId = r.ticket_id;\n  if (!ticketId) continue;\n  const ru = r.requester_updated_at || null;\n  const sinceLastDays = ru ? Math.floor((Date.now() - new Date(ru).getTime()) / 86400000) : null;\n  needs.push({\n    ticket_id: ticketId,\n    subject: r.subject || '(sin asunto)',\n    days_since_user_updated: sinceLastDays,\n    last_user_update_at: ru,\n    updated_by_type: r.updated_by_type,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${ticketId}`\n  });\n}\n\nneeds.sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  view_id: 27247269055517,\n  view_total_rows: rows.length,\n  needs_agent_reply_count: needs.length,\n  needs_agent_reply_ids_csv: needs.map(n => n.ticket_id).join(','),\n  needs_agent_reply: needs\n} }];"
       },
-      "id": "view-diag",
-      "name": "View Diagnostic",
+      "id": "parse-view",
+      "name": "Parse View",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [550, 0]
+      "position": [-200, 0]
     },
     {
       "parameters": {
@@ -137,20 +55,13 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [550, 0]
+      "position": [0, 0]
     }
   ],
   "connections": {
-    "Webhook":         { "main": [[{ "node": "ZD Tickets Open", "type": "main", "index": 0 }]] },
-    "ZD Tickets Open": { "main": [[{ "node": "Limitar a 100",  "type": "main", "index": 0 }]] },
-    "Limitar a 100":   { "main": [[{ "node": "Last Comment",   "type": "main", "index": 0 }]] },
-    "Last Comment":    { "main": [[{ "node": "Cross Reference","type": "main", "index": 0 }]] },
-    "Cross Reference": { "main": [[{ "node": "Split Pending",      "type": "main", "index": 0 }]] },
-    "Split Pending":   { "main": [[{ "node": "ZD Audits Skipped",  "type": "main", "index": 0 }]] },
-    "ZD Audits Skipped":       { "main": [[{ "node": "Combinar Comments+Audits", "type": "main", "index": 0 }]] },
-    "Combinar Comments+Audits": { "main": [[{ "node": "ZD View Execute", "type": "main", "index": 0 }]] },
-    "ZD View Execute":          { "main": [[{ "node": "View Diagnostic", "type": "main", "index": 0 }]] },
-    "View Diagnostic":          { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+    "Webhook":         { "main": [[{ "node": "ZD View Execute", "type": "main", "index": 0 }]] },
+    "ZD View Execute": { "main": [[{ "node": "Parse View",     "type": "main", "index": 0 }]] },
+    "Parse View":      { "main": [[{ "node": "Respond",        "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {},
