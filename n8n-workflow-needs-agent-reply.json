@@ -32,10 +32,10 @@
     },
     {
       "parameters": {
-        "jsCode": "// Limita a los N más recientes actualizados para acotar coste.\n// Cambia este número si quieres más profundidad.\nconst MAX = 250;\nconst tickets = $input.all().map(i => i.json).filter(t => t && t.id);\ntickets.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at));\nconst limited = tickets.slice(0, MAX);\nreturn limited.map(t => ({ json: t }));"
+        "jsCode": "// Limita a los N más recientes actualizados para acotar coste.\n// Cambia este número si quieres más profundidad.\nconst MAX = 100;\nconst tickets = $input.all().map(i => i.json).filter(t => t && t.id);\ntickets.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at));\nconst limited = tickets.slice(0, MAX);\nreturn limited.map(t => ({ json: t }));"
       },
       "id": "limit",
-      "name": "Limitar a 250",
+      "name": "Limitar a 100",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [-450, 0]
@@ -56,7 +56,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Para cada ticket, mira el último comentario y compara author_id con\n// requester_id. Esto incluye comentarios de CUALQUIER agente, no solo\n// del asignado (caso típico: 'Yurest Solutions' u otro agente comenta\n// sin ser el assignee — antes nuestro check de metrics fallaba).\nconst tickets = $('Limitar a 250').all().map(i => i.json);\nconst commentResps = $input.all().map(i => i.json);\n\nconst matches = [];\nlet skipped = 0;\nlet lastByUser  = 0;\nlet lastByAgent = 0;\n\nfor (let i = 0; i < tickets.length; i++) {\n  const t = tickets[i];\n  const cr = commentResps[i] || {};\n  const comments = Array.isArray(cr.comments) ? cr.comments : [];\n  if (comments.length === 0) { skipped++; continue; }\n  const last = comments[0]; // sort_order=desc → primero el más reciente\n  const userIsLast = (last.author_id === t.requester_id);\n  if (userIsLast) lastByUser++; else lastByAgent++;\n  if (userIsLast) {\n    const ageDays = t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null;\n    const sinceLastDays = last.created_at ? Math.floor((Date.now() - new Date(last.created_at).getTime()) / 86400000) : null;\n    matches.push({\n      ticket_id: t.id,\n      subject: t.subject,\n      status: t.status,\n      age_days: ageDays,\n      days_since_user_updated: sinceLastDays,\n      last_comment_at: last.created_at,\n      last_author_id: last.author_id,\n      requester_id: t.requester_id,\n      assignee_id: t.assignee_id,\n      is_public: last.public === true,\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    });\n  }\n}\n\nmatches.sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_open_total: tickets.length,\n  tickets_skipped_no_comments: skipped,\n  last_by_user_count:  lastByUser,\n  last_by_agent_count: lastByAgent,\n  needs_agent_reply_count: matches.length,\n  needs_agent_reply_ids_csv: matches.map(m => m.ticket_id).join(','),\n  needs_agent_reply: matches\n} }];"
+        "jsCode": "// Para cada ticket, mira el último comentario y compara author_id con\n// requester_id. Esto incluye comentarios de CUALQUIER agente, no solo\n// del asignado (caso típico: 'Yurest Solutions' u otro agente comenta\n// sin ser el assignee — antes nuestro check de metrics fallaba).\nconst tickets = $('Limitar a 100').all().map(i => i.json);\nconst commentResps = $input.all().map(i => i.json);\n\nconst matches = [];\nlet skipped = 0;\nlet lastByUser  = 0;\nlet lastByAgent = 0;\n\nfor (let i = 0; i < tickets.length; i++) {\n  const t = tickets[i];\n  const cr = commentResps[i] || {};\n  const comments = Array.isArray(cr.comments) ? cr.comments : [];\n  if (comments.length === 0) { skipped++; continue; }\n  const last = comments[0]; // sort_order=desc → primero el más reciente\n  const userIsLast = (last.author_id === t.requester_id);\n  if (userIsLast) lastByUser++; else lastByAgent++;\n  if (userIsLast) {\n    const ageDays = t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null;\n    const sinceLastDays = last.created_at ? Math.floor((Date.now() - new Date(last.created_at).getTime()) / 86400000) : null;\n    matches.push({\n      ticket_id: t.id,\n      subject: t.subject,\n      status: t.status,\n      age_days: ageDays,\n      days_since_user_updated: sinceLastDays,\n      last_comment_at: last.created_at,\n      last_author_id: last.author_id,\n      requester_id: t.requester_id,\n      assignee_id: t.assignee_id,\n      is_public: last.public === true,\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    });\n  }\n}\n\nmatches.sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_open_total: tickets.length,\n  tickets_skipped_no_comments: skipped,\n  last_by_user_count:  lastByUser,\n  last_by_agent_count: lastByAgent,\n  needs_agent_reply_count: matches.length,\n  needs_agent_reply_ids_csv: matches.map(m => m.ticket_id).join(','),\n  needs_agent_reply: matches\n} }];"
       },
       "id": "aggregate",
       "name": "Cross Reference",
@@ -86,8 +86,8 @@
   ],
   "connections": {
     "Webhook":         { "main": [[{ "node": "ZD Tickets Open", "type": "main", "index": 0 }]] },
-    "ZD Tickets Open": { "main": [[{ "node": "Limitar a 250",  "type": "main", "index": 0 }]] },
-    "Limitar a 250":   { "main": [[{ "node": "Last Comment",   "type": "main", "index": 0 }]] },
+    "ZD Tickets Open": { "main": [[{ "node": "Limitar a 100",  "type": "main", "index": 0 }]] },
+    "Limitar a 100":   { "main": [[{ "node": "Last Comment",   "type": "main", "index": 0 }]] },
     "Last Comment":    { "main": [[{ "node": "Cross Reference","type": "main", "index": 0 }]] },
     "Cross Reference": { "main": [[{ "node": "Respond",        "type": "main", "index": 0 }]] }
   },
