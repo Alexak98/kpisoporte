@@ -763,6 +763,7 @@
       applyLightData(d);
       setStatus(true, 'Datos actualizados');
       document.getElementById('errorMsg').textContent = '';
+      hideLoader();   // primer fetch que termina quita el loader (light o heavy)
     } catch (e) {
       console.warn('Light fetch falló:', e && e.message);
       setStatus(false, 'Error light');
@@ -792,7 +793,9 @@
       return;
     }
     try {
-      applyLightData(d);
+      // OJO: NO aplicamos applyLightData con los datos del heavy.
+      // Los contadores son responsabilidad exclusiva del webhook light (fresco cada 5 min).
+      // El heavy viene cacheado (3 min de stale máximo) y pisaría los counters frescos del light.
       applyHeavyData(d);
     } catch (e) {
       console.error(e);
@@ -838,7 +841,8 @@
   // Esperar a que la fuente cargue antes del primer render para que el chart use medidas correctas
   function bootFetch() {
     fitStage();
-    fetchKPIs();
+    fetchKPIsLight();          // counters al instante (fresh, ~30s)
+    fetchKPIs();                // charts + top orgs (cacheado, <200ms)
     fetchWaiting();
     fetchTopOrgsLastMonth();
   }

@@ -19,7 +19,7 @@
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "minutes", "minutesInterval": 3 }
+            { "field": "minutes", "minutesInterval": 5 }
           ]
         }
       },
@@ -557,7 +557,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Disparado por el webhook: lee el último payload cacheado y lo emite tal cual.\n// Si la caché está vacía (primer arranque o reset), devuelve estructura mínima con _stale=true.\nconst staticData = $getWorkflowStaticData('global');\nconst cached = staticData.cached_payload || null;\nif (!cached) {\n  return [{ json: {\n    generated_at: null,\n    cached_at: null,\n    _stale: true,\n    _hint: 'Cache vacía. Espera al primer tick del Schedule Trigger (3 min) o ejecútalo manualmente.',\n    hourly_today: [],\n    weekly_stacked: [],\n    top_orgs: []\n  } }];\n}\nreturn [{ json: { ...cached, cached_at: staticData.cached_at, _stale: false } }];"
+        "jsCode": "// Disparado por el webhook: lee el último payload cacheado y lo emite tal cual.\n// Si la caché está vacía (primer arranque o reset), devuelve estructura mínima con _stale=true.\nconst staticData = $getWorkflowStaticData('global');\nconst cached = staticData.cached_payload || null;\nif (!cached) {\n  return [{ json: {\n    generated_at: null,\n    cached_at: null,\n    _stale: true,\n    _hint: 'Cache vacía. Espera al primer tick del Schedule Trigger (5 min) o ejecútalo manualmente.',\n    hourly_today: [],\n    weekly_stacked: [],\n    top_orgs: []\n  } }];\n}\nreturn [{ json: { ...cached, cached_at: staticData.cached_at, _stale: false } }];"
       },
       "id": "read-cache",
       "name": "Leer caché",
