@@ -216,8 +216,8 @@
   </header>
 
   <!-- KPI ROW -->
-  <section class="grid grid-cols-5 gap-4 px-10 mt-1 shrink-0">
-    <!-- TICKETS HOY · ocupa 2 columnas (40% del ancho) -->
+  <section class="grid grid-cols-6 gap-4 px-10 mt-1 shrink-0">
+    <!-- TICKETS HOY · ocupa 2 columnas -->
     <div class="card p-5 flex flex-col col-span-2">
       <div class="title text-xl">Tickets creados hoy</div>
       <div class="flex items-baseline justify-between mt-1">
@@ -268,9 +268,14 @@
       </div>
       <div id="kpiMonthDelta" class="text-sm text-slate-500 mt-1">vs mes ant. —</div>
     </div>
-    <!-- NUEVO: Esperando respuesta agente -->
+    <!-- Sin atender (vista 'Sin leer') -->
     <div class="card p-5">
-      <div class="title text-xl">Esperando respuesta</div>
+      <div class="title text-xl">Sin atender</div>
+      <div id="kpiUnattended" class="kpi-number text-6xl mt-1">—</div>
+    </div>
+    <!-- Atendidos esperando respuesta -->
+    <div class="card p-5">
+      <div class="title text-base leading-tight">Atendidos esperando<br>respuesta</div>
       <div id="kpiWaiting" class="kpi-number text-6xl mt-1">—</div>
     </div>
   </section>
@@ -821,18 +826,24 @@
     }
   }
 
-  // Fetch del KPI 'Esperando respuesta agente' (webhook separado, costoso)
+  // Pinta un contador (sin atender / atendidos esperando) con código de color por umbral.
+  function paintCount(id, n) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = n != null ? n : '—';
+    el.classList.remove('text-emerald-300','text-amber-300','text-rose-300','text-slate-200');
+    if (n == null)      el.classList.add('text-slate-200');
+    else if (n <= 3)    el.classList.add('text-emerald-300');
+    else if (n <= 10)   el.classList.add('text-amber-300');
+    else                el.classList.add('text-rose-300');
+  }
+
+  // Fetch combinado: atendidos esperando respuesta + sin atender (1 webhook que llama a 2 vistas).
   async function fetchWaiting() {
     try {
       const d = await fetchOnce(N8N_WEBHOOK_URL_WAITING, 90000);
-      const n = d.needs_agent_reply_count ?? null;
-      const el = document.getElementById('kpiWaiting');
-      el.textContent = n != null ? n : '—';
-      el.classList.remove('text-emerald-300','text-amber-300','text-rose-300','text-slate-200');
-      if (n == null)      el.classList.add('text-slate-200');
-      else if (n <= 3)    el.classList.add('text-emerald-300');
-      else if (n <= 10)   el.classList.add('text-amber-300');
-      else                el.classList.add('text-rose-300');
+      paintCount('kpiWaiting',    d.needs_agent_reply_count ?? null);
+      paintCount('kpiUnattended', d.unattended_count        ?? null);
     } catch (e) {
       console.warn('Waiting fetch falló:', e && e.message);
     }

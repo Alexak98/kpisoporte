@@ -1,5 +1,5 @@
 {
-  "name": "Tickets esperando respuesta agente",
+  "name": "Tickets esperando respuesta + sin atender",
   "nodes": [
     {
       "parameters": {
@@ -12,7 +12,7 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-600, 0],
+      "position": [-800, 0],
       "webhookId": "needs-agent-reply"
     },
     {
@@ -22,18 +22,31 @@
         "nodeCredentialType": "zendeskApi",
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "view-execute",
-      "name": "ZD View Execute",
+      "id": "view-waiting",
+      "name": "ZD View Atendidos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-600, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/views/27405726299165/execute.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "view-unattended",
+      "name": "ZD View Sin Atender",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [-400, 0]
     },
     {
       "parameters": {
-        "jsCode": "// La Zendesk View 27247269055517 expone la columna 'updated_by_type' con valor\n// 'Usuario final' o 'Agente'. Esta es la fuente de verdad porque Zendesk la calcula\n// internamente con conocimiento de Sunshine Conversations (cosa que nosotros no\n// podemos hacer fiablemente desde audits o comments — todos los audits del canal\n// native_messaging vienen con author_id=-1).\nconst body = $input.first().json || {};\nconst rows = Array.isArray(body.rows) ? body.rows : [];\n\nconst needs = [];\nfor (const r of rows) {\n  if (r.updated_by_type !== 'Usuario final') continue;\n  const ticketId = r.ticket_id;\n  if (!ticketId) continue;\n  const ru = r.requester_updated_at || null;\n  const sinceLastDays = ru ? Math.floor((Date.now() - new Date(ru).getTime()) / 86400000) : null;\n  needs.push({\n    ticket_id: ticketId,\n    subject: r.subject || '(sin asunto)',\n    days_since_user_updated: sinceLastDays,\n    last_user_update_at: ru,\n    updated_by_type: r.updated_by_type,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${ticketId}`\n  });\n}\n\nneeds.sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  view_id: 27247269055517,\n  view_total_rows: rows.length,\n  needs_agent_reply_count: needs.length,\n  needs_agent_reply_ids_csv: needs.map(n => n.ticket_id).join(','),\n  needs_agent_reply: needs\n} }];"
+        "jsCode": "// Parse de las 2 vistas:\n//  - Atendidos esperando respuesta: filas con updated_by_type = 'Usuario final'\n//  - Sin atender: todas las filas de la vista 'Sin leer'\nconst waitingBody    = $('ZD View Atendidos').first().json   || {};\nconst unattendedBody = $input.first().json                   || {};\n\nconst waitingRows    = Array.isArray(waitingBody.rows)    ? waitingBody.rows    : [];\nconst unattendedRows = Array.isArray(unattendedBody.rows) ? unattendedBody.rows : [];\n\nfunction mapRow(r) {\n  const ru = r.requester_updated_at || null;\n  const sinceLastDays = ru ? Math.floor((Date.now() - new Date(ru).getTime()) / 86400000) : null;\n  return {\n    ticket_id: r.ticket_id,\n    subject: r.subject || '(sin asunto)',\n    days_since_user_updated: sinceLastDays,\n    last_user_update_at: ru,\n    updated_by_type: r.updated_by_type || null,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${r.ticket_id}`\n  };\n}\n\nconst needs = waitingRows\n  .filter(r => r && r.ticket_id && r.updated_by_type === 'Usuario final')\n  .map(mapRow)\n  .sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nconst unattended = unattendedRows\n  .filter(r => r && r.ticket_id)\n  .map(mapRow)\n  .sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  // Atendidos esperando respuesta (lógica anterior; mantenemos el nombre del campo\n  // por compatibilidad con el frontend existente).\n  needs_agent_reply_count: needs.length,\n  needs_agent_reply_ids_csv: needs.map(n => n.ticket_id).join(','),\n  needs_agent_reply: needs,\n  // Sin atender (nuevo)\n  unattended_count: unattended.length,\n  unattended_ids_csv: unattended.map(n => n.ticket_id).join(','),\n  unattended: unattended,\n  // Diagnóstico\n  view_waiting_total_rows:    waitingRows.length,\n  view_unattended_total_rows: unattendedRows.length\n} }];"
       },
-      "id": "parse-view",
-      "name": "Parse View",
+      "id": "parse-both",
+      "name": "Parse Views",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [-200, 0]
@@ -59,9 +72,10 @@
     }
   ],
   "connections": {
-    "Webhook":         { "main": [[{ "node": "ZD View Execute", "type": "main", "index": 0 }]] },
-    "ZD View Execute": { "main": [[{ "node": "Parse View",     "type": "main", "index": 0 }]] },
-    "Parse View":      { "main": [[{ "node": "Respond",        "type": "main", "index": 0 }]] }
+    "Webhook":             { "main": [[{ "node": "ZD View Atendidos",   "type": "main", "index": 0 }]] },
+    "ZD View Atendidos":   { "main": [[{ "node": "ZD View Sin Atender", "type": "main", "index": 0 }]] },
+    "ZD View Sin Atender": { "main": [[{ "node": "Parse Views",         "type": "main", "index": 0 }]] },
+    "Parse Views":         { "main": [[{ "node": "Respond",             "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {},
