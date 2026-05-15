@@ -99,6 +99,29 @@
     },
     {
       "parameters": {
+        "url": "https://soporteyurest.zendesk.com/api/v2/views/27247269055517/execute.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "view-execute",
+      "name": "ZD View Execute",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Diagnóstico: ejecuta la vista del usuario y expone columnas + valores únicos\n// del campo 'updater type'. La idea: identificar el nombre exacto del campo\n// que Zendesk usa para 'Tipo de actualización' y poder filtrar a 'Requester'.\nconst pre = $('Combinar Comments+Audits').first().json;\nconst body = $input.first().json || {};\nconst columns = Array.isArray(body.columns) ? body.columns : [];\nconst rows    = Array.isArray(body.rows)    ? body.rows    : [];\n\n// Recoge para cada columna sus valores únicos (top 10) para que veamos qué hay.\nconst columnsAnalysis = columns.map(c => {\n  const seen = new Set();\n  for (const r of rows) {\n    const v = r[c.id];\n    if (v != null) seen.add(typeof v === 'object' ? JSON.stringify(v).slice(0,60) : String(v).slice(0,60));\n    if (seen.size > 10) break;\n  }\n  return { id: c.id, title: c.title, sample_values: [...seen] };\n});\n\n// Heurística: busca una columna que parezca el updater type y filtra a requester-like.\nconst updaterCol = columns.find(c => /update.*type|updater|tipo.*actualizaci/i.test((c.title || '') + ' ' + (c.id || '')));\nlet viewNeeds = [];\nif (updaterCol) {\n  for (const r of rows) {\n    const v = String(r[updaterCol.id] || '');\n    if (/requester|end[- ]?user|solicitante|usuario.?final|user/i.test(v)) {\n      const t = r.ticket || r;\n      viewNeeds.push({ ticket_id: t.id || r.ticket_id, subject: t.subject || r.subject, updater_value: v });\n    }\n  }\n}\n\n// Devuelve la respuesta combinada: lo del flujo actual + diagnóstico de la vista.\nreturn [{ json: {\n  ...pre,\n  _view_diagnostic: {\n    total_rows: rows.length,\n    columns: columnsAnalysis,\n    updater_col_detected: updaterCol ? { id: updaterCol.id, title: updaterCol.title } : null,\n    view_needs_count: viewNeeds.length,\n    view_needs_ids: viewNeeds.map(n => n.ticket_id),\n    view_needs_sample: viewNeeds.slice(0,3)\n  }\n} }];"
+      },
+      "id": "view-diag",
+      "name": "View Diagnostic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [550, 0]
+    },
+    {
+      "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}",
         "options": {
@@ -125,7 +148,9 @@
     "Cross Reference": { "main": [[{ "node": "Split Pending",      "type": "main", "index": 0 }]] },
     "Split Pending":   { "main": [[{ "node": "ZD Audits Skipped",  "type": "main", "index": 0 }]] },
     "ZD Audits Skipped":       { "main": [[{ "node": "Combinar Comments+Audits", "type": "main", "index": 0 }]] },
-    "Combinar Comments+Audits": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+    "Combinar Comments+Audits": { "main": [[{ "node": "ZD View Execute", "type": "main", "index": 0 }]] },
+    "ZD View Execute":          { "main": [[{ "node": "View Diagnostic", "type": "main", "index": 0 }]] },
+    "View Diagnostic":          { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {},
