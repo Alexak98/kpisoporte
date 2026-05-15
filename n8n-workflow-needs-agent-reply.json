@@ -66,23 +66,33 @@
     },
     {
       "parameters": {
-        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/show_many.json?ids={{ $json.pending_ids_csv }}&include=metric_sets",
+        "jsCode": "// Emite 1 item por ticket pendiente para que el HTTP siguiente haga audits por cada uno.\n// Si no hay pendientes emite un dummy (id=0) para no romper la cadena.\nconst pre = $input.first().json;\nconst ids = pre._pending_metrics_ids || [];\nconst tickets = pre._ticket_by_id || {};\nconst items = ids.map(id => tickets[id]).filter(Boolean);\nif (items.length === 0) return [{ json: { id: 0, _dummy: true } }];\nreturn items.map(t => ({ json: t }));"
+      },
+      "id": "split-pending",
+      "name": "Split Pending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [50, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/{{ $json.id }}/audits.json?sort_order=desc&per_page=5",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "metrics-skipped",
-      "name": "ZD Metrics Skipped",
+      "id": "audits-skipped",
+      "name": "ZD Audits Skipped",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [150, 0]
     },
     {
       "parameters": {
-        "jsCode": "// Pase 2: para los tickets sin comentario público, usa ticket_metrics\n// (requester_updated_at vs assignee_updated_at). Si requester actualizó\n// más recientemente que assignee → cuenta como esperando respuesta.\n// Esto resuelve los native_messaging donde el comment-container es opaco.\nconst pre  = $('Cross Reference').first().json;\nconst body = $input.first().json || {};\nconst metricSets = Array.isArray(body.metric_sets) ? body.metric_sets : [];\nconst ticketsArr = Array.isArray(body.tickets) ? body.tickets : [];\n\nconst metricById = {};\nfor (const m of metricSets) { if (m && m.ticket_id) metricById[m.ticket_id] = m; }\n\nconst matches = [...(pre._pre_matches || [])];\nconst tById = pre._ticket_by_id || {};\n\nlet metricsAdded = 0;\nfor (const id of (pre._pending_metrics_ids || [])) {\n  const t = tById[id];\n  const m = metricById[id];\n  if (!t || !m) continue;\n  const ru = m.requester_updated_at ? new Date(m.requester_updated_at).getTime() : 0;\n  const au = m.assignee_updated_at  ? new Date(m.assignee_updated_at).getTime()  : 0;\n  // Necesita respuesta si el requester ha actualizado más recientemente que el assignee.\n  // (Si nunca ha sido asignado, au=0 → cualquier actividad del requester cuenta.)\n  if (ru > au) {\n    const ageDays = t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null;\n    const sinceLastDays = m.requester_updated_at ? Math.floor((Date.now() - ru) / 86400000) : null;\n    matches.push({\n      ticket_id: t.id, subject: t.subject, status: t.status,\n      age_days: ageDays, days_since_user_updated: sinceLastDays,\n      last_comment_at: m.requester_updated_at,\n      last_author_id: t.requester_id,\n      requester_id: t.requester_id, assignee_id: t.assignee_id,\n      is_public: null, source: 'metrics',\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    });\n    metricsAdded++;\n  }\n}\n\nmatches.sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_open_total: pre._tickets_open_total,\n  tickets_resolved_via_comments: (pre._pre_matches || []).length + (pre._last_by_agent_count || 0),\n  tickets_resolved_via_metrics_fallback: (pre._pending_metrics_ids || []).length,\n  metrics_added_to_matches: metricsAdded,\n  last_by_user_count:  pre._last_by_user_count,\n  last_by_agent_count: pre._last_by_agent_count,\n  needs_agent_reply_count: matches.length,\n  needs_agent_reply_ids_csv: matches.map(m => m.ticket_id).join(','),\n  needs_agent_reply: matches,\n  _skipped_debug: pre._skipped_debug\n} }];"
+        "jsCode": "// Pase 2: para los tickets saltados (sin comentario público — típicamente native_messaging),\n// usa la Audits API. Cada audit tiene author_id real, incluyendo agentes no-asignados.\n// Buscamos el último audit con author_id válido (no system/trigger) y comparamos con requester_id.\nconst pre = $('Cross Reference').first().json;\nconst splitItems = $('Split Pending').all().map(i => i.json);\nconst auditResps = $input.all().map(i => i.json);\n\nconst matches = [...(pre._pre_matches || [])];\nlet auditAdded = 0;\nconst auditDebug = [];\n\nfor (let i = 0; i < splitItems.length; i++) {\n  const t = splitItems[i];\n  if (!t || !t.id || t.id === 0) continue; // dummy\n  const audits = (auditResps[i] && Array.isArray(auditResps[i].audits)) ? auditResps[i].audits : [];\n  // Saltamos audits 'system' (triggers/automations tienen author_id negativo o null).\n  const lastReal = audits.find(a => a && typeof a.author_id === 'number' && a.author_id > 0);\n  if (!lastReal) continue;\n  const lastIsRequester = (lastReal.author_id === t.requester_id);\n  auditDebug.push({\n    ticket_id: t.id,\n    last_audit_author_id: lastReal.author_id,\n    last_audit_created_at: lastReal.created_at,\n    is_requester: lastIsRequester\n  });\n  if (lastIsRequester) {\n    const ageDays = t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null;\n    const lastTime = new Date(lastReal.created_at).getTime();\n    const sinceLastDays = Math.floor((Date.now() - lastTime) / 86400000);\n    matches.push({\n      ticket_id: t.id, subject: t.subject, status: t.status,\n      age_days: ageDays, days_since_user_updated: sinceLastDays,\n      last_comment_at: lastReal.created_at,\n      last_author_id: lastReal.author_id,\n      requester_id: t.requester_id, assignee_id: t.assignee_id,\n      is_public: null, source: 'audit',\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    });\n    auditAdded++;\n  }\n}\n\nmatches.sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_open_total: pre._tickets_open_total,\n  tickets_resolved_via_comments: (pre._pre_matches || []).length + (pre._last_by_agent_count || 0),\n  tickets_resolved_via_audits_fallback: (pre._pending_metrics_ids || []).length,\n  audits_added_to_matches: auditAdded,\n  last_by_user_count:  pre._last_by_user_count,\n  last_by_agent_count: pre._last_by_agent_count,\n  needs_agent_reply_count: matches.length,\n  needs_agent_reply_ids_csv: matches.map(m => m.ticket_id).join(','),\n  needs_agent_reply: matches,\n  _skipped_debug: pre._skipped_debug,\n  _audit_debug: auditDebug\n} }];"
       },
       "id": "combine",
-      "name": "Combinar Comments+Metrics",
+      "name": "Combinar Comments+Audits",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [350, 0]
@@ -112,9 +122,10 @@
     "ZD Tickets Open": { "main": [[{ "node": "Limitar a 100",  "type": "main", "index": 0 }]] },
     "Limitar a 100":   { "main": [[{ "node": "Last Comment",   "type": "main", "index": 0 }]] },
     "Last Comment":    { "main": [[{ "node": "Cross Reference","type": "main", "index": 0 }]] },
-    "Cross Reference": { "main": [[{ "node": "ZD Metrics Skipped", "type": "main", "index": 0 }]] },
-    "ZD Metrics Skipped":      { "main": [[{ "node": "Combinar Comments+Metrics", "type": "main", "index": 0 }]] },
-    "Combinar Comments+Metrics": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+    "Cross Reference": { "main": [[{ "node": "Split Pending",      "type": "main", "index": 0 }]] },
+    "Split Pending":   { "main": [[{ "node": "ZD Audits Skipped",  "type": "main", "index": 0 }]] },
+    "ZD Audits Skipped":       { "main": [[{ "node": "Combinar Comments+Audits", "type": "main", "index": 0 }]] },
+    "Combinar Comments+Audits": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {},
