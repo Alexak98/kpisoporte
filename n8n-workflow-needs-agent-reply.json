@@ -56,13 +56,36 @@
     },
     {
       "parameters": {
-        "jsCode": "// Para cada ticket, mira el último comentario PÚBLICO y compara author_id\n// con requester_id. Filtramos a public:true porque triggers/automatizaciones\n// pueden insertar notas internas a nombre del cliente que no son una\n// petición real (caso ticket #9502: nota interna distorsionaba el count).\nconst tickets = $('Limitar a 100').all().map(i => i.json);\nconst commentResps = $input.all().map(i => i.json);\n\nconst matches = [];\nlet skipped = 0;\nlet lastByUser  = 0;\nlet lastByAgent = 0;\nconst skippedDebug = [];\n\nfor (let i = 0; i < tickets.length; i++) {\n  const t = tickets[i];\n  const cr = commentResps[i] || {};\n  const allComments = Array.isArray(cr.comments) ? cr.comments : [];\n  // sort_order=desc → primero los más recientes; nos quedamos con el último PÚBLICO.\n  const last = allComments.find(c => c && c.public === true);\n  if (!last) {\n    skipped++;\n    skippedDebug.push({\n      ticket_id: t.id,\n      subject: t.subject,\n      requester_id: t.requester_id,\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`,\n      total_comments_returned: allComments.length,\n      last_5: allComments.slice(0, 5).map(c => ({\n        created_at: c.created_at,\n        public: c.public,\n        author_id: c.author_id,\n        is_requester: c.author_id === t.requester_id,\n        type: c.type,\n        channel: (c.via && c.via.channel) || null,\n        body_preview: (c.body || c.html_body || '').toString().replace(/<[^>]+>/g,'').slice(0, 60)\n      }))\n    });\n    continue;\n  }\n  const userIsLast = (last.author_id === t.requester_id);\n  if (userIsLast) lastByUser++; else lastByAgent++;\n  if (userIsLast) {\n    const ageDays = t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null;\n    const sinceLastDays = last.created_at ? Math.floor((Date.now() - new Date(last.created_at).getTime()) / 86400000) : null;\n    matches.push({\n      ticket_id: t.id,\n      subject: t.subject,\n      status: t.status,\n      age_days: ageDays,\n      days_since_user_updated: sinceLastDays,\n      last_comment_at: last.created_at,\n      last_author_id: last.author_id,\n      requester_id: t.requester_id,\n      assignee_id: t.assignee_id,\n      is_public: true,\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    });\n  }\n}\n\nmatches.sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_open_total: tickets.length,\n  tickets_skipped_no_public_comment: skipped,\n  last_by_user_count:  lastByUser,\n  last_by_agent_count: lastByAgent,\n  needs_agent_reply_count: matches.length,\n  needs_agent_reply_ids_csv: matches.map(m => m.ticket_id).join(','),\n  needs_agent_reply: matches,\n  _skipped_debug: skippedDebug\n} }];"
+        "jsCode": "// Pase 1: para cada ticket, mira el último comentario PÚBLICO y compara con\n// requester_id. Tickets sin comentario público (típicamente native_messaging)\n// se acumulan en pendingMetrics para resolverlos en pase 2 con ticket_metrics.\nconst tickets = $('Limitar a 100').all().map(i => i.json);\nconst commentResps = $input.all().map(i => i.json);\n\nconst matches = [];\nconst pendingMetrics = []; // tickets que necesitan resolución vía ticket_metrics\nconst skippedDebug = [];\nlet lastByUser = 0, lastByAgent = 0;\n\nconst ticketByIdJson = {};\nfor (const t of tickets) ticketByIdJson[t.id] = t;\n\nfor (let i = 0; i < tickets.length; i++) {\n  const t = tickets[i];\n  const cr = commentResps[i] || {};\n  const allComments = Array.isArray(cr.comments) ? cr.comments : [];\n  const last = allComments.find(c => c && c.public === true);\n  if (!last) {\n    pendingMetrics.push(t.id);\n    skippedDebug.push({\n      ticket_id: t.id,\n      subject: t.subject,\n      requester_id: t.requester_id,\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`,\n      total_comments_returned: allComments.length,\n      last_5: allComments.slice(0, 5).map(c => ({\n        created_at: c.created_at, public: c.public, author_id: c.author_id,\n        is_requester: c.author_id === t.requester_id, type: c.type,\n        channel: (c.via && c.via.channel) || null,\n        body_preview: (c.body || c.html_body || '').toString().replace(/<[^>]+>/g,'').slice(0, 60)\n      }))\n    });\n    continue;\n  }\n  const userIsLast = (last.author_id === t.requester_id);\n  if (userIsLast) lastByUser++; else lastByAgent++;\n  if (userIsLast) {\n    const ageDays = t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null;\n    const sinceLastDays = last.created_at ? Math.floor((Date.now() - new Date(last.created_at).getTime()) / 86400000) : null;\n    matches.push({\n      ticket_id: t.id, subject: t.subject, status: t.status,\n      age_days: ageDays, days_since_user_updated: sinceLastDays,\n      last_comment_at: last.created_at, last_author_id: last.author_id,\n      requester_id: t.requester_id, assignee_id: t.assignee_id,\n      is_public: true, source: 'comment',\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    });\n  }\n}\n\n// CSV de IDs pendientes para que el siguiente nodo HTTP haga show_many con metric_sets.\n// Si no hay pendientes, usamos '0' (devuelve tickets vacíos sin error).\nconst pendingCsv = pendingMetrics.length ? pendingMetrics.join(',') : '0';\n\nreturn [{ json: {\n  _pre_matches: matches,\n  _ticket_by_id: ticketByIdJson,\n  _last_by_user_count: lastByUser,\n  _last_by_agent_count: lastByAgent,\n  _skipped_debug: skippedDebug,\n  _pending_metrics_ids: pendingMetrics,\n  _tickets_open_total: tickets.length,\n  pending_ids_csv: pendingCsv\n} }];"
       },
       "id": "aggregate",
       "name": "Cross Reference",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [-50, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://soporteyurest.zendesk.com/api/v2/tickets/show_many.json?ids={{ $json.pending_ids_csv }}&include=metric_sets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zendeskApi",
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "metrics-skipped",
+      "name": "ZD Metrics Skipped",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [150, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pase 2: para los tickets sin comentario público, usa ticket_metrics\n// (requester_updated_at vs assignee_updated_at). Si requester actualizó\n// más recientemente que assignee → cuenta como esperando respuesta.\n// Esto resuelve los native_messaging donde el comment-container es opaco.\nconst pre  = $('Cross Reference').first().json;\nconst body = $input.first().json || {};\nconst metricSets = Array.isArray(body.metric_sets) ? body.metric_sets : [];\nconst ticketsArr = Array.isArray(body.tickets) ? body.tickets : [];\n\nconst metricById = {};\nfor (const m of metricSets) { if (m && m.ticket_id) metricById[m.ticket_id] = m; }\n\nconst matches = [...(pre._pre_matches || [])];\nconst tById = pre._ticket_by_id || {};\n\nlet metricsAdded = 0;\nfor (const id of (pre._pending_metrics_ids || [])) {\n  const t = tById[id];\n  const m = metricById[id];\n  if (!t || !m) continue;\n  const ru = m.requester_updated_at ? new Date(m.requester_updated_at).getTime() : 0;\n  const au = m.assignee_updated_at  ? new Date(m.assignee_updated_at).getTime()  : 0;\n  // Necesita respuesta si el requester ha actualizado más recientemente que el assignee.\n  // (Si nunca ha sido asignado, au=0 → cualquier actividad del requester cuenta.)\n  if (ru > au) {\n    const ageDays = t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null;\n    const sinceLastDays = m.requester_updated_at ? Math.floor((Date.now() - ru) / 86400000) : null;\n    matches.push({\n      ticket_id: t.id, subject: t.subject, status: t.status,\n      age_days: ageDays, days_since_user_updated: sinceLastDays,\n      last_comment_at: m.requester_updated_at,\n      last_author_id: t.requester_id,\n      requester_id: t.requester_id, assignee_id: t.assignee_id,\n      is_public: null, source: 'metrics',\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    });\n    metricsAdded++;\n  }\n}\n\nmatches.sort((a,b) => (a.days_since_user_updated ?? 999) - (b.days_since_user_updated ?? 999));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  tickets_open_total: pre._tickets_open_total,\n  tickets_resolved_via_comments: (pre._pre_matches || []).length + (pre._last_by_agent_count || 0),\n  tickets_resolved_via_metrics_fallback: (pre._pending_metrics_ids || []).length,\n  metrics_added_to_matches: metricsAdded,\n  last_by_user_count:  pre._last_by_user_count,\n  last_by_agent_count: pre._last_by_agent_count,\n  needs_agent_reply_count: matches.length,\n  needs_agent_reply_ids_csv: matches.map(m => m.ticket_id).join(','),\n  needs_agent_reply: matches,\n  _skipped_debug: pre._skipped_debug\n} }];"
+      },
+      "id": "combine",
+      "name": "Combinar Comments+Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [350, 0]
     },
     {
       "parameters": {
@@ -81,7 +104,7 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [150, 0]
+      "position": [550, 0]
     }
   ],
   "connections": {
@@ -89,7 +112,9 @@
     "ZD Tickets Open": { "main": [[{ "node": "Limitar a 100",  "type": "main", "index": 0 }]] },
     "Limitar a 100":   { "main": [[{ "node": "Last Comment",   "type": "main", "index": 0 }]] },
     "Last Comment":    { "main": [[{ "node": "Cross Reference","type": "main", "index": 0 }]] },
-    "Cross Reference": { "main": [[{ "node": "Respond",        "type": "main", "index": 0 }]] }
+    "Cross Reference": { "main": [[{ "node": "ZD Metrics Skipped", "type": "main", "index": 0 }]] },
+    "ZD Metrics Skipped":      { "main": [[{ "node": "Combinar Comments+Metrics", "type": "main", "index": 0 }]] },
+    "Combinar Comments+Metrics": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {},
