@@ -1,19 +1,19 @@
 {
-  "name": "Sync Check Zendesk-Asana (cached)",
+  "name": "Sync Check Zendesk-Asana (Incidencias DEV)",
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            { "field": "hours", "hoursInterval": 6 }
-          ]
-        }
+        "httpMethod": "GET",
+        "path": "sync-check",
+        "responseMode": "responseNode",
+        "options": {}
       },
-      "id": "cron",
-      "name": "Schedule Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [-1000, -200]
+      "id": "wh-1",
+      "name": "Webhook Sync Check",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-800, 0],
+      "webhookId": "sync-check"
     },
 
     {
@@ -29,7 +29,7 @@
       "name": "ZD Incidencias Open",
       "type": "n8n-nodes-base.zendesk",
       "typeVersion": 1,
-      "position": [-800, -200]
+      "position": [-600, 0]
     },
     {
       "parameters": {
@@ -39,7 +39,7 @@
       "name": "Save ZD Open",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-600, -200]
+      "position": [-400, 0]
     },
 
     {
@@ -56,20 +56,20 @@
       "name": "Asana Tasks Section",
       "type": "n8n-nodes-base.asana",
       "typeVersion": 1,
-      "position": [-400, -200],
+      "position": [-200, 0],
       "credentials": {
         "asanaOAuth2Api": { "id": "lg7A3NxFXWdmTBae", "name": "Asana account" }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Pre-extract zendesk_id desde NAME o HTML_NOTES de TODAS las tareas.\n// Filtro de volumen: ignorar tareas completadas hace +365 días.\nconst tasks = $input.all().map(i => i.json).filter(Boolean);\nconst cutoff = Date.now() - 365 * 86400000;\n\n// Detección de Zendesk ID — varios patrones en orden de fiabilidad:\nfunction findZdId(s) {\n  if (!s) return null;\n  const txt = String(s);\n  let m;\n  m = txt.match(/zendesk\\.com\\/agent\\/tickets\\/(\\d{2,7})/i); if (m) return m[1];\n  m = txt.match(/#\\s*(\\d{2,7})\\b/);                          if (m) return m[1];\n  m = txt.match(/\\b(?:ticket|zendesk|zd|incidencia)[\\s:#\\-_]*(\\d{2,7})\\b/i); if (m) return m[1];\n  return null;\n}\n\nconst out = [];\nfor (const t of tasks) {\n  if (!t) continue;\n  if (t.completed === true && t.completed_at) {\n    if (new Date(t.completed_at).getTime() < cutoff) continue;\n  }\n  const zdId = findZdId(t.name) || findZdId(t.html_notes);\n  out.push({ ...t, _zd_id: zdId || null });\n}\nreturn out.map(t => ({ json: t }));"
+        "jsCode": "// Pre-extract zendesk_id desde NAME o HTML_NOTES de TODAS las tareas\n// (completas e incompletas). Las que no contienen ID legible se pasan\n// por separado al siguiente nodo para que fetcheen sus attachments.\n//\n// Filtro de volumen: ignorar tareas completadas hace +365 días para\n// no saturar (improbable que estén ligadas a Zendesk abiertos hoy).\nconst tasks = $input.all().map(i => i.json).filter(Boolean);\nconst cutoff = Date.now() - 365 * 86400000;\n\nfunction findZdId(s) {\n  if (!s) return null;\n  const m = String(s).match(/#\\s*(\\d{2,7})/);\n  return m ? m[1] : null;\n}\n\nconst out = [];\nfor (const t of tasks) {\n  if (!t) continue;\n  // Si está completada hace más de 1 año, saltar (no puede ligar con\n  // Zendesk abiertos de manera realista)\n  if (t.completed === true && t.completed_at) {\n    if (new Date(t.completed_at).getTime() < cutoff) continue;\n  }\n  const zdId = findZdId(t.name) || findZdId(t.html_notes);\n  out.push({ ...t, _zd_id: zdId || null });\n}\n// Devolver todos en el mismo orden — los que NO tienen _zd_id pasarán\n// por Get Attachments en la siguiente etapa\nreturn out.map(t => ({ json: t }));"
       },
       "id": "filter-completed",
       "name": "Todas + Pre-extract",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-200, -200]
+      "position": [0, 0]
     },
     {
       "parameters": {
@@ -82,7 +82,7 @@
       "name": "Get Attachments",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [0, -200],
+      "position": [200, 0],
       "credentials": {
         "asanaOAuth2Api": { "id": "lg7A3NxFXWdmTBae", "name": "Asana account" }
       },
@@ -90,48 +90,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// Construye mapa zendesk_id -> task Asana (prioridad a la completada).\n// Luego clasifica los Zendesk abiertos en 3 categorías.\nconst tasks = $('Todas + Pre-extract').all().map(i => i.json);\nconst attResults = $input.all().map(i => i.json);\nconst zdData = $('Save ZD Open').first().json;\nconst zdOpenIds = (zdData._zd_open_ids || []).map(String);\n\nlet srcName = 0, srcAtt = 0;\nconst byZdId = new Map();\n\nfor (let i = 0; i < tasks.length; i++) {\n  const task = tasks[i];\n  let zdId = task._zd_id || null;\n  if (zdId) {\n    srcName++;\n  } else {\n    const attResp = attResults[i] || {};\n    const atts = Array.isArray(attResp.data) ? attResp.data : [];\n    for (const att of atts) {\n      const name = att && att.name ? String(att.name) : '';\n      let m = name.match(/#\\s*(\\d{2,7})\\b/);\n      if (!m) m = name.match(/\\b(?:ticket|zd)[\\s:#\\-_]*(\\d{2,7})\\b/i);\n      if (!m) m = name.match(/^(\\d{4,7})[_\\-\\.]/);\n      if (m) { zdId = m[1]; srcAtt++; break; }\n    }\n  }\n  if (!zdId) continue;\n  const existing = byZdId.get(String(zdId));\n  if (!existing || (task.completed && !existing.completed)) {\n    byZdId.set(String(zdId), task);\n  }\n}\n\nconst zd_completed = [], zd_in_progress = [], zd_no_asana = [];\nfor (const zdIdStr of zdOpenIds) {\n  const t = byZdId.get(zdIdStr);\n  const zdId = parseInt(zdIdStr, 10);\n  const base = { zendesk_id: zdId, zendesk_url: `https://soporteyurest.zendesk.com/agent/tickets/${zdId}` };\n  if (!t) zd_no_asana.push(base);\n  else if (t.completed === true) {\n    zd_completed.push({ ...base, asana_gid: t.gid, asana_name: t.name, asana_url: t.permalink_url, asana_completed_at: t.completed_at });\n  } else {\n    zd_in_progress.push({ ...base, asana_gid: t.gid, asana_name: t.name, asana_url: t.permalink_url });\n  }\n}\nzd_completed.sort((a,b) => (b.asana_completed_at || '').localeCompare(a.asana_completed_at || ''));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  zendesk_open_total: zdOpenIds.length,\n  asana_tasks_analyzed: tasks.length,\n  resolved_from_name_notes: srcName,\n  resolved_from_attachments: srcAtt,\n  zd_completed_in_asana_count: zd_completed.length,\n  zd_in_progress_count: zd_in_progress.length,\n  zd_no_asana_count: zd_no_asana.length,\n  zd_completed_in_asana_ids_csv: zd_completed.map(x => x.zendesk_id).join(','),\n  zd_in_progress_ids_csv: zd_in_progress.map(x => x.zendesk_id).join(','),\n  zd_no_asana_ids_csv: zd_no_asana.map(x => x.zendesk_id).join(','),\n  zd_completed_in_asana: zd_completed,\n  zd_in_progress: zd_in_progress,\n  zd_no_asana: zd_no_asana\n} }];"
+        "jsCode": "// Construye mapa zendesk_id -> task Asana (más reciente, con prioridad\n// a la completada). Luego clasifica CADA UNO de los 112 Zendesk abiertos\n// en 3 categorías:\n//  - 'asana_completed' → desincronizado (cerrar en Zendesk)\n//  - 'asana_open'      → en curso en Asana, OK\n//  - 'no_asana'        → no se encontró tarea Asana ligada\nconst tasks = $('Todas + Pre-extract').all().map(i => i.json);\nconst attResults = $input.all().map(i => i.json);\nconst zdData = $('Save ZD Open').first().json;\nconst zdOpenIds = (zdData._zd_open_ids || []).map(String);\n\nlet srcName = 0, srcAtt = 0;\nconst byZdId = new Map();  // zendesk_id (str) -> mejor task Asana\n\nfor (let i = 0; i < tasks.length; i++) {\n  const task = tasks[i];\n  let zdId = task._zd_id || null;\n  if (zdId) {\n    srcName++;\n  } else {\n    const attResp = attResults[i] || {};\n    const atts = Array.isArray(attResp.data) ? attResp.data : [];\n    for (const att of atts) {\n      const name = att && att.name ? String(att.name) : '';\n      const m = name.match(/#\\s*(\\d{2,7})/);\n      if (m) { zdId = m[1]; srcAtt++; break; }\n    }\n  }\n  if (!zdId) continue;\n  // Si ya hay una tarea para este Zendesk, preferimos la completada\n  // (es la que importa para detectar mismatches)\n  const existing = byZdId.get(String(zdId));\n  if (!existing || (task.completed && !existing.completed)) {\n    byZdId.set(String(zdId), task);\n  }\n}\n\nconst zd_completed = [];      // mismatches: Zendesk abierto + Asana completed\nconst zd_in_progress = [];    // OK: Zendesk abierto + Asana abierto\nconst zd_no_asana = [];       // sin tarea Asana encontrada\n\nfor (const zdIdStr of zdOpenIds) {\n  const t = byZdId.get(zdIdStr);\n  const zdId = parseInt(zdIdStr, 10);\n  const base = {\n    zendesk_id: zdId,\n    zendesk_url: `https://soporteyurest.zendesk.com/agent/tickets/${zdId}`\n  };\n  if (!t) {\n    zd_no_asana.push(base);\n  } else if (t.completed === true) {\n    zd_completed.push({\n      ...base,\n      asana_gid: t.gid,\n      asana_name: t.name,\n      asana_url: t.permalink_url,\n      asana_completed_at: t.completed_at\n    });\n  } else {\n    zd_in_progress.push({\n      ...base,\n      asana_gid: t.gid,\n      asana_name: t.name,\n      asana_url: t.permalink_url\n    });\n  }\n}\n\n// Ordenar zd_completed por completed_at descendente (recientes arriba)\nzd_completed.sort((a,b) => (b.asana_completed_at || '').localeCompare(a.asana_completed_at || ''));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  zendesk_open_total: zdOpenIds.length,\n  asana_tasks_analyzed: tasks.length,\n  resolved_from_name_notes: srcName,\n  resolved_from_attachments: srcAtt,\n  // 3 categorías exclusivas — la suma da 112\n  zd_completed_in_asana_count: zd_completed.length,\n  zd_in_progress_count: zd_in_progress.length,\n  zd_no_asana_count: zd_no_asana.length,\n  zd_completed_in_asana_ids_csv: zd_completed.map(x => x.zendesk_id).join(','),\n  zd_in_progress_ids_csv: zd_in_progress.map(x => x.zendesk_id).join(','),\n  zd_no_asana_ids_csv: zd_no_asana.map(x => x.zendesk_id).join(','),\n  zd_completed_in_asana: zd_completed,\n  zd_in_progress: zd_in_progress,\n  zd_no_asana: zd_no_asana\n} }];"
       },
       "id": "cross-ref",
       "name": "Cross Reference",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [200, -200]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Guarda el payload en staticData del workflow.\n// El webhook lo lee y responde al instante sin tocar Zendesk/Asana.\nconst payload = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nstaticData.cached_payload = payload;\nstaticData.cached_at      = new Date().toISOString();\nreturn [{ json: { saved: true, cached_at: staticData.cached_at } }];"
-      },
-      "id": "save-cache",
-      "name": "Guardar en caché",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [400, -200]
-    },
-
-    {
-      "parameters": {
-        "httpMethod": "GET",
-        "path": "sync-check",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "id": "wh-1",
-      "name": "Webhook Sync Check",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [-1000, 200],
-      "webhookId": "sync-check"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Lee el payload cacheado por el Schedule Trigger.\nconst staticData = $getWorkflowStaticData('global');\nconst cached = staticData.cached_payload || null;\nif (!cached) {\n  return [{ json: {\n    generated_at: null,\n    cached_at: null,\n    _stale: true,\n    _hint: 'Cache vacía. Espera al primer tick del Schedule Trigger (6h) o ejecútalo manualmente con el workflow ACTIVO.',\n    zendesk_open_total: 0,\n    zd_completed_in_asana_count: 0,\n    zd_in_progress_count: 0,\n    zd_no_asana_count: 0,\n    zd_completed_in_asana_ids_csv: '',\n    zd_completed_in_asana: [],\n    zd_in_progress: [],\n    zd_no_asana: []\n  } }];\n}\nreturn [{ json: { ...cached, cached_at: staticData.cached_at, _stale: false } }];"
-      },
-      "id": "read-cache",
-      "name": "Leer caché",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-800, 200]
+      "position": [400, 0]
     },
     {
       "parameters": {
@@ -150,20 +115,17 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [-600, 200]
+      "position": [600, 0]
     }
   ],
   "connections": {
-    "Schedule Trigger":    { "main": [[{ "node": "ZD Incidencias Open", "type": "main", "index": 0 }]] },
+    "Webhook Sync Check":  { "main": [[{ "node": "ZD Incidencias Open", "type": "main", "index": 0 }]] },
     "ZD Incidencias Open": { "main": [[{ "node": "Save ZD Open",        "type": "main", "index": 0 }]] },
     "Save ZD Open":        { "main": [[{ "node": "Asana Tasks Section", "type": "main", "index": 0 }]] },
     "Asana Tasks Section": { "main": [[{ "node": "Todas + Pre-extract", "type": "main", "index": 0 }]] },
-    "Todas + Pre-extract": { "main": [[{ "node": "Get Attachments",     "type": "main", "index": 0 }]] },
+    "Todas + Pre-extract": { "main": [[{ "node": "Get Attachments", "type": "main", "index": 0 }]] },
     "Get Attachments":     { "main": [[{ "node": "Cross Reference",     "type": "main", "index": 0 }]] },
-    "Cross Reference":     { "main": [[{ "node": "Guardar en caché",    "type": "main", "index": 0 }]] },
-
-    "Webhook Sync Check":  { "main": [[{ "node": "Leer caché",          "type": "main", "index": 0 }]] },
-    "Leer caché":          { "main": [[{ "node": "Respond",             "type": "main", "index": 0 }]] }
+    "Cross Reference":     { "main": [[{ "node": "Respond",             "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "pinData": {},
