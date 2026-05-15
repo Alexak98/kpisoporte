@@ -48,7 +48,7 @@
         "operation": "getAll",
         "returnAll": true,
         "filters": {
-          "opt_fields": "={{ [\"gid\",\"name\",\"completed\",\"completed_at\",\"permalink_url\",\"html_notes\",\"notes\"] }}",
+          "opt_fields": "={{ [\"gid\",\"name\",\"completed\",\"completed_at\",\"permalink_url\",\"html_notes\"] }}",
           "section": "=1207479621563558"
         }
       },
