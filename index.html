@@ -497,7 +497,24 @@
       states: { hover: { filter: { type:'none' } }, active: { filter: { type:'none' } } }
     };
     if (hourlyChart) hourlyChart.updateOptions(options, true, false);
-    else { hourlyChart = new ApexCharts(container, options); hourlyChart.render(); }
+    else {
+      hourlyChart = new ApexCharts(container, options);
+      hourlyChart.render();
+      // Reajusta la altura cuando el contenedor cambia de tamaño (sección flex-1
+      // puede crecer/encoger al actualizarse la tabla 'Reparto IA · Manual por día'
+      // cuyo número de filas varía durante la semana). Sin esto, las etiquetas del
+      // eje X (09:00, 10:00…) quedan cortadas tras un cambio de altura.
+      if (typeof ResizeObserver !== 'undefined') {
+        let lastH = container.clientHeight;
+        const ro = new ResizeObserver(() => {
+          const h = container.clientHeight || 300;
+          if (Math.abs(h - lastH) < 5) return;  // ignorar jitter <5px
+          lastH = h;
+          if (hourlyChart) hourlyChart.updateOptions({ chart: { height: h } }, false, false);
+        });
+        ro.observe(container);
+      }
+    }
   }
 
   // === Reparto IA / Manual por día (tabla numérica) ===
