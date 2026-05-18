@@ -374,15 +374,16 @@
   </section>
 
   <!-- STACKED BAR IA / MANUAL por día · esta semana -->
-  <section class="grid grid-cols-1 gap-6 px-10 mt-3" style="height: 230px;">
-    <div class="card p-4 flex flex-col overflow-hidden">
+  <!-- Sin altura fija: se adapta al número de días de la semana (lunes ocupa poco, viernes más). -->
+  <section class="grid grid-cols-1 gap-6 px-10 mt-3 shrink-0">
+    <div class="card p-4 flex flex-col">
       <div class="flex items-center justify-between mb-1 shrink-0">
         <div class="text-2xl font-bold">Reparto IA · Manual por día · esta semana</div>
         <div class="text-base text-slate-400">
           IA <span id="weekIA">0</span> · Manual <span id="weekMa">0</span>
         </div>
       </div>
-      <div id="stackedChart" class="flex-1 min-h-0"></div>
+      <div id="stackedChart"></div>
     </div>
   </section>
 
