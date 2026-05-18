@@ -450,7 +450,7 @@
         "operation": "getAll",
         "returnAll": true,
         "options": {
-          "query": "=type:ticket created>={{ $json.hist_older_ymd }} created<{{ $json.hist_ymd }} -subject:\"Conversation with\""
+          "query": "=type:ticket created>={{ $('Calcular fechas').first().json.hist_older_ymd }} created<{{ $('Calcular fechas').first().json.hist_ymd }} -subject:\"Conversation with\""
         }
       },
       "id": "zd-hist-manual-older",
@@ -475,7 +475,7 @@
         "operation": "getAll",
         "returnAll": true,
         "options": {
-          "query": "=type:ticket created>={{ $json.hist_older_ymd }} created<{{ $json.hist_ymd }} subject:\"Conversation with\""
+          "query": "=type:ticket created>={{ $('Calcular fechas').first().json.hist_older_ymd }} created<{{ $('Calcular fechas').first().json.hist_ymd }} subject:\"Conversation with\""
         }
       },
       "id": "zd-hist-ia-older",
