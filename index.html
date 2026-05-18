@@ -460,14 +460,16 @@
   // === Hoy vs media (barras) ===
   function renderHourly(arr) {
     const container = document.getElementById('hourlyChart');
-    const h = container.clientHeight || 300;
+    // Reservamos un margen abajo para que ApexCharts NO clipee las labels del
+    // eje X. Sin el -32 las labels (18px) salen por debajo del SVG y la
+    // tarjeta con overflow-hidden las recorta a la mitad.
+    const h = Math.max((container.clientHeight || 300) - 32, 200);
     const labels = arr.map(x => x.hour);
     const todayD = arr.map(x => x.today);
     const avgD   = arr.map(x => x.avg);
     const options = {
       chart: {
         type:'bar', height:h, width:'100%', stacked:false,
-        parentHeightOffset: 0,
         toolbar:{ show:false }, background:'transparent', foreColor:'#cbd5e1',
         fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
       },
@@ -516,10 +518,10 @@
       if (typeof ResizeObserver !== 'undefined') {
         let lastObsH = container.clientHeight;
         const ro = new ResizeObserver(() => {
-          const newH = container.clientHeight || 300;
-          if (Math.abs(newH - lastObsH) < 30) return;  // umbral generoso para evitar bucles
-          lastObsH = newH;
-          // Trigger un re-render completo en el próximo tick.
+          const newCH = container.clientHeight || 300;
+          if (Math.abs(newCH - lastObsH) < 30) return;  // umbral generoso para evitar bucles
+          lastObsH = newCH;
+          const newH = Math.max(newCH - 32, 200);  // mismo margen que arriba para no clipear labels
           if (hourlyChart) {
             try { hourlyChart.destroy(); } catch(_) {}
             hourlyChart = null;
