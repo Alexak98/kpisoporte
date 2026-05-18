@@ -467,6 +467,7 @@
     const options = {
       chart: {
         type:'bar', height:h, width:'100%', stacked:false,
+        parentHeightOffset: 0,
         toolbar:{ show:false }, background:'transparent', foreColor:'#cbd5e1',
         fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
       },
@@ -487,7 +488,8 @@
       },
       xaxis: {
         categories: labels,
-        labels:{ style:{ colors:'#cbd5e1', fontSize:'14px', fontWeight:600 } },
+        labels:{ show: true, rotate: 0, hideOverlappingLabels: false, trim: false,
+                 style:{ colors:'#e6edf7', fontSize:'18px', fontWeight:700 } },
         axisBorder:{ show:false }, axisTicks:{ show:false }
       },
       yaxis: { labels:{ style:{ colors:'#9bb0d6', fontSize:'12px' }, formatter: v => Math.round(v) } },
@@ -496,21 +498,35 @@
       tooltip:{ enabled:false },
       states: { hover: { filter: { type:'none' } }, active: { filter: { type:'none' } } }
     };
+    // Si el contenedor cambió de altura significativamente desde el último render,
+    // ApexCharts no re-calcula bien el layout de los ejes con updateOptions →
+    // destruimos y recreamos para forzar layout limpio (X-axis labels visibles).
+    const lastH = container.dataset.lastChartH ? parseInt(container.dataset.lastChartH, 10) : 0;
+    if (hourlyChart && Math.abs(h - lastH) > 50) {
+      try { hourlyChart.destroy(); } catch(_) {}
+      hourlyChart = null;
+    }
+    container.dataset.lastChartH = String(h);
     if (hourlyChart) hourlyChart.updateOptions(options, true, false);
     else {
       hourlyChart = new ApexCharts(container, options);
       hourlyChart.render();
-      // Reajusta la altura cuando el contenedor cambia de tamaño (sección flex-1
-      // puede crecer/encoger al actualizarse la tabla 'Reparto IA · Manual por día'
-      // cuyo número de filas varía durante la semana). Sin esto, las etiquetas del
-      // eje X (09:00, 10:00…) quedan cortadas tras un cambio de altura.
+      // ResizeObserver: si el contenedor cambia (p.ej. al avanzar la semana y
+      // crecer 'Reparto IA · Manual'), provocamos un re-render limpio.
       if (typeof ResizeObserver !== 'undefined') {
-        let lastH = container.clientHeight;
+        let lastObsH = container.clientHeight;
         const ro = new ResizeObserver(() => {
-          const h = container.clientHeight || 300;
-          if (Math.abs(h - lastH) < 5) return;  // ignorar jitter <5px
-          lastH = h;
-          if (hourlyChart) hourlyChart.updateOptions({ chart: { height: h } }, false, false);
+          const newH = container.clientHeight || 300;
+          if (Math.abs(newH - lastObsH) < 30) return;  // umbral generoso para evitar bucles
+          lastObsH = newH;
+          // Trigger un re-render completo en el próximo tick.
+          if (hourlyChart) {
+            try { hourlyChart.destroy(); } catch(_) {}
+            hourlyChart = null;
+            container.dataset.lastChartH = String(newH);
+            hourlyChart = new ApexCharts(container, { ...options, chart: { ...options.chart, height: newH } });
+            hourlyChart.render();
+          }
         });
         ro.observe(container);
       }
