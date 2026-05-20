@@ -355,19 +355,19 @@
       <div id="hourlyChart" class="flex-1 min-h-0"></div>
     </div>
 
-    <!-- TOP CLIENTES (este mes) + REPARTO POR TIPO DE CLIENTE (este mes, via tags de org) -->
+    <!-- CLIENTES: top este mes (creados) + top con abiertos ahora -->
     <div class="card p-4 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
-        <div class="text-2xl font-bold">Clientes · este mes</div>
+        <div class="text-2xl font-bold">Top Clientes</div>
       </div>
       <div class="grid grid-cols-2 gap-3 flex-1 min-h-0 overflow-hidden">
         <div class="flex flex-col min-h-0">
-          <div class="text-xs title text-slate-400 mb-1 shrink-0">Top organizaciones</div>
+          <div class="text-xs title text-slate-400 mb-1 shrink-0">Creados este mes</div>
           <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
         </div>
         <div class="flex flex-col min-h-0">
-          <div class="text-xs title text-slate-400 mb-1 shrink-0">Por tipo cliente</div>
-          <div id="ticketsByType" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
+          <div class="text-xs title text-slate-400 mb-1 shrink-0">Abiertos ahora</div>
+          <div id="topOrgsOpen" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
         </div>
       </div>
     </div>
@@ -793,37 +793,8 @@
     if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
     document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
     document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
-    renderTopOrgs(d.top_orgs || [], { containerId: 'topOrgs', sparkline: true });
-    renderByCustomerType(d.tickets_by_customer_type || []);
-  }
-
-  // Renderiza la columna 'Por tipo cliente': barra horizontal con count por tag.
-  // Cada tag normaliza (underscores → espacios, capitalize) para legibilidad.
-  function renderByCustomerType(arr) {
-    const cont = document.getElementById('ticketsByType');
-    if (!cont) return;
-    if (!arr || arr.length === 0) {
-      cont.innerHTML = '<div class="text-slate-500 text-xs">Sin datos</div>';
-      return;
-    }
-    const top = arr.slice(0, 5);
-    const max = Math.max(...top.map(x => x.count));
-    function prettify(tag) {
-      return String(tag || '').replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    }
-    cont.innerHTML = top.map((x, i) => {
-      const pct = max ? Math.max(20, Math.round((x.count / max) * 100)) : 0;
-      return `
-        <div class="relative flex-1 min-h-0 rounded-lg overflow-hidden bg-slate-800/40">
-          <div class="absolute inset-y-0 left-0 grad-purple" style="width:${pct}%"></div>
-          <div class="relative h-full flex items-center justify-between px-2">
-            <span class="font-bold text-white truncate text-sm drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" title="${x.tag}">
-              ${i+1}. ${prettify(x.tag)}
-            </span>
-            <span class="font-extrabold text-white text-base kpi-number shrink-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">${x.count}</span>
-          </div>
-        </div>`;
-    }).join('');
+    renderTopOrgs(d.top_orgs      || [], { containerId: 'topOrgs',     sparkline: true });
+    renderTopOrgs(d.top_orgs_open || [], { containerId: 'topOrgsOpen', sparkline: false });
   }
 
   // Fetch LIGHT: solo counters. Timeout corto, no muestra loader.
