@@ -355,7 +355,7 @@
       <div id="hourlyChart" class="flex-1 min-h-0"></div>
     </div>
 
-    <!-- CLIENTES: top este mes (creados) + top con abiertos ahora -->
+    <!-- CLIENTES: top este mes (creados) + clientes por carga de tickets abiertos -->
     <div class="card p-4 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="text-2xl font-bold">Top Clientes</div>
@@ -366,8 +366,30 @@
           <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
         </div>
         <div class="flex flex-col min-h-0">
-          <div class="text-xs title text-slate-400 mb-1 shrink-0">Abiertos ahora</div>
-          <div id="topOrgsOpen" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
+          <div class="text-xs title text-slate-400 mb-1 shrink-0">Clientes por carga · abiertos ahora</div>
+          <div class="flex-1 min-h-0 flex flex-col gap-2 justify-center">
+            <div class="rounded-lg bg-rose-900/30 border border-rose-500/30 p-3">
+              <div class="flex items-baseline justify-between">
+                <div id="kpiOrgsGt3" class="kpi-number text-3xl text-rose-300">0</div>
+                <div class="text-xs text-slate-400">clientes</div>
+              </div>
+              <div class="text-sm text-rose-200 mt-0.5">&gt; 3 tickets abiertos</div>
+            </div>
+            <div class="rounded-lg bg-amber-900/30 border border-amber-500/30 p-3">
+              <div class="flex items-baseline justify-between">
+                <div id="kpiOrgs2_3" class="kpi-number text-3xl text-amber-300">0</div>
+                <div class="text-xs text-slate-400">clientes</div>
+              </div>
+              <div class="text-sm text-amber-200 mt-0.5">2-3 tickets abiertos</div>
+            </div>
+            <div class="rounded-lg bg-emerald-900/30 border border-emerald-500/30 p-3">
+              <div class="flex items-baseline justify-between">
+                <div id="kpiOrgs1" class="kpi-number text-3xl text-emerald-300">0</div>
+                <div class="text-xs text-slate-400">clientes</div>
+              </div>
+              <div class="text-sm text-emerald-200 mt-0.5">1 ticket abierto</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -793,8 +815,12 @@
     if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
     document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
     document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
-    renderTopOrgs(d.top_orgs      || [], { containerId: 'topOrgs',     sparkline: true });
-    renderTopOrgs(d.top_orgs_open || [], { containerId: 'topOrgsOpen', sparkline: false });
+    renderTopOrgs(d.top_orgs || [], { containerId: 'topOrgs', sparkline: true });
+    // Clientes por carga de tickets abiertos (3 buckets).
+    const oc = d.orgs_by_open_count_summary || {};
+    setNum('kpiOrgsGt3',  oc.gt3         ?? 0);
+    setNum('kpiOrgs2_3',  oc.between_2_3 ?? 0);
+    setNum('kpiOrgs1',    oc.eq1         ?? 0);
   }
 
   // Fetch LIGHT: solo counters. Timeout corto, no muestra loader.
