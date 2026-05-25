@@ -275,7 +275,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "type:ticket status<solved" }
+            { "name": "query", "value": "type:ticket status<solved -tags:incidencia_dev" }
           ]
         },
         "options": { "response": { "response": { "neverError": true } } }

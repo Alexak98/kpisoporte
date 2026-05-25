@@ -228,7 +228,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "type:ticket status<solved" },
+            { "name": "query", "value": "type:ticket status<solved -tags:incidencia_dev" },
             { "name": "per_page", "value": "100" }
           ]
         },
