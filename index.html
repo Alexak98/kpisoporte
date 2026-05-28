@@ -267,6 +267,12 @@
         Manual <span id="kpiMonthManual" class="text-emerald-300 font-bold">—</span>
       </div>
       <div id="kpiMonthDelta" class="text-sm text-slate-500 mt-1">vs mes ant. —</div>
+      <div class="text-xs text-slate-500 mt-0.5">
+        mes ant.:
+        IA <span id="kpiMonthIAprev" class="text-violet-300 font-bold">—</span>
+        ·
+        Man <span id="kpiMonthManualPrev" class="text-emerald-300 font-bold">—</span>
+      </div>
     </div>
     <!-- Sin atender (vista 'Sin leer') -->
     <div class="card p-5">
@@ -882,6 +888,11 @@
       // Mantenemos el fetch porque alimenta los deltas vs sem./mes anterior.
       _kpiState.weekPrev  = d.tickets_last_week  ?? null;
       _kpiState.monthPrev = d.tickets_last_month ?? null;
+      // Desglose IA/Manual del mes anterior para comparar el mix (no solo el total).
+      const mIa  = d.tickets_last_month_ia;
+      const mMan = d.tickets_last_month_manual;
+      document.getElementById('kpiMonthIAprev').textContent     = (mIa  != null) ? mIa  : '—';
+      document.getElementById('kpiMonthManualPrev').textContent = (mMan != null) ? mMan : '—';
       tryRenderDeltas();
     } catch (e) {
       console.warn('Top orgs mes ant fetch falló:', e && e.message);
