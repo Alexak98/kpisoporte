@@ -7,28 +7,82 @@
 
   <!-- Tailwind via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Override de paleta semántica para alinear con Technical Intelligence Narrative.
+    // Sobrescribe los tonos -200/-300 que ya están en uso por la UI: emerald (success),
+    // amber (warning), rose (critical). Mantenemos violet (IA) y slate (neutrals) intactos.
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            emerald: {
+              200: '#6ffbbe',
+              300: '#4edea3',
+              500: '#00a572',
+              900: '#003824'
+            },
+            amber: {
+              200: '#ffdcc6',
+              300: '#ffb786',
+              500: '#df7412',
+              900: '#502400'
+            },
+            rose: {
+              200: '#ffdad6',
+              300: '#ffb4ab',
+              500: '#93000a',
+              900: '#690005'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
   <!-- ApexCharts (heatmap) -->
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.1/dist/apexcharts.min.js"></script>
+  <!-- Inter + JetBrains Mono (design system: Technical Intelligence Narrative) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
   <style>
-    /* ====== Bw Modelica ====== */
-    @font-face { font-family:'Bw Modelica'; font-weight:300; font-style:normal;
-      src:url('fonts/BwModelica-Light.woff') format('woff'); font-display:swap; }
-    @font-face { font-family:'Bw Modelica'; font-weight:400; font-style:normal;
-      src:url('fonts/BwModelica-Regular.woff') format('woff'); font-display:swap; }
-    @font-face { font-family:'Bw Modelica'; font-weight:500; font-style:normal;
-      src:url('fonts/BwModelica-Medium.woff') format('woff'); font-display:swap; }
-    @font-face { font-family:'Bw Modelica'; font-weight:700; font-style:normal;
-      src:url('fonts/BwModelica-Bold.woff') format('woff'); font-display:swap; }
-    @font-face { font-family:'Bw Modelica'; font-weight:800; font-style:normal;
-      src:url('fonts/BwModelica-ExtraBold.woff') format('woff'); font-display:swap; }
-    @font-face { font-family:'Bw Modelica'; font-weight:900; font-style:normal;
-      src:url('fonts/BwModelica-Black.woff') format('woff'); font-display:swap; }
+    /* ====== Design System: Technical Intelligence Narrative ====== */
+    :root {
+      /* Surfaces (Deep Navy) */
+      --surface:                    #10131a;
+      --surface-container-lowest:   #0b0e15;
+      --surface-container-low:      #191b23;
+      --surface-container:          #1d2027;
+      --surface-container-high:     #272a31;
+      --surface-container-highest:  #32353c;
+      /* On-surface */
+      --on-surface:                 #e1e2ec;
+      --on-surface-variant:         #c2c6d6;
+      --outline:                    #8c909f;
+      --outline-variant:            #424754;
+      /* Semantic */
+      --primary:                    #adc6ff;
+      --primary-container:          #4d8eff;
+      --on-primary:                 #002e6a;
+      --secondary:                  #4edea3;          /* success */
+      --secondary-container:        #00a572;
+      --tertiary:                   #ffb786;          /* warning */
+      --tertiary-container:         #df7412;
+      --error:                      #ffb4ab;          /* critical */
+      --error-container:            #93000a;
+      /* Border glass */
+      --glass-border:               rgba(255,255,255,0.08);
+    }
 
     html, body {
-      background: #0b1220;
-      color: #e6edf7;
-      font-family: 'Bw Modelica', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--surface);
+      color: var(--on-surface);
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-feature-settings: 'cv11', 'ss01', 'ss03'; /* Inter stylistic alternates */
       overflow: hidden;
       margin: 0;
     }
@@ -43,37 +97,49 @@
       display: flex;
       flex-direction: column;
     }
+    /* Cards: glassmorphism sobre surface-container */
     .card {
-      background: linear-gradient(180deg, rgba(26,38,67,0.85), rgba(16,24,46,0.85));
-      border: 1px solid rgba(120,140,200,0.15);
-      border-radius: 18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      background: rgba(29, 32, 39, 0.7);   /* surface-container @ 70% */
+      border: 1px solid var(--glass-border);
+      border-radius: 1rem;                  /* 16px (rounded.lg) */
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
+    /* Números KPI grandes: JetBrains Mono — alineación de dígitos, técnico */
     .kpi-number {
+      font-family: 'JetBrains Mono', 'Inter', ui-monospace, monospace;
       font-variant-numeric: tabular-nums;
-      letter-spacing: -1px;
-      font-weight: 800;
+      letter-spacing: -0.02em;
+      font-weight: 700;
     }
-    .grad-blue   { background: linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%); }
-    .grad-green  { background: linear-gradient(135deg,#065f46 0%,#10b981 100%); }
-    .grad-amber  { background: linear-gradient(135deg,#92400e 0%,#f59e0b 100%); }
-    .grad-purple { background: linear-gradient(135deg,#5b21b6 0%,#a855f7 100%); }
+    /* Bars / accent gradients alineados al design system */
+    .grad-blue   { background: linear-gradient(135deg, #4d8eff 0%, #adc6ff 100%); }   /* primary */
+    .grad-green  { background: linear-gradient(135deg, #00a572 0%, #4edea3 100%); }   /* secondary */
+    .grad-amber  { background: linear-gradient(135deg, #df7412 0%, #ffb786 100%); }   /* tertiary */
+    .grad-purple { background: linear-gradient(135deg, #5b21b6 0%, #a855f7 100%); }   /* IA highlight */
     .pulse-dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      background: #22c55e;
-      box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+      width: 10px; height: 10px; border-radius: 9999px;
+      background: var(--secondary);
+      box-shadow: 0 0 0 0 rgba(78,222,163,0.7);
       animation: pulse 2s infinite;
-      display:inline-block;
+      display: inline-block;
     }
-    .pulse-dot.error { background:#ef4444; box-shadow:0 0 0 0 rgba(239,68,68,0.7);}
+    .pulse-dot.error { background: var(--error); box-shadow: 0 0 0 0 rgba(255,180,171,0.7); }
     @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
-      70%  { box-shadow: 0 0 0 14px rgba(34,197,94,0); }
-      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+      0%   { box-shadow: 0 0 0 0    rgba(78,222,163,0.7); }
+      70%  { box-shadow: 0 0 0 14px rgba(78,222,163,0); }
+      100% { box-shadow: 0 0 0 0    rgba(78,222,163,0); }
     }
     .scrollable { scrollbar-width: none; }
     .scrollable::-webkit-scrollbar { display: none; }
-    .title { color:#9bb0d6; font-weight:500; letter-spacing:0.5px; text-transform:uppercase; }
+    /* Labels en caps: label-caps spec del design system */
+    .title {
+      color: var(--on-surface-variant);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
 
     /* Forzar tamaño del heatmap para que no se desborde */
     #heatmap { width: 100%; height: 100%; overflow: hidden; }
@@ -82,7 +148,7 @@
     /* ─── Loader inicial ─── */
     .loader-overlay {
       position: fixed; inset: 0;
-      background: radial-gradient(ellipse at center, rgba(20,30,55,0.97), rgba(8,12,22,0.99));
+      background: radial-gradient(ellipse at center, rgba(29,32,39,0.97), rgba(11,14,21,0.99));
       display: flex; align-items: center; justify-content: center;
       z-index: 9999;
       transition: opacity .5s ease;
@@ -90,18 +156,18 @@
     .loader-overlay.hidden { opacity: 0; pointer-events: none; }
     .loader-box { text-align: center; }
     .loader-text {
-      font-size: 28px; font-weight: 700; color: #e6edf7;
-      margin-top: 18px; letter-spacing: .3px;
+      font-size: 28px; font-weight: 600; color: var(--on-surface);
+      margin-top: 18px; letter-spacing: -0.01em;
     }
-    .loader-subtext { font-size: 15px; color: #94a3b8; margin-top: 6px; }
+    .loader-subtext { font-size: 15px; color: var(--on-surface-variant); margin-top: 6px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500; }
     .loader-bar {
-      width: 280px; height: 5px;
-      background: #1e293b; border-radius: 999px;
+      width: 280px; height: 4px;
+      background: var(--surface-container-high); border-radius: 9999px;
       margin: 22px auto 0; overflow: hidden;
     }
     .loader-bar-fill {
       height: 100%;
-      background: linear-gradient(90deg, #3b82f6 0%, #a855f7 50%, #f59e0b 100%);
+      background: linear-gradient(90deg, var(--primary-container) 0%, var(--primary) 50%, var(--secondary) 100%);
       width: 0%;
       animation: loaderFill 35s cubic-bezier(.4,.0,.2,1) forwards;
     }
@@ -148,10 +214,10 @@
     <svg class="loader-svg" width="200" height="200" viewBox="0 0 200 200">
       <!-- chispas decorativas que aparecen al final del apriete -->
       <g class="spark">
-        <circle cx="150" cy="55"  r="2.5" fill="#fbbf24"/>
-        <circle cx="160" cy="80"  r="2"   fill="#f59e0b"/>
-        <circle cx="155" cy="105" r="2.5" fill="#fbbf24"/>
-        <circle cx="148" cy="130" r="2"   fill="#f59e0b"/>
+        <circle cx="150" cy="55"  r="2.5" fill="#ffb786"/>
+        <circle cx="160" cy="80"  r="2"   fill="#df7412"/>
+        <circle cx="155" cy="105" r="2.5" fill="#ffb786"/>
+        <circle cx="148" cy="130" r="2"   fill="#df7412"/>
       </g>
       <!-- perno hexagonal -->
       <g class="bolt">
@@ -166,20 +232,20 @@
       <g class="wrench">
         <!-- mango -->
         <rect x="10" y="93" width="78" height="14" rx="3"
-              fill="url(#wrenchGrad)" stroke="#1e3a8a" stroke-width="1"/>
+              fill="url(#wrenchGrad)" stroke="#002e6a" stroke-width="1"/>
         <!-- agarre (líneas) -->
-        <line x1="22" y1="96"  x2="22" y2="104"  stroke="#1e3a8a" stroke-width="1.2"/>
-        <line x1="30" y1="96"  x2="30" y2="104"  stroke="#1e3a8a" stroke-width="1.2"/>
-        <line x1="38" y1="96"  x2="38" y2="104"  stroke="#1e3a8a" stroke-width="1.2"/>
-        <line x1="46" y1="96"  x2="46" y2="104"  stroke="#1e3a8a" stroke-width="1.2"/>
+        <line x1="22" y1="96"  x2="22" y2="104"  stroke="#002e6a" stroke-width="1.2"/>
+        <line x1="30" y1="96"  x2="30" y2="104"  stroke="#002e6a" stroke-width="1.2"/>
+        <line x1="38" y1="96"  x2="38" y2="104"  stroke="#002e6a" stroke-width="1.2"/>
+        <line x1="46" y1="96"  x2="46" y2="104"  stroke="#002e6a" stroke-width="1.2"/>
         <!-- cabeza/quijada -->
         <path d="M 86 80 L 116 80 L 116 92 L 102 92 L 102 108 L 116 108 L 116 120 L 86 120 Z"
-              fill="url(#wrenchGrad)" stroke="#1e3a8a" stroke-width="1.5"/>
+              fill="url(#wrenchGrad)" stroke="#002e6a" stroke-width="1.5"/>
       </g>
       <defs>
         <linearGradient id="wrenchGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"  stop-color="#60a5fa"/>
-          <stop offset="100%" stop-color="#2563eb"/>
+          <stop offset="0%"  stop-color="#adc6ff"/>
+          <stop offset="100%" stop-color="#4d8eff"/>
         </linearGradient>
       </defs>
     </svg>
@@ -235,8 +301,8 @@
         </span>
       </div>
       <div class="w-full h-1.5 bg-slate-800/60 rounded-full overflow-hidden flex mt-1">
-        <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#7c3aed,#a855f7);width:0%"></div>
-        <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#10b981,#34d399);width:0%"></div>
+        <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#5b21b6,#a855f7);width:0%"></div>
+        <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#00a572,#4edea3);width:0%"></div>
       </div>
       <div class="mt-2 pt-2 border-t border-slate-700/40 text-xs text-slate-400">
         Ayer:
@@ -498,7 +564,7 @@
     const options = {
       chart: {
         type:'bar', height:h, width:'100%', stacked:false,
-        toolbar:{ show:false }, background:'transparent', foreColor:'#cbd5e1',
+        toolbar:{ show:false }, background:'transparent', foreColor:'#c2c6d6',
         fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
       },
       series: [
@@ -506,14 +572,14 @@
         { name:'Media', data: avgD }
       ],
       plotOptions: { bar: { columnWidth:'70%', borderRadius:6, dataLabels:{ position:'top' } } },
-      colors: ['#3b82f6', '#475569'],
+      colors: ['#adc6ff', '#424754'],   /* primary | outline-variant */
       fill: { opacity: [1, 0.45] },
-      stroke: { width: [0, 2], curve:'smooth', dashArray: [0, 4], colors:['transparent','#94a3b8'] },
+      stroke: { width: [0, 2], curve:'smooth', dashArray: [0, 4], colors:['transparent','#8c909f'] },
       dataLabels: {
         enabled: true,
         enabledOnSeries: [0],
         offsetY: -22,
-        style:{ fontSize:'14px', fontWeight:700, colors:['#cbd5e1'] },
+        style:{ fontSize:'14px', fontWeight:700, colors:['#e1e2ec'] },
         formatter: v => v === 0 ? '' : v
       },
       xaxis: {
@@ -522,9 +588,9 @@
                  style:{ colors:'#e6edf7', fontSize:'18px', fontWeight:700 } },
         axisBorder:{ show:false }, axisTicks:{ show:false }
       },
-      yaxis: { labels:{ style:{ colors:'#9bb0d6', fontSize:'12px' }, formatter: v => Math.round(v) } },
+      yaxis: { labels:{ style:{ colors:'#c2c6d6', fontSize:'12px' }, formatter: v => Math.round(v) } },
       grid:  { borderColor:'rgba(155,176,214,0.08)' },
-      legend:{ position:'top', horizontalAlign:'right', fontSize:'13px', labels:{ colors:'#cbd5e1' }, markers:{ size:8 } },
+      legend:{ position:'top', horizontalAlign:'right', fontSize:'13px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 } },
       tooltip:{ enabled:false },
       states: { hover: { filter: { type:'none' } }, active: { filter: { type:'none' } } }
     };
@@ -593,8 +659,8 @@
   function renderSparkline(container, data) {
     const options = {
       chart: { type:'area', height:24, width:100, sparkline:{ enabled:true }, animations:{ enabled:false } },
-      stroke: { width:1.5, curve:'smooth', colors:['#60a5fa'] },
-      fill:   { type:'gradient', gradient:{ shadeIntensity:1, opacityFrom:0.4, opacityTo:0.05, stops:[0,100] }, colors:['#3b82f6'] },
+      stroke: { width:1.5, curve:'smooth', colors:['#adc6ff'] },
+      fill:   { type:'gradient', gradient:{ shadeIntensity:1, opacityFrom:0.4, opacityTo:0.05, stops:[0,100] }, colors:['#4d8eff'] },
       series: [{ name:'tickets', data: data }],
       tooltip:{ enabled:false }
     };
