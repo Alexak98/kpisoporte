@@ -307,8 +307,10 @@
       <div class="mt-2 pt-2 border-t border-slate-700/40 text-xs text-slate-400">
         Ayer:
         IA <span id="kpiIAYesterday" class="text-violet-300 font-bold">—</span>
+        <span id="kpiIAYesterdayPct" class="text-slate-500">—</span>
         ·
         Man <span id="kpiManualYesterday" class="text-emerald-300 font-bold">—</span>
+        <span id="kpiManualYesterdayPct" class="text-slate-500">—</span>
         ·
         <span id="kpiTodayDelta" class="font-bold text-slate-300">—</span>
       </div>
@@ -394,22 +396,34 @@
         <div id="incBar60_100" class="h-full" style="background:#f97316;width:0%"></div>
         <div id="incBarGt100"  class="h-full" style="background:#dc2626;width:0%"></div>
       </div>
-      <!-- Leyenda con números -->
+      <!-- Leyenda con números + porcentaje sobre total -->
       <div class="grid grid-cols-4 gap-1 mt-1.5 text-center">
         <div>
-          <div id="incCntLt30"   class="kpi-number text-lg text-emerald-300">0</div>
+          <div class="flex items-baseline justify-center gap-1">
+            <div id="incCntLt30"    class="kpi-number text-lg text-emerald-300">0</div>
+            <div id="incPctLt30"    class="text-[10px] text-slate-500">—</div>
+          </div>
           <div class="text-[10px] text-slate-500 uppercase">&lt;30d</div>
         </div>
         <div>
-          <div id="incCnt30_60"  class="kpi-number text-lg text-amber-300">0</div>
+          <div class="flex items-baseline justify-center gap-1">
+            <div id="incCnt30_60"   class="kpi-number text-lg text-amber-300">0</div>
+            <div id="incPct30_60"   class="text-[10px] text-slate-500">—</div>
+          </div>
           <div class="text-[10px] text-slate-500 uppercase">30-59d</div>
         </div>
         <div>
-          <div id="incCnt60_100" class="kpi-number text-lg text-orange-400">0</div>
+          <div class="flex items-baseline justify-center gap-1">
+            <div id="incCnt60_100"  class="kpi-number text-lg text-orange-400">0</div>
+            <div id="incPct60_100"  class="text-[10px] text-slate-500">—</div>
+          </div>
           <div class="text-[10px] text-slate-500 uppercase">60-99d</div>
         </div>
         <div>
-          <div id="incCntGt100"  class="kpi-number text-lg text-rose-400">0</div>
+          <div class="flex items-baseline justify-center gap-1">
+            <div id="incCntGt100"   class="kpi-number text-lg text-rose-400">0</div>
+            <div id="incPctGt100"   class="text-[10px] text-slate-500">—</div>
+          </div>
           <div class="text-[10px] text-slate-500 uppercase">100+d</div>
         </div>
       </div>
@@ -438,28 +452,40 @@
           <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
         </div>
         <div class="flex flex-col min-h-0">
-          <div class="text-xs title text-slate-400 mb-1 shrink-0">Clientes por carga · abiertos ahora</div>
+          <div class="text-xs title text-slate-400 mb-1 shrink-0">Carga · abiertos ahora</div>
           <div class="flex-1 min-h-0 flex flex-col gap-2 justify-center">
-            <div class="rounded-lg bg-rose-900/30 border border-rose-500/30 p-3">
-              <div class="flex items-baseline justify-between">
-                <div id="kpiOrgsGt3" class="kpi-number text-3xl text-rose-300">0</div>
-                <div class="text-xs text-slate-400">clientes</div>
+            <!-- Crítico: > 3 tickets -->
+            <div class="relative rounded-lg overflow-hidden">
+              <div class="absolute inset-y-0 left-0 w-1 bg-rose-300"></div>
+              <div class="bg-rose-500/10 border border-rose-500/30 rounded-lg pl-3 pr-3 py-2 flex items-baseline justify-between gap-2">
+                <div id="kpiOrgsGt3" class="kpi-number text-3xl text-rose-300 leading-none">0</div>
+                <div class="text-right leading-tight">
+                  <div class="text-sm font-semibold text-rose-200">&gt; 3 tickets</div>
+                  <div class="text-[10px] uppercase tracking-wider text-rose-300/60">clientes</div>
+                </div>
               </div>
-              <div class="text-sm text-rose-200 mt-0.5">&gt; 3 tickets abiertos</div>
             </div>
-            <div class="rounded-lg bg-amber-900/30 border border-amber-500/30 p-3">
-              <div class="flex items-baseline justify-between">
-                <div id="kpiOrgs2_3" class="kpi-number text-3xl text-amber-300">0</div>
-                <div class="text-xs text-slate-400">clientes</div>
+            <!-- Atención: 2-3 -->
+            <div class="relative rounded-lg overflow-hidden">
+              <div class="absolute inset-y-0 left-0 w-1 bg-amber-300"></div>
+              <div class="bg-amber-500/10 border border-amber-500/30 rounded-lg pl-3 pr-3 py-2 flex items-baseline justify-between gap-2">
+                <div id="kpiOrgs2_3" class="kpi-number text-3xl text-amber-300 leading-none">0</div>
+                <div class="text-right leading-tight">
+                  <div class="text-sm font-semibold text-amber-200">2-3 tickets</div>
+                  <div class="text-[10px] uppercase tracking-wider text-amber-300/60">clientes</div>
+                </div>
               </div>
-              <div class="text-sm text-amber-200 mt-0.5">2-3 tickets abiertos</div>
             </div>
-            <div class="rounded-lg bg-emerald-900/30 border border-emerald-500/30 p-3">
-              <div class="flex items-baseline justify-between">
-                <div id="kpiOrgs1" class="kpi-number text-3xl text-emerald-300">0</div>
-                <div class="text-xs text-slate-400">clientes</div>
+            <!-- OK: 1 -->
+            <div class="relative rounded-lg overflow-hidden">
+              <div class="absolute inset-y-0 left-0 w-1 bg-emerald-300"></div>
+              <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg pl-3 pr-3 py-2 flex items-baseline justify-between gap-2">
+                <div id="kpiOrgs1" class="kpi-number text-3xl text-emerald-300 leading-none">0</div>
+                <div class="text-right leading-tight">
+                  <div class="text-sm font-semibold text-emerald-200">1 ticket</div>
+                  <div class="text-[10px] uppercase tracking-wider text-emerald-300/60">clientes</div>
+                </div>
               </div>
-              <div class="text-sm text-emerald-200 mt-0.5">1 ticket abierto</div>
             </div>
           </div>
         </div>
@@ -775,6 +801,11 @@
       const yTotal = yIA + yMa;  // siempre suma del desglose, así siempre cuadra
       document.getElementById('kpiIAYesterday').textContent     = yIA;
       document.getElementById('kpiManualYesterday').textContent = yMa;
+      // Porcentajes mismo formato que arriba ("hoy") para comparativa directa.
+      const yPctIA = yTotal ? Math.round((yIA / yTotal) * 100) : 0;
+      const yPctMa = yTotal ? 100 - yPctIA : 0;
+      document.getElementById('kpiIAYesterdayPct').textContent     = yTotal ? `${yPctIA}%` : '—';
+      document.getElementById('kpiManualYesterdayPct').textContent = yTotal ? `${yPctMa}%` : '—';
       document.getElementById('kpiTodayDelta').textContent      = `total ${yTotal}`;
       document.getElementById('kpiWeekIA').textContent     = d.tickets_week_ia     ?? '—';
       document.getElementById('kpiWeekManual').textContent = d.tickets_week_manual ?? '—';
@@ -855,11 +886,18 @@
       document.getElementById('incCnt30_60').textContent  = b.b30_60;
       document.getElementById('incCnt60_100').textContent = b.b60_100;
       document.getElementById('incCntGt100').textContent  = b.gt100;
-      const total = (b.lt30 + b.b30_60 + b.b60_100 + b.gt100) || 1;
+      const incReal = b.lt30 + b.b30_60 + b.b60_100 + b.gt100;
+      const total = incReal || 1;  // división segura para el width %
       document.getElementById('incBarLt30').style.width   = (b.lt30   / total * 100) + '%';
       document.getElementById('incBar30_60').style.width  = (b.b30_60 / total * 100) + '%';
       document.getElementById('incBar60_100').style.width = (b.b60_100/ total * 100) + '%';
       document.getElementById('incBarGt100').style.width  = (b.gt100  / total * 100) + '%';
+      // Porcentajes en la leyenda (sobre total real, no el ?1 fallback)
+      const incPct = n => incReal ? Math.round((n / incReal) * 100) + '%' : '—';
+      document.getElementById('incPctLt30').textContent    = incPct(b.lt30);
+      document.getElementById('incPct30_60').textContent   = incPct(b.b30_60);
+      document.getElementById('incPct60_100').textContent  = incPct(b.b60_100);
+      document.getElementById('incPctGt100').textContent   = incPct(b.gt100);
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
