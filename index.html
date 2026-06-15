@@ -559,6 +559,9 @@
   setInterval(updateCountdown, 1000);
 
   let hourlyChart = null;
+  let _hourlyRO = null;        // ResizeObserver del chart horario (creado una sola vez)
+  let _hourlyOptions = null;   // últimas options del chart horario (para re-render del RO)
+  let _sparkCharts = [];       // instancias vivas de sparklines (destruir antes de re-render)
   let firstLoadDone = false;
 
   function hideLoader() {
@@ -629,29 +632,29 @@
       hourlyChart = null;
     }
     container.dataset.lastChartH = String(h);
+    _hourlyOptions = options;   // últimas options, para que el RO re-renderice con datos vigentes
     if (hourlyChart) hourlyChart.updateOptions(options, true, false);
     else {
       hourlyChart = new ApexCharts(container, options);
       hourlyChart.render();
-      // ResizeObserver: si el contenedor cambia (p.ej. al avanzar la semana y
-      // crecer 'Reparto IA · Manual'), provocamos un re-render limpio.
-      if (typeof ResizeObserver !== 'undefined') {
-        let lastObsH = container.clientHeight;
-        const ro = new ResizeObserver(() => {
-          const newCH = container.clientHeight || 300;
-          if (Math.abs(newCH - lastObsH) < 30) return;  // umbral generoso para evitar bucles
-          lastObsH = newCH;
-          const newH = Math.max(newCH - 32, 200);  // mismo margen que arriba para no clipear labels
-          if (hourlyChart) {
-            try { hourlyChart.destroy(); } catch(_) {}
-            hourlyChart = null;
-            container.dataset.lastChartH = String(newH);
-            hourlyChart = new ApexCharts(container, { ...options, chart: { ...options.chart, height: newH } });
-            hourlyChart.render();
-          }
-        });
-        ro.observe(container);
-      }
+    }
+    // ResizeObserver creado UNA sola vez (antes se recreaba en cada cambio de
+    // altura → observers apilados + fuga). Si el contenedor cambia (p.ej. al
+    // avanzar la semana y crecer 'Reparto IA · Manual'), re-render limpio.
+    if (typeof ResizeObserver !== 'undefined' && !_hourlyRO) {
+      let lastObsH = container.clientHeight;
+      _hourlyRO = new ResizeObserver(() => {
+        const newCH = container.clientHeight || 300;
+        if (Math.abs(newCH - lastObsH) < 30) return;  // umbral generoso para evitar bucles
+        lastObsH = newCH;
+        const newH = Math.max(newCH - 32, 200);  // mismo margen que arriba para no clipear labels
+        if (!hourlyChart) return;
+        try { hourlyChart.destroy(); } catch(_) {}
+        container.dataset.lastChartH = String(newH);
+        hourlyChart = new ApexCharts(container, { ..._hourlyOptions, chart: { ..._hourlyOptions.chart, height: newH } });
+        hourlyChart.render();
+      });
+      _hourlyRO.observe(container);
     }
   }
 
@@ -692,6 +695,7 @@
     };
     const chart = new ApexCharts(container, options);
     chart.render();
+    _sparkCharts.push(chart);   // registrar para limpieza en el próximo render
   }
 
   // orgs: [{name, count, sparkline?}], opts.containerId, opts.sparkline (default true)
@@ -701,6 +705,10 @@
     const showSpark   = opts.sparkline !== false;
     const cont = document.getElementById(containerId);
     if (!cont) return;
+    // innerHTML elimina los nodos pero ApexCharts mantiene las instancias en su
+    // registro global → fuga. Destruir las sparklines del render anterior antes de repintar.
+    _sparkCharts.forEach(c => { try { c.destroy(); } catch(_) {} });
+    _sparkCharts = [];
     if (!orgs || orgs.length === 0) {
       cont.innerHTML = '<div class="text-slate-500 text-xs">Sin datos</div>';
       return;
