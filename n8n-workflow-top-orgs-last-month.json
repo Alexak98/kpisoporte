@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Rangos en zona Madrid:\n//   Mes anterior: [last_month_ymd, last_month_end_ymd)\n//   Semana anterior (lunes-domingo): [last_week_ymd, week_ymd)\nconst now = new Date();\nfunction madridYMD(d){ return d.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' }); }\nfunction madridDow(d){\n  const wd = new Intl.DateTimeFormat('en-US', { timeZone:'Europe/Madrid', weekday:'short' }).format(d);\n  return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n}\nfunction ymdToDate(s){ return new Date(s + 'T00:00:00Z'); }\nfunction ymdFromDate(d){ return d.toISOString().substring(0,10); }\nfunction addDays(s,n){ const d = ymdToDate(s); d.setUTCDate(d.getUTCDate()+n); return ymdFromDate(d); }\nconst todayYMD = madridYMD(now);\nconst [yy, mm] = todayYMD.split('-');\nconst monthYMD = `${yy}-${mm}-01`;\nconst _prev    = ymdToDate(monthYMD); _prev.setUTCMonth(_prev.getUTCMonth() - 1);\nconst lastMonthYMD    = ymdFromDate(_prev);\nconst lastMonthEndYMD = monthYMD;\nconst weekYMD     = addDays(todayYMD, -madridDow(now));\nconst lastWeekYMD = addDays(weekYMD, -7);\nreturn [{ json: { last_month_ymd: lastMonthYMD, last_month_end_ymd: lastMonthEndYMD, week_ymd: weekYMD, last_week_ymd: lastWeekYMD } }];"
+        "jsCode": "// Rangos en zona Madrid — comparativa 'mismo tramo' (no mes/semana completos):\n//   Mes anterior: [last_month_ymd, last_month_cutoff_ymd) = primeros N días\n//     del mes anterior, donde N = día del mes de hoy (si hoy es 15 → días 1-15).\n//   Semana anterior: [last_week_ymd, last_week_cutoff_ymd) = de lunes hasta el\n//     mismo día de semana que hoy (si hoy es martes → lunes y martes).\nconst now = new Date();\nfunction madridYMD(d){ return d.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' }); }\nfunction madridDow(d){\n  const wd = new Intl.DateTimeFormat('en-US', { timeZone:'Europe/Madrid', weekday:'short' }).format(d);\n  return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n}\nfunction ymdToDate(s){ return new Date(s + 'T00:00:00Z'); }\nfunction ymdFromDate(d){ return d.toISOString().substring(0,10); }\nfunction addDays(s,n){ const d = ymdToDate(s); d.setUTCDate(d.getUTCDate()+n); return ymdFromDate(d); }\nconst todayYMD = madridYMD(now);\nconst [yy, mm, dd] = todayYMD.split('-');\nconst dayOfMonth   = parseInt(dd, 10);            // 1..31\nconst monthYMD = `${yy}-${mm}-01`;\nconst _prev    = ymdToDate(monthYMD); _prev.setUTCMonth(_prev.getUTCMonth() - 1);\nconst lastMonthYMD    = ymdFromDate(_prev);\nconst lastMonthEndYMD = monthYMD;\n// Corte del mes anterior a los primeros `dayOfMonth` días. Si el mes anterior\n// es más corto (p. ej. feb), no rebasar su fin (lastMonthEndYMD).\nlet lastMonthCutoffYMD = addDays(lastMonthYMD, dayOfMonth);\nif (lastMonthCutoffYMD > lastMonthEndYMD) lastMonthCutoffYMD = lastMonthEndYMD;\nconst daysSinceMon = madridDow(now);              // 0=Lun .. 6=Dom\nconst weekYMD     = addDays(todayYMD, -daysSinceMon);\nconst lastWeekYMD = addDays(weekYMD, -7);\n// Corte de la semana anterior hasta el mismo día de semana que hoy (inclusive).\nconst lastWeekCutoffYMD = addDays(lastWeekYMD, daysSinceMon + 1);\nreturn [{ json: { last_month_ymd: lastMonthYMD, last_month_end_ymd: lastMonthEndYMD, last_month_cutoff_ymd: lastMonthCutoffYMD, week_ymd: weekYMD, last_week_ymd: lastWeekYMD, last_week_cutoff_ymd: lastWeekCutoffYMD } }];"
       },
       "id": "dates",
       "name": "Calcular fechas",
@@ -33,7 +33,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_end_ymd }}" },
+            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_cutoff_ymd }}" },
             { "name": "per_page", "value": "1" }
           ]
         },
@@ -53,7 +53,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_week_ymd }} created<{{ $('Calcular fechas').first().json.week_ymd }}" },
+            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_week_ymd }} created<{{ $('Calcular fechas').first().json.last_week_cutoff_ymd }}" },
             { "name": "per_page", "value": "1" }
           ]
         },
@@ -73,7 +73,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_end_ymd }} subject:\"Conversation with\"" },
+            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_cutoff_ymd }} subject:\"Conversation with\"" },
             { "name": "per_page", "value": "1" }
           ]
         },
@@ -93,7 +93,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_end_ymd }} -subject:\"Conversation with\"" },
+            { "name": "query", "value": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_cutoff_ymd }} -subject:\"Conversation with\"" },
             { "name": "per_page", "value": "1" }
           ]
         },
