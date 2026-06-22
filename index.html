@@ -654,17 +654,21 @@
       // Incidencia Dev en rojizo; Formación en verde brillante para que destaque.
       colors: ['#93b4ff','#f87171','#34d399','#fbbf77','#c4b5fd','#9ca3af'],
       stroke: { width: 0 },
-      legend: { position:'bottom', fontSize:'13px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 },
+      // Leyenda pegada al borde inferior para dejar más espacio al círculo.
+      legend: { position:'bottom', fontSize:'14px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 },
+                itemMargin:{ vertical:1 }, offsetY:6,
                 onItemHover:{ highlightDataSeries:false }, onItemClick:{ toggleDataSeries:false } },
       // Kiosko TV: sin interacción de ratón (ni tooltip ni resaltado de segmentos).
       tooltip: { enabled: false },
       states: { hover:{ filter:{ type:'none' } }, active:{ filter:{ type:'none' } } },
+      // % en blanco con sombra oscura para que se lea sobre cualquier color en la TV.
       dataLabels: {
         enabled: true,
         formatter: v => Math.round(v) + '%',
-        style:{ fontSize:'13px', fontWeight:700, colors:['#0b0e14'] }
+        style:{ fontSize:'16px', fontWeight:700, colors:['#ffffff'] },
+        dropShadow:{ enabled:true, top:1, left:0, blur:3, color:'#000', opacity:0.85 }
       },
-      plotOptions: { pie: { donut: { size:'62%', labels: {
+      plotOptions: { pie: { offsetY:4, donut: { size:'60%', labels: {
         show:true,
         total:{ show:true, label:'Total', fontSize:'13px', color:'#c2c6d6',
                 formatter: () => String(total) }
