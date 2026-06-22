@@ -650,9 +650,15 @@
       },
       series: slices.map(s => s.count),
       labels: slices.map(s => s.label),
-      colors: ['#adc6ff','#b4a7ff','#4edea3','#ffb786','#ffb4ab','#8c909f'],
+      // Orden de slices: Consulta técnica, Incidencia Dev, Formación, Integración TPV, Otros, Otros tipos.
+      // Incidencia Dev en rojizo; Formación en verde brillante para que destaque.
+      colors: ['#93b4ff','#f87171','#34d399','#fbbf77','#c4b5fd','#9ca3af'],
       stroke: { width: 0 },
-      legend: { position:'bottom', fontSize:'13px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 } },
+      legend: { position:'bottom', fontSize:'13px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 },
+                onItemHover:{ highlightDataSeries:false }, onItemClick:{ toggleDataSeries:false } },
+      // Kiosko TV: sin interacción de ratón (ni tooltip ni resaltado de segmentos).
+      tooltip: { enabled: false },
+      states: { hover:{ filter:{ type:'none' } }, active:{ filter:{ type:'none' } } },
       dataLabels: {
         enabled: true,
         formatter: v => Math.round(v) + '%',
@@ -662,8 +668,7 @@
         show:true,
         total:{ show:true, label:'Total', fontSize:'13px', color:'#c2c6d6',
                 formatter: () => String(total) }
-      } } } },
-      tooltip: { y: { formatter: v => v + ' tickets' } }
+      } } } }
     };
     _typeOptions = options;
     typeChart = new ApexCharts(container, options);
