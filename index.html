@@ -114,7 +114,6 @@
       font-weight: 700;
     }
     /* Bars / accent gradients alineados al design system */
-    .grad-blue   { background: linear-gradient(135deg, #4d8eff 0%, #adc6ff 100%); }   /* primary */
     .grad-green  { background: linear-gradient(135deg, #00a572 0%, #4edea3 100%); }   /* secondary */
     .grad-amber  { background: linear-gradient(135deg, #df7412 0%, #ffb786 100%); }   /* tertiary */
     .grad-purple { background: linear-gradient(135deg, #5b21b6 0%, #a855f7 100%); }   /* IA highlight */
@@ -488,7 +487,7 @@
   const N8N_WEBHOOK_URL_LIGHT   = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte-light';  // light
   const N8N_WEBHOOK_URL_WAITING = 'https://n8n-soporte.data.yurest.dev/webhook/needs-agent-reply';   // esperando agente
   const N8N_WEBHOOK_URL_LM_ORGS = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-top-orgs-last-month'; // top orgs mes anterior
-  const REFRESH_MS         = 10 * 60 * 1000;   // heavy: 10 min (charts, sparklines)
+  const REFRESH_MS         = 10 * 60 * 1000;   // heavy: 10 min (charts, top clientes)
   const REFRESH_MS_LIGHT   = 5 * 60 * 1000;    // light: 5 min (counters, FRT, aged, incidencias)
   const REFRESH_MS_WAITING = 1 * 60 * 1000;    // waiting: 1 min (webhook responde <1s tras bajar tope a 100)
   const REFRESH_MS_LM_ORGS = 30 * 60 * 1000;   // top orgs mes ant: 30 min (datos casi estáticos)
@@ -529,9 +528,10 @@
   let typeChart = null;        // instancia del donut "Tickets por tipo" (destruir antes de re-render)
   let _typeRO = null;          // ResizeObserver del donut (creado una sola vez)
   let _typeOptions = null;     // últimas options del donut (para re-render del RO)
+  // Paleta compartida donut ↔ barras Top Clientes (mismo color por categoría de tipo).
+  const TYPE_PALETTE = ['#93b4ff','#f87171','#34d399','#fbbf77','#c4b5fd','#9ca3af'];
   let _hourlyRO = null;        // ResizeObserver del chart horario (creado una sola vez)
   let _hourlyOptions = null;   // últimas options del chart horario (para re-render del RO)
-  let _sparkCharts = [];       // instancias vivas de sparklines (destruir antes de re-render)
   let firstLoadDone = false;
 
   function hideLoader() {
@@ -652,7 +652,7 @@
       labels: slices.map(s => s.label),
       // Orden de slices: Consulta técnica, Incidencia Dev, Formación, Integración TPV, Otros, Otros tipos.
       // Incidencia Dev en rojizo; Formación en verde brillante para que destaque.
-      colors: ['#93b4ff','#f87171','#34d399','#fbbf77','#c4b5fd','#9ca3af'],
+      colors: TYPE_PALETTE,
       stroke: { width: 0 },
       // Leyenda pegada al borde inferior para dejar más espacio al círculo.
       legend: { position:'bottom', fontSize:'14px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 },
@@ -721,59 +721,39 @@
     cont.innerHTML = header + rows;
   }
 
-  // === Sparkline pequeña (inline en cada org) ===
-  function renderSparkline(container, data) {
-    const options = {
-      chart: { type:'area', height:24, width:100, sparkline:{ enabled:true }, animations:{ enabled:false } },
-      stroke: { width:1.5, curve:'smooth', colors:['#adc6ff'] },
-      fill:   { type:'gradient', gradient:{ shadeIntensity:1, opacityFrom:0.4, opacityTo:0.05, stops:[0,100] }, colors:['#4d8eff'] },
-      series: [{ name:'tickets', data: data }],
-      tooltip:{ enabled:false }
-    };
-    const chart = new ApexCharts(container, options);
-    chart.render();
-    _sparkCharts.push(chart);   // registrar para limpieza en el próximo render
-  }
-
-  // orgs: [{name, count, sparkline?}], opts.containerId, opts.sparkline (default true)
-  // Se usa para renderizar dos listas (este mes / mes anterior) en media columna cada una.
+  // Top Clientes: cada cliente es una barra cuyo ancho es proporcional a su total
+  // (vs el cliente líder), segmentada por tipo de ticket con los colores del donut.
+  // orgs: [{name, count, by_type:{label:count}}]; opts.order (labels en orden del donut), opts.typeColors {label:color}.
   function renderTopOrgs(orgs, opts = {}) {
     const containerId = opts.containerId || 'topOrgs';
-    const showSpark   = opts.sparkline !== false;
+    const order = opts.order || [];
+    const typeColors = opts.typeColors || {};
     const cont = document.getElementById(containerId);
     if (!cont) return;
-    // innerHTML elimina los nodos pero ApexCharts mantiene las instancias en su
-    // registro global → fuga. Destruir las sparklines del render anterior antes de repintar.
-    _sparkCharts.forEach(c => { try { c.destroy(); } catch(_) {} });
-    _sparkCharts = [];
     if (!orgs || orgs.length === 0) {
       cont.innerHTML = '<div class="text-slate-500 text-xs">Sin datos</div>';
       return;
     }
-    const max = Math.max(...orgs.map(o => o.count));
+    const max = Math.max(...orgs.map(o => o.count || 0));
     cont.innerHTML = orgs.slice(0,5).map((o, i) => {
-      const pct = max ? Math.max(20, Math.round((o.count / max) * 100)) : 0;
-      const sparkHtml = showSpark
-        ? `<span class="spark" data-spark="${(o.sparkline||[]).join(',')}"></span>`
-        : '';
+      const widthPct = max ? Math.max(12, Math.round((o.count / max) * 100)) : 0;
+      const bt = o.by_type || {};
+      const total = o.count || Object.values(bt).reduce((a,b) => a + b, 0) || 1;
+      // Segmentos por tipo, en el orden del donut; cada uno proporcional dentro de la barra del cliente.
+      const segs = order.filter(lbl => bt[lbl] > 0).map(lbl =>
+        `<div class="h-full" style="width:${(bt[lbl]/total)*100}%;background:${typeColors[lbl] || '#64748b'}"></div>`
+      ).join('');
       return `
         <div class="relative flex-1 min-h-0 rounded-lg overflow-hidden bg-slate-800/40">
-          <div class="absolute inset-y-0 left-0 grad-blue" style="width:${pct}%"></div>
+          <div class="absolute inset-y-0 left-0 flex" style="width:${widthPct}%">${segs}</div>
           <div class="relative h-full flex items-center justify-between px-2">
             <span class="font-bold text-white truncate text-sm drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" title="${o.name}">
               ${i+1}. ${o.name}
             </span>
-            <span class="flex items-center gap-1.5 shrink-0">
-              ${sparkHtml}
-              <span class="font-extrabold text-white text-base kpi-number drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">${o.count}</span>
-            </span>
+            <span class="font-extrabold text-white text-base kpi-number drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">${o.count}</span>
           </div>
         </div>`;
     }).join('');
-    cont.querySelectorAll('.spark').forEach(el => {
-      const arr = (el.dataset.spark || '').split(',').filter(Boolean).map(n => parseInt(n,10) || 0);
-      if (arr.length) renderSparkline(el, arr);
-    });
   }
 
   function setNum(id, val) {
@@ -970,9 +950,14 @@
     if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
     document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
     document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
-    renderTopOrgs(d.top_orgs || [], { containerId: 'topOrgs', sparkline: true });
     // Tickets por tipo del mes (donut).
     if (d.tickets_by_type) renderTicketsByType(d.tickets_by_type);
+    // Top Clientes: barras segmentadas por tipo, con los mismos colores que el donut.
+    const _slices = (d.tickets_by_type && d.tickets_by_type.slices) || [];
+    const _order = _slices.map(s => s.label);
+    const _typeColors = {};
+    _slices.forEach((s, i) => { _typeColors[s.label] = TYPE_PALETTE[i % TYPE_PALETTE.length]; });
+    renderTopOrgs(d.top_orgs || [], { containerId: 'topOrgs', order: _order, typeColors: _typeColors });
   }
 
   // Fetch LIGHT: solo counters. Timeout corto, no muestra loader.
