@@ -638,9 +638,12 @@
       return;
     }
     const total = data.total_clasificados ?? slices.reduce((a,s) => a + s.count, 0);
+    // Altura en px: ApexCharts colapsa con height:'100%' dentro de un flex item.
+    // Calculamos del contenedor (igual que el chart horario).
+    const h = Math.max(container.clientHeight || 360, 260);
     const options = {
       chart: {
-        type:'donut', height:'100%', width:'100%', background:'transparent',
+        type:'donut', height: h, width:'100%', background:'transparent',
         foreColor:'#c2c6d6', fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
       },
       series: slices.map(s => s.count),
