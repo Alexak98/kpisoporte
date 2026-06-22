@@ -527,6 +527,8 @@
 
   let hourlyChart = null;
   let typeChart = null;        // instancia del donut "Tickets por tipo" (destruir antes de re-render)
+  let _typeRO = null;          // ResizeObserver del donut (creado una sola vez)
+  let _typeOptions = null;     // últimas options del donut (para re-render del RO)
   let _hourlyRO = null;        // ResizeObserver del chart horario (creado una sola vez)
   let _hourlyOptions = null;   // últimas options del chart horario (para re-render del RO)
   let _sparkCharts = [];       // instancias vivas de sparklines (destruir antes de re-render)
@@ -663,8 +665,25 @@
       } } } },
       tooltip: { y: { formatter: v => v + ' tickets' } }
     };
+    _typeOptions = options;
     typeChart = new ApexCharts(container, options);
     typeChart.render();
+    // ResizeObserver creado UNA sola vez: el donut suele renderizarse antes de que
+    // el flex item alcance su altura final → reajusta el height al alto real del
+    // contenedor para que llene la tarjeta (mismo patrón que el chart horario).
+    if (typeof ResizeObserver !== 'undefined' && !_typeRO) {
+      let lastObsH = container.clientHeight;
+      _typeRO = new ResizeObserver(() => {
+        const newCH = container.clientHeight || 360;
+        if (Math.abs(newCH - lastObsH) < 30) return;  // umbral generoso para evitar bucles
+        lastObsH = newCH;
+        if (!typeChart) return;
+        try { typeChart.destroy(); } catch(_) {}
+        typeChart = new ApexCharts(container, { ..._typeOptions, chart: { ..._typeOptions.chart, height: Math.max(newCH, 260) } });
+        typeChart.render();
+      });
+      _typeRO.observe(container);
+    }
   }
 
   // === Reparto IA / Manual por día (tabla numérica) ===
