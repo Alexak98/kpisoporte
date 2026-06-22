@@ -431,7 +431,7 @@
   </section>
 
   <!-- CHARTS / LISTS · expande para absorber el hueco vertical sobrante -->
-  <section class="grid grid-cols-3 gap-6 px-10 mt-3 flex-1 min-h-0">
+  <section class="grid grid-cols-4 gap-6 px-10 mt-3 flex-1 min-h-0">
     <!-- HOURLY COMPARISON -->
     <div class="card p-6 col-span-2 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
@@ -441,55 +441,22 @@
       <div id="hourlyChart" class="flex-1 min-h-0"></div>
     </div>
 
-    <!-- CLIENTES: top este mes (creados) + clientes por carga de tickets abiertos -->
+    <!-- TICKETS POR TIPO · donut, este mes -->
+    <div class="card p-4 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between mb-2 shrink-0">
+        <div class="text-2xl font-bold">Tickets por tipo</div>
+        <div class="text-sm text-slate-400">este mes</div>
+      </div>
+      <div id="typeChart" class="flex-1 min-h-0"></div>
+    </div>
+
+    <!-- CLIENTES: top este mes (creados) -->
     <div class="card p-4 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="text-2xl font-bold">Top Clientes</div>
+        <div class="text-sm text-slate-400">creados este mes</div>
       </div>
-      <div class="grid grid-cols-2 gap-3 flex-1 min-h-0 overflow-hidden">
-        <div class="flex flex-col min-h-0">
-          <div class="text-xs title text-slate-400 mb-1 shrink-0">Creados este mes</div>
-          <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
-        </div>
-        <div class="flex flex-col min-h-0">
-          <div class="text-xs title text-slate-400 mb-1 shrink-0">Carga · abiertos ahora</div>
-          <div class="flex-1 min-h-0 flex flex-col gap-2 justify-center">
-            <!-- Crítico: > 3 tickets -->
-            <div class="relative rounded-lg overflow-hidden">
-              <div class="absolute inset-y-0 left-0 w-1 bg-rose-300"></div>
-              <div class="bg-rose-500/10 border border-rose-500/30 rounded-lg pl-3 pr-3 py-2 flex items-baseline justify-between gap-2">
-                <div id="kpiOrgsGt3" class="kpi-number text-3xl text-rose-300 leading-none">0</div>
-                <div class="text-right leading-tight">
-                  <div class="text-sm font-semibold text-rose-200">&gt; 3 tickets</div>
-                  <div class="text-[10px] uppercase tracking-wider text-rose-300/60">clientes</div>
-                </div>
-              </div>
-            </div>
-            <!-- Atención: 2-3 -->
-            <div class="relative rounded-lg overflow-hidden">
-              <div class="absolute inset-y-0 left-0 w-1 bg-amber-300"></div>
-              <div class="bg-amber-500/10 border border-amber-500/30 rounded-lg pl-3 pr-3 py-2 flex items-baseline justify-between gap-2">
-                <div id="kpiOrgs2_3" class="kpi-number text-3xl text-amber-300 leading-none">0</div>
-                <div class="text-right leading-tight">
-                  <div class="text-sm font-semibold text-amber-200">2-3 tickets</div>
-                  <div class="text-[10px] uppercase tracking-wider text-amber-300/60">clientes</div>
-                </div>
-              </div>
-            </div>
-            <!-- OK: 1 -->
-            <div class="relative rounded-lg overflow-hidden">
-              <div class="absolute inset-y-0 left-0 w-1 bg-emerald-300"></div>
-              <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg pl-3 pr-3 py-2 flex items-baseline justify-between gap-2">
-                <div id="kpiOrgs1" class="kpi-number text-3xl text-emerald-300 leading-none">0</div>
-                <div class="text-right leading-tight">
-                  <div class="text-sm font-semibold text-emerald-200">1 ticket</div>
-                  <div class="text-[10px] uppercase tracking-wider text-emerald-300/60">clientes</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
     </div>
   </section>
 
@@ -559,6 +526,7 @@
   setInterval(updateCountdown, 1000);
 
   let hourlyChart = null;
+  let typeChart = null;        // instancia del donut "Tickets por tipo" (destruir antes de re-render)
   let _hourlyRO = null;        // ResizeObserver del chart horario (creado una sola vez)
   let _hourlyOptions = null;   // últimas options del chart horario (para re-render del RO)
   let _sparkCharts = [];       // instancias vivas de sparklines (destruir antes de re-render)
@@ -656,6 +624,44 @@
       });
       _hourlyRO.observe(container);
     }
+  }
+
+  // === Tickets por tipo (donut) ===
+  function renderTicketsByType(data) {
+    const container = document.getElementById('typeChart');
+    if (!container) return;
+    const slices = (data && Array.isArray(data.slices)) ? data.slices : [];
+    // Patrón anti-fuga: destruir la instancia previa antes de recrear.
+    if (typeChart) { try { typeChart.destroy(); } catch(_) {} typeChart = null; }
+    if (!slices.length) {
+      container.innerHTML = '<div class="text-slate-500 text-sm h-full flex items-center justify-center">Sin datos</div>';
+      return;
+    }
+    const total = data.total_clasificados ?? slices.reduce((a,s) => a + s.count, 0);
+    const options = {
+      chart: {
+        type:'donut', height:'100%', width:'100%', background:'transparent',
+        foreColor:'#c2c6d6', fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
+      },
+      series: slices.map(s => s.count),
+      labels: slices.map(s => s.label),
+      colors: ['#adc6ff','#b4a7ff','#4edea3','#ffb786','#ffb4ab','#8c909f'],
+      stroke: { width: 0 },
+      legend: { position:'bottom', fontSize:'13px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 } },
+      dataLabels: {
+        enabled: true,
+        formatter: v => Math.round(v) + '%',
+        style:{ fontSize:'13px', fontWeight:700, colors:['#0b0e14'] }
+      },
+      plotOptions: { pie: { donut: { size:'62%', labels: {
+        show:true,
+        total:{ show:true, label:'Total', fontSize:'13px', color:'#c2c6d6',
+                formatter: () => String(total) }
+      } } } },
+      tooltip: { y: { formatter: v => v + ' tickets' } }
+    };
+    typeChart = new ApexCharts(container, options);
+    typeChart.render();
   }
 
   // === Reparto IA / Manual por día (tabla numérica) ===
@@ -927,18 +933,15 @@
       setStatus(true, 'Datos actualizados');
   }
 
-  // Aplica los KPIs pesados (charts + top orgs + tipos cliente). Solo viene en heavy.
+  // Aplica los KPIs pesados (charts + top orgs + tipos de ticket). Solo viene en heavy.
   function applyHeavyData(d) {
     if (Array.isArray(d.hourly_today))   renderHourly(d.hourly_today);
     if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
     document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
     document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
     renderTopOrgs(d.top_orgs || [], { containerId: 'topOrgs', sparkline: true });
-    // Clientes por carga de tickets abiertos (3 buckets).
-    const oc = d.orgs_by_open_count_summary || {};
-    setNum('kpiOrgsGt3',  oc.gt3         ?? 0);
-    setNum('kpiOrgs2_3',  oc.between_2_3 ?? 0);
-    setNum('kpiOrgs1',    oc.eq1         ?? 0);
+    // Tickets por tipo del mes (donut).
+    if (d.tickets_by_type) renderTicketsByType(d.tickets_by_type);
   }
 
   // Fetch LIGHT: solo counters. Timeout corto, no muestra loader.

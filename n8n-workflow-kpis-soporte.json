@@ -3,43 +3,43 @@
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "GET",
         "path": "kpis-soporte",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "wh-1",
+      "id": "40b49ed1-b29b-4e9c-9a67-2e96b0cf0eda",
       "name": "Webhook KPIs",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-1600, 0],
+      "position": [63696, -1472],
       "webhookId": "kpis-soporte"
     },
     {
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "minutes", "minutesInterval": 5 }
+            {
+              "field": "minutes"
+            }
           ]
         }
       },
-      "id": "cron-1",
+      "id": "1e60ec73-f93d-464b-8970-0af74c9e837b",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [-1600, -200]
+      "position": [63696, -1664]
     },
     {
       "parameters": {
         "jsCode": "// Calcula rangos de fechas en zona Europe/Madrid (ISO week: lunes-domingo)\nconst now = new Date();\n\nfunction madridYMD(d){ return d.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' }); }\nfunction madridDow(d){\n  // 0=Lun ... 6=Dom\n  const wd = new Intl.DateTimeFormat('en-US', { timeZone:'Europe/Madrid', weekday:'short' }).format(d);\n  return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n}\nfunction ymdToDate(s){ return new Date(s + 'T00:00:00Z'); }\nfunction ymdFromDate(d){ return d.toISOString().substring(0,10); }\nfunction addDays(s,n){ const d = ymdToDate(s); d.setUTCDate(d.getUTCDate()+n); return ymdFromDate(d); }\n\nconst todayYMD     = madridYMD(now);\nconst daysSinceMon = madridDow(now);\nconst weekYMD      = addDays(todayYMD, -daysSinceMon);\nconst lastWeekYMD  = addDays(weekYMD, -7);\nconst yesterdayYMD = addDays(todayYMD, -1);\nconst sevenDaysYMD = addDays(todayYMD, -6);\nconst [yy, mm]     = todayYMD.split('-');\nconst monthYMD     = `${yy}-${mm}-01`;\n// Histórico para medias y sparklines: ahora 56 días atrás → 8 mismos días\n// de semana para la media. Se fetcha en 2 chunks (recent 0-28d + older 28-56d)\n// para mantener cada query por debajo del límite de 1000 del Search API.\nconst histYMD       = addDays(todayYMD, -28);   // weeks 1-4 (recent)\nconst histOlderYMD  = addDays(todayYMD, -56);   // weeks 5-8 (older) — start del rango\nconst agedYMD       = addDays(todayYMD, -5);    // umbral 'lleva más de 5 días'\n\nreturn [{ json: {\n  today_ymd:        todayYMD,\n  yesterday_ymd:    yesterdayYMD,\n  week_ymd:         weekYMD,\n  last_week_ymd:    lastWeekYMD,\n  seven_days_ymd:   sevenDaysYMD,\n  month_ymd:        monthYMD,\n  hist_ymd:         histYMD,\n  hist_older_ymd:   histOlderYMD,\n  aged_ymd:         agedYMD,\n  now_iso:          now.toISOString()\n} }];"
       },
-      "id": "dates-1",
+      "id": "c2015602-9f82-4890-80e4-d484789c4c27",
       "name": "Calcular fechas",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-1400, 0]
+      "position": [63904, -1472]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -54,112 +54,26 @@
         },
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-today",
+      "id": "23cb32d4-9781-411d-8593-cabffcb981d0",
       "name": "ZD Hoy",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-1200, 0]
+      "position": [64096, -1472],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "jsCode": "const prev = $input.first().json;\nconst dates = $('Calcular fechas').first().json;\nreturn [{ json: { ...dates, zd_today: prev } }];"
       },
-      "id": "save-today",
+      "id": "b9f89ef1-764d-4beb-b792-449de1259971",
       "name": "Guardar Hoy",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-1000, 0]
+      "position": [64304, -1472]
     },
-
-    {
-      "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }}" }
-          ]
-        },
-        "options": { "response": { "response": { "neverError": true } } }
-      },
-      "id": "zd-yesterday",
-      "name": "ZD Ayer",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-800, 0]
-    },
-    {
-      "parameters": {
-        "jsCode": "const acc = $('Guardar Hoy').first().json;\nreturn [{ json: { ...acc, zd_yesterday: $input.first().json } }];"
-      },
-      "id": "save-yesterday",
-      "name": "Guardar Ayer",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-600, 0]
-    },
-
-    {
-      "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }} subject:\"Conversation with\"" }
-          ]
-        },
-        "options": { "response": { "response": { "neverError": true } } }
-      },
-      "id": "zd-ayer-ia",
-      "name": "ZD Ayer IA",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-500, 180]
-    },
-    {
-      "parameters": {
-        "jsCode": "const acc = $('Guardar Ayer').first().json;\nreturn [{ json: { ...acc, zd_yesterday_ia: $input.first().json } }];"
-      },
-      "id": "save-ayer-ia",
-      "name": "Guardar Ayer IA",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-500, 320]
-    },
-    {
-      "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }} -subject:\"Conversation with\"" }
-          ]
-        },
-        "options": { "response": { "response": { "neverError": true } } }
-      },
-      "id": "zd-ayer-manual",
-      "name": "ZD Ayer Manual",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-500, 460]
-    },
-    {
-      "parameters": {
-        "jsCode": "const acc = $('Guardar Ayer IA').first().json;\nreturn [{ json: { ...acc, zd_yesterday_manual: $input.first().json } }];"
-      },
-      "id": "save-ayer-manual",
-      "name": "Guardar Ayer Manual",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-500, 600]
-    },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -173,53 +87,26 @@
         },
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-week",
+      "id": "369f25fd-a83a-422d-ac46-a7bd66cb8118",
       "name": "ZD Semana",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [-400, 0]
+      "position": [64896, -1472],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
-        "jsCode": "const acc = $('Guardar Ayer Manual').first().json;\nreturn [{ json: { ...acc, zd_week: $input.first().json } }];"
+        "jsCode": "const acc = $('Guardar Hoy').first().json;\nreturn [{ json: { ...acc, zd_week: $input.first().json } }];"
       },
-      "id": "save-week",
+      "id": "2c73c008-150b-4327-80b3-dc1759325f31",
       "name": "Guardar Semana",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-200, 0]
+      "position": [65104, -1472]
     },
-
-    {
-      "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.last_week_ymd }} created<{{ $json.week_ymd }}" }
-          ]
-        },
-        "options": { "response": { "response": { "neverError": true } } }
-      },
-      "id": "zd-lastweek",
-      "name": "ZD Semana Anterior",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [0, 0]
-    },
-    {
-      "parameters": {
-        "jsCode": "const acc = $('Guardar Semana').first().json;\nreturn [{ json: { ...acc, zd_last_week: $input.first().json } }];"
-      },
-      "id": "save-lastweek",
-      "name": "Guardar Sem. Ant.",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [200, 0]
-    },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -234,23 +121,26 @@
         },
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-open",
+      "id": "350e1c73-7ada-4c5a-87f8-f5e31a9beb1e",
       "name": "ZD Abiertos",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 0]
+      "position": [65696, -1472],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
-        "jsCode": "const acc = $('Guardar Sem. Ant.').first().json;\nreturn [{ json: { ...acc, zd_open: $input.first().json } }];"
+        "jsCode": "const acc = $('Guardar Semana').first().json;\nreturn [{ json: { ...acc, zd_open: $input.first().json } }];"
       },
-      "id": "save-open",
+      "id": "de5631e5-f6c8-4b58-ae74-33414bf08696",
       "name": "Guardar Abiertos",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [600, 0]
+      "position": [65904, -1472]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -264,23 +154,26 @@
         },
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-hoy-ia",
+      "id": "bf9f7802-a8c6-4611-a29a-ed5fc5a212e7",
       "name": "ZD Hoy IA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [800, 0]
+      "position": [66096, -1472],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "jsCode": "const acc = $('Guardar Abiertos').first().json;\nreturn [{ json: { ...acc, zd_today_ia: $input.first().json } }];"
       },
-      "id": "save-hoy-ia",
+      "id": "3c07d0e7-5ef2-4478-b7b5-a3f82e6f2722",
       "name": "Guardar Hoy IA",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1000, 0]
+      "position": [66304, -1472]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -295,23 +188,26 @@
         },
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-hoy-manual",
+      "id": "0ffa337c-638b-416a-85bd-85e062eb3bb6",
       "name": "ZD Hoy Manual",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 0]
+      "position": [66496, -1472],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "jsCode": "const acc = $('Guardar Hoy IA').first().json;\nreturn [{ json: { ...acc, zd_today_manual: $input.first().json } }];"
       },
-      "id": "save-hoy-manual",
+      "id": "c0a231b3-d276-4bae-967a-faa27189c0fe",
       "name": "Guardar Hoy Manual",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1400, 0]
+      "position": [66704, -1472]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/ticket_metrics.json",
@@ -325,177 +221,82 @@
         },
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-metrics-list",
+      "id": "9347e943-c2ef-4515-a687-578746ea9409",
       "name": "ZD Metrics Recientes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1500, 220]
+      "position": [66800, -1248],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "jsCode": "// Calcula FRT — defensivo, incluye tickets pendientes con el tiempo\n// que llevan esperando (minutos desde creación)\nlet acc = {};\ntry {\n  acc = $('Guardar Hoy Manual').first().json || {};\n} catch (e) {\n  return [{ json: { _frt_status: 'no_acc:' + (e && e.message || e) } }];\n}\n\nlet body = {};\ntry { body = $input.first().json || {}; } catch (e) { body = {}; }\n\nconst metrics = Array.isArray(body.ticket_metrics) ? body.ticket_metrics : [];\nconst bodyKeys = Object.keys(body).slice(0, 10).join(',');\n\nconst manualResults = (acc.zd_today_manual && acc.zd_today_manual.results) || [];\nconst todayManualIds = new Set(\n  manualResults.map(t => t && t.id != null ? String(t.id) : null).filter(Boolean)\n);\n// Mapas auxiliares\nconst subjectById = new Map();\nconst createdById = new Map();\nfor (const t of manualResults) {\n  if (t && t.id != null) {\n    subjectById.set(String(t.id), t.subject || '');\n    createdById.set(String(t.id), t.created_at);\n  }\n}\n\nconst todayMetrics = metrics.filter(m => m && m.ticket_id != null && todayManualIds.has(String(m.ticket_id)));\nconst nowMs = Date.now();\n\nfunction effectiveTime(m) {\n  const cal = m && m.reply_time_in_minutes && m.reply_time_in_minutes.calendar;\n  if (typeof cal === 'number' && cal > 0) return { min: cal, status: 'answered' };\n  // Pendiente: tiempo desde creación\n  const created = createdById.get(String(m.ticket_id));\n  if (!created) return { min: null, status: 'unknown' };\n  const elapsed = Math.round((nowMs - new Date(created).getTime()) / 60000);\n  return { min: elapsed > 0 ? elapsed : 1, status: 'pending' };\n}\n\n// Breakdown completo (todos los manuales hoy)\nconst _frt_breakdown = todayMetrics.map(m => {\n  const tid = String(m.ticket_id);\n  const eff = effectiveTime(m);\n  return {\n    ticket_id: m.ticket_id,\n    subject: (subjectById.get(tid) || '').slice(0, 80),\n    reply_time_calendar_min: m.reply_time_in_minutes && m.reply_time_in_minutes.calendar,\n    reply_time_business_min: m.reply_time_in_minutes && m.reply_time_in_minutes.business,\n    effective_min: eff.min,\n    state: eff.status,  // 'answered' | 'pending' | 'unknown'\n    created_at: createdById.get(tid),\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${m.ticket_id}`\n  };\n}).sort((a,b) => (a.effective_min || 999999) - (b.effective_min || 999999));\n\n// Media SOLO sobre los respondidos (state==='answered').\n// Los pendientes se cuentan aparte como info, no entran en el promedio.\nconst answeredItems = _frt_breakdown.filter(x => x.state === 'answered');\nconst times = answeredItems.map(x => x.effective_min);\nconst sample = times.length;\nconst avgMin = sample ? Math.round(times.reduce((a,b)=>a+b,0) / sample) : null;\nconst sorted = times.slice().sort((a,b)=>a-b);\nconst median = sample ? sorted[Math.floor(sample/2)] : null;\nconst minV = sample ? sorted[0] : null;\nconst maxV = sample ? sorted[sorted.length-1] : null;\n\nconst answered = answeredItems.length;\nconst pending  = _frt_breakdown.filter(x => x.state === 'pending').length;\n\nreturn [{ json: {\n  ...acc,\n  frt_avg_min: avgMin,\n  frt_sample: sample,\n  frt_answered: answered,\n  frt_pending: pending,\n  _frt_today_ids_size: todayManualIds.size,\n  _frt_metrics_size: metrics.length,\n  _frt_matched: todayMetrics.length,\n  _frt_status: 'ok',\n  _frt_body_keys: bodyKeys,\n  _frt_min: minV,\n  _frt_max: maxV,\n  _frt_median: median,\n  _frt_breakdown\n} }];"
       },
-      "id": "calc-frt",
+      "id": "0c7b64c1-96c3-4fcc-8f90-d33b553fbf4d",
       "name": "Calcular FRT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1700, 220]
+      "position": [67008, -1248]
     },
-
     {
       "parameters": {
-        "resource": "ticket",
         "operation": "getAll",
         "returnAll": true,
         "options": {
           "query": "=type:ticket status<solved created<{{ $json.aged_ymd }} -subject:\"Conversation with\" tags:consulta_técnica"
         }
       },
-      "id": "zd-aged",
+      "id": "7e26a580-6b91-4096-881f-327930acb62a",
       "name": "ZD Envejecidos",
       "type": "n8n-nodes-base.zendesk",
       "typeVersion": 1,
-      "position": [1500, 700]
+      "position": [66800, -768],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "jsCode": "// Recoge todos los tickets envejecidos (Zendesk native emite uno por item)\nconst acc = $('Calcular FRT').first().json;\nconst allAged = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, zd_aged: { results: allAged, count: allAged.length } } }];"
       },
-      "id": "save-aged",
+      "id": "e6430e01-77b3-4463-aeaf-2ce5e1361998",
       "name": "Guardar Envejecidos",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1500, 840]
+      "position": [66800, -624]
     },
-
     {
       "parameters": {
-        "resource": "ticket",
         "operation": "getAll",
         "returnAll": true,
         "options": {
           "query": "type:ticket status<solved tags:incidencia_dev"
         }
       },
-      "id": "zd-incidencias",
+      "id": "50da59d1-9f6b-45f1-b753-95c1deb33c82",
       "name": "ZD Incidencias Dev",
       "type": "n8n-nodes-base.zendesk",
       "typeVersion": 1,
-      "position": [1500, 980]
+      "position": [66800, -480],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "jsCode": "// Recoge todas las incidencias dev (Zendesk native emite uno por item)\nconst acc = $('Guardar Envejecidos').first().json;\nconst all = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, zd_incidencias: { results: all, count: all.length } } }];"
       },
-      "id": "save-incidencias",
+      "id": "46f3e1cd-d2f5-47a1-ada9-bbda5bf3707e",
       "name": "Guardar Incidencias",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1500, 1120]
+      "position": [66800, -352]
     },
-
-    {
-      "parameters": {
-        "resource": "ticket",
-        "operation": "getAll",
-        "returnAll": true,
-        "options": {
-          "query": "=type:ticket created>={{ $json.hist_ymd }} -subject:\"Conversation with\""
-        }
-      },
-      "id": "zd-hist-manual",
-      "name": "ZD Hist Manual",
-      "type": "n8n-nodes-base.zendesk",
-      "typeVersion": 1,
-      "position": [1600, -100]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Guarda los tickets manuales del histórico (28 días) — se combinarán\n// con los de IA en el siguiente save. Pull desde 'Guardar Incidencias'\n// para preservar zd_aged, zd_incidencias y _frt_* añadidos previamente.\nconst acc = $('Guardar Incidencias').first().json;\nconst manuales = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, _hist_manual: manuales } }];"
-      },
-      "id": "save-hist-manual",
-      "name": "Guardar Hist Manual",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1750, -100]
-    },
-    {
-      "parameters": {
-        "resource": "ticket",
-        "operation": "getAll",
-        "returnAll": true,
-        "options": {
-          "query": "=type:ticket created>={{ $json.hist_ymd }} subject:\"Conversation with\""
-        }
-      },
-      "id": "zd-hist-ia",
-      "name": "ZD Hist IA",
-      "type": "n8n-nodes-base.zendesk",
-      "typeVersion": 1,
-      "position": [1900, -100]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Guarda los tickets IA del histórico reciente (0-28 días).\nconst acc = $('Guardar Hist Manual').first().json;\nconst ia = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, _hist_ia: ia } }];"
-      },
-      "id": "save-hist-ia",
-      "name": "Guardar Hist IA",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2050, -100]
-    },
-    {
-      "parameters": {
-        "resource": "ticket",
-        "operation": "getAll",
-        "returnAll": true,
-        "options": {
-          "query": "=type:ticket created>={{ $('Calcular fechas').first().json.hist_older_ymd }} created<{{ $('Calcular fechas').first().json.hist_ymd }} -subject:\"Conversation with\""
-        }
-      },
-      "id": "zd-hist-manual-older",
-      "name": "ZD Hist Manual Older",
-      "type": "n8n-nodes-base.zendesk",
-      "typeVersion": 1,
-      "position": [2200, -100]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Guarda los tickets MANUAL del histórico antiguo (29-56 días).\nconst acc = $('Guardar Hist IA').first().json;\nconst items = $input.all().map(i => i.json).filter(Boolean);\nreturn [{ json: { ...acc, _hist_manual_older: items } }];"
-      },
-      "id": "save-hist-manual-older",
-      "name": "Guardar Hist Manual Older",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2350, -100]
-    },
-    {
-      "parameters": {
-        "resource": "ticket",
-        "operation": "getAll",
-        "returnAll": true,
-        "options": {
-          "query": "=type:ticket created>={{ $('Calcular fechas').first().json.hist_older_ymd }} created<{{ $('Calcular fechas').first().json.hist_ymd }} subject:\"Conversation with\""
-        }
-      },
-      "id": "zd-hist-ia-older",
-      "name": "ZD Hist IA Older",
-      "type": "n8n-nodes-base.zendesk",
-      "typeVersion": 1,
-      "position": [2500, -100]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Combinador final: une los 4 subsets (manual reciente + IA reciente +\n// manual older + IA older) en zd_hist.results. Total cubre 8 semanas.\nconst acc = $('Guardar Hist Manual Older').first().json;\nconst iaOlder = $input.all().map(i => i.json).filter(Boolean);\nconst all = [\n  ...(acc._hist_manual || []),\n  ...(acc._hist_ia || []),\n  ...(acc._hist_manual_older || []),\n  ...iaOlder\n];\nreturn [{ json: {\n  ...acc,\n  _hist_manual: undefined,\n  _hist_ia: undefined,\n  _hist_manual_older: undefined,\n  zd_hist: { results: all, count: all.length }\n} }];"
-      },
-      "id": "save-hist",
-      "name": "Guardar Hist",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2650, -100]
-    },
-
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -509,32 +310,35 @@
         },
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-solved-today",
+      "id": "5cb5801e-d03b-4e23-960a-1474b3cc9c09",
       "name": "ZD Resueltos Hoy",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2000, 0]
+      "position": [67296, -1472],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
-        "jsCode": "const acc = $('Guardar Hist').first().json;\nreturn [{ json: { ...acc, zd_solved_today: $input.first().json } }];"
+        "jsCode": "const acc = $('Guardar Incidencias').first().json;\nreturn [{ json: { ...acc, zd_solved_today: $input.first().json } }];"
       },
-      "id": "save-solved-today",
+      "id": "eff912a5-c0d9-4ad1-8d0b-add1696a8c5a",
       "name": "Guardar Resueltos Hoy",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2200, 0]
+      "position": [67504, -1472]
     },
-
     {
       "parameters": {
-        "jsCode": "// Extrae IDs de orgs a resolver vía show_many (hasta 100 IDs por llamada):\n//  - Top orgs del MES (para widget Top Clientes este mes)\n//  - Top orgs con tickets ABIERTOS ahora (para widget de abiertos)\n//  Combinamos ambos sets, priorizando los counts más altos.\nconst d = $input.first().json;\nconst histRes  = (d.zd_hist && Array.isArray(d.zd_hist.results)) ? d.zd_hist.results : [];\nconst openRes  = (d.zd_open && Array.isArray(d.zd_open.results)) ? d.zd_open.results : [];\nconst monthYMD = d.month_ymd;\nfunction ymdMad(date){ return date.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' }); }\n\n// Counts del mes (creados >= month_ymd)\nconst monthOrgCount = new Map();\nfor (const t of histRes) {\n  const c = t.created_at || t.createdAt;\n  if (!c) continue;\n  if (ymdMad(new Date(c)) < monthYMD) continue;\n  if (!t.organization_id) continue;\n  monthOrgCount.set(t.organization_id, (monthOrgCount.get(t.organization_id) || 0) + 1);\n}\n// Counts de tickets abiertos ahora\nconst openOrgCount = new Map();\nfor (const t of openRes) {\n  if (!t.organization_id) continue;\n  openOrgCount.set(t.organization_id, (openOrgCount.get(t.organization_id) || 0) + 1);\n}\nconst topMonth = [...monthOrgCount.entries()].sort((a,b)=>b[1]-a[1]);\nconst topOpen  = [...openOrgCount.entries()].sort((a,b)=>b[1]-a[1]);\n\n// Combinar: top 8 de cada set + relleno hasta 100 con top de mes.\nconst ids = new Set();\nfor (const [id] of topOpen.slice(0, 50)) ids.add(id);\nfor (const [id] of topMonth) { if (ids.size >= 100) break; ids.add(id); }\n\nreturn [{ json: { ...d, org_ids_csv: [...ids].join(',') || '0', top_orgs_raw: topMonth.slice(0, 8) } }];"
+        "jsCode": "// Solo resuelve nombres de orgs con tickets ABIERTOS ahora (para orgs_by_open_count).\n// El top de orgs del mes lo calcula y resuelve el workflow historico.\nconst d = $input.first().json;\nconst openRes = (d.zd_open && Array.isArray(d.zd_open.results)) ? d.zd_open.results : [];\nconst openOrgCount = new Map();\nfor (const t of openRes) { if(!t.organization_id) continue; openOrgCount.set(t.organization_id,(openOrgCount.get(t.organization_id)||0)+1); }\nconst ids = [...openOrgCount.entries()].sort((a,b)=>b[1]-a[1]).slice(0,100).map(([id])=>id);\nreturn [{ json: { ...d, org_ids_csv: ids.join(',') || '0' } }];"
       },
-      "id": "calc-orgs",
+      "id": "9609cd8a-56b3-4bb2-a62b-e68266100a93",
       "name": "Calcular IDs orgs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2400, 0]
+      "position": [67696, -1472]
     },
     {
       "parameters": {
@@ -549,32 +353,35 @@
         },
         "options": { "response": { "response": { "neverError": true } } }
       },
-      "id": "zd-orgs",
+      "id": "79a7eb00-2f3d-4741-86b3-800303c2622c",
       "name": "ZD Organizaciones",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2600, 0]
+      "position": [67904, -1472],
+      "credentials": { "zendeskApi": { "id": "KagVdQFawJyTOzEO", "name": "Zendesk account" } },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "jsCode": "const acc = $('Calcular IDs orgs').first().json;\nreturn [{ json: { ...acc, zd_orgs: $input.first().json } }];"
       },
-      "id": "save-orgs",
+      "id": "a251948c-69ee-4975-91c1-686fe08b1ef0",
       "name": "Guardar Orgs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2800, 0]
+      "position": [68096, -1472]
     },
-
     {
       "parameters": {
-        "jsCode": "// Consolida todo en el JSON final\nconst d = $input.first().json;\n\nfunction count(obj){\n  if (!obj) return 0;\n  if (typeof obj.count === 'number') return obj.count;\n  if (Array.isArray(obj.results)) return obj.results.length;\n  return 0;\n}\nfunction results(obj){\n  if (!obj || !Array.isArray(obj.results)) return [];\n  return obj.results;\n}\nfunction ymdMadrid(date){ return date.toLocaleDateString('en-CA', { timeZone:'Europe/Madrid' }); }\nfunction partsMadrid(date){\n  return new Intl.DateTimeFormat('en-US', {\n    timeZone:'Europe/Madrid', weekday:'short', hour:'2-digit', hour12:false\n  }).formatToParts(date);\n}\n\nconst today        = count(d.zd_today);\nconst yesterday    = count(d.zd_yesterday);\nconst week         = count(d.zd_week);\nconst lastWeek     = count(d.zd_last_week);\nconst open         = count(d.zd_open);\nconst todayIA       = count(d.zd_today_ia);\nconst todayManual   = count(d.zd_today_manual);\nconst yesterdayIA   = count(d.zd_yesterday_ia);\nconst yesterdayManual = count(d.zd_yesterday_manual);\nconst solvedToday   = count(d.zd_solved_today);\nconst backlogToday  = todayManual - solvedToday;\n\nconst todayRes = results(d.zd_today);\nconst openRes  = results(d.zd_open);\nconst histRes  = results(d.zd_hist);\nconst pending  = openRes.filter(t => t.status === 'pending').length;\n\nconst weekYMD  = d.week_ymd;\nconst monthYMD = d.month_ymd;\n\n// Tickets de este mes (filtramos histRes a >= month_ymd)\nconst monthRes = histRes.filter(t => {\n  const c = t.created_at || t.createdAt;\n  return c && ymdMadrid(new Date(c)) >= monthYMD;\n});\nconst month = monthRes.length;\nlet monthIA = 0, monthManual = 0;\nfor (const t of monthRes) {\n  const subj = String(t.subject || '').trim().toLowerCase();\n  if (subj.startsWith('conversation with')) monthIA++; else monthManual++;\n}\n\n// ────── A · HOURLY TODAY vs MEDIA (mismo día semana últimas 8 semanas) ──────\nconst HOURS_RANGE = ['09','10','11','12','13','14','15','16','17','18'];\nconst nowD = new Date();\nconst todayLocalYMD = ymdMadrid(nowD);\nconst todayWdStr = new Intl.DateTimeFormat('en-US', { timeZone:'Europe/Madrid', weekday:'short' }).format(nowD);\n\nconst hoursToday = Object.fromEntries(HOURS_RANGE.map(h => [h, 0]));\nfor (const t of todayRes) {\n  if (!t.created_at) continue;\n  const dt = new Date(t.created_at);\n  if (ymdMadrid(dt) !== todayLocalYMD) continue;\n  // Solo Manual (excluir IA) para coherencia con el resto del dashboard\n  const subjT = String(t.subject || '').trim().toLowerCase();\n  if (subjT.startsWith('conversation with')) continue;\n  const hh = partsMadrid(dt).find(p => p.type === 'hour')?.value || '00';\n  if (hoursToday[hh] !== undefined) hoursToday[hh]++;\n}\n\n// Media: histRes ahora cubre los 28 días completos (Manual + IA en\n// queries separadas → cada subset bajo 1000 = sin truncamiento)\nconst sameWdSums = Object.fromEntries(HOURS_RANGE.map(h => [h, 0]));\nconst sameWdDaysSeen = new Set();\n// Debug: agrupa tickets del mismo día de semana por fecha\nconst _pastWdDebug = {};\nfor (const t of histRes) {\n  if (!t.created_at) continue;\n  const dt = new Date(t.created_at);\n  if (ymdMadrid(dt) === todayLocalYMD) continue;\n  const p = partsMadrid(dt);\n  const wd = p.find(x => x.type === 'weekday')?.value;\n  if (wd !== todayWdStr) continue;\n  // Solo Manual: la comparativa hourly excluye IA (coherente con el resto del dashboard)\n  const subjH = String(t.subject || '').trim().toLowerCase();\n  if (subjH.startsWith('conversation with')) continue;\n  const dYMD = ymdMadrid(dt);\n  sameWdDaysSeen.add(dYMD);\n  const hh = p.find(x => x.type === 'hour')?.value || '00';\n  if (sameWdSums[hh] !== undefined) sameWdSums[hh]++;\n  // Acumular debug\n  if (!_pastWdDebug[dYMD]) _pastWdDebug[dYMD] = { date: dYMD, total: 0, by_hour: {}, tickets: [] };\n  _pastWdDebug[dYMD].total++;\n  _pastWdDebug[dYMD].by_hour[hh] = (_pastWdDebug[dYMD].by_hour[hh] || 0) + 1;\n  const subj = String(t.subject || '').trim().toLowerCase();\n  const isIA = subj.startsWith('conversation with');\n  // Solo listar los de horas 9-18 para no saturar\n  if (HOURS_RANGE.includes(hh)) {\n    _pastWdDebug[dYMD].tickets.push({\n      id: t.id, hour: hh, origin: isIA ? 'IA' : 'Manual',\n      subject: (t.subject || '').slice(0, 80)\n    });\n  }\n}\nconst _past_wd_debug = Object.values(_pastWdDebug).sort((a,b) => a.date.localeCompare(b.date));\n// Conteo de calendario: cuántos mismos días de semana en [hist_older_ymd, hoy)\nlet sampleDays = 0;\nconst _histStart = new Date((d.hist_older_ymd || d.hist_ymd) + 'T12:00:00Z');\nconst _todayStart = new Date(todayLocalYMD + 'T12:00:00Z');\nfor (let dt = new Date(_histStart); dt < _todayStart; dt.setUTCDate(dt.getUTCDate() + 1)) {\n  const wd = new Intl.DateTimeFormat('en-US', { timeZone:'Europe/Madrid', weekday:'short' }).format(dt);\n  if (wd === todayWdStr) sampleDays++;\n}\nif (sampleDays === 0) sampleDays = 1;\nconst hourly_today = HOURS_RANGE.map(h => ({\n  hour: h + ':00',\n  today: hoursToday[h],\n  avg: Math.round((sameWdSums[h] / sampleDays) * 10) / 10\n}));\n\n// ────── C · STACKED IA/MANUAL por día (L-V hasta hoy) ──────\nconst DAYS_LV = ['Lun','Mar','Mié','Jue','Vie'];\nconst _wdIdx = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(todayWdStr);\nconst lastDayIdx = Math.min(_wdIdx, 4);\nconst visibleDays = DAYS_LV.slice(0, lastDayIdx + 1);\nconst stackedIA = Object.fromEntries(visibleDays.map(dn => [dn, 0]));\nconst stackedMa = Object.fromEntries(visibleDays.map(dn => [dn, 0]));\nlet weekIA = 0, weekMa = 0;\nfor (const t of histRes) {\n  const created = t.created_at || t.createdAt;\n  if (!created) continue;\n  const dt = new Date(created);\n  if (isNaN(dt.getTime())) continue;\n  if (ymdMadrid(dt) < weekYMD) continue;\n  const p = partsMadrid(dt);\n  const wd = p.find(x => x.type === 'weekday')?.value;\n  const idx = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(wd);\n  if (idx < 0 || idx > 4 || idx > lastDayIdx) continue;\n  const dn = DAYS_LV[idx];\n  const subj = String(t.subject || '').trim().toLowerCase();\n  const isIA = subj.startsWith('conversation with');\n  if (isIA) { stackedIA[dn]++; weekIA++; } else { stackedMa[dn]++; weekMa++; }\n}\nconst weekly_stacked = visibleDays.map(dn => ({\n  day: dn,\n  ia: stackedIA[dn],\n  manual: stackedMa[dn],\n  total: stackedIA[dn] + stackedMa[dn],\n  pct_ia: (stackedIA[dn] + stackedMa[dn]) > 0\n    ? Math.round((stackedIA[dn] / (stackedIA[dn] + stackedMa[dn])) * 100) : 0\n}));\n\n// ────── Tickets envejecidos (>5 días sin cerrar, sin IA) ──────\nconst tickets_aged_3d = count(d.zd_aged);\nconst _aged_raw = d.zd_aged ? (Object.keys(d.zd_aged).slice(0,8).join(',')) : 'undef';\nconst _aged_query_date = d.aged_ymd || 'undef';\nconst agedAll = results(d.zd_aged);\n// Lista de tickets envejecidos: campos útiles + URL directa, ordenados\n// del más antiguo al más reciente para inspección manual.\nconst aged_tickets_list = agedAll\n  .filter(t => t && t.id)\n  .sort((a,b) => new Date(a.created_at) - new Date(b.created_at))\n  .map(t => ({\n    id: t.id,\n    subject: t.subject || '(sin asunto)',\n    status: t.status,\n    priority: t.priority,\n    created_at: t.created_at,\n    updated_at: t.updated_at,\n    organization_id: t.organization_id,\n    requester_id: t.requester_id,\n    assignee_id: t.assignee_id,\n    age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n  }));\n\n// ────── Top orgs del mes + sparkline 14 días ──────\nconst orgCount = new Map();\nfor (const t of monthRes) {\n  if (!t.organization_id) continue;\n  orgCount.set(t.organization_id, (orgCount.get(t.organization_id) || 0) + 1);\n}\nconst topOrgIds = [...orgCount.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);\n\n// Construir array de 14 días YMD (oldest -> today)\nconst dayList = [];\nfor (let i = 13; i >= 0; i--) {\n  const dt = new Date(nowD); dt.setDate(dt.getDate() - i);\n  dayList.push(ymdMadrid(dt));\n}\nconst dayIndex = Object.fromEntries(dayList.map((y,i) => [y, i]));\n\n// Por cada org top, contar tickets por día\nconst sparklineByOrg = new Map();\nfor (const [orgId] of topOrgIds) sparklineByOrg.set(orgId, new Array(14).fill(0));\nfor (const t of histRes) {\n  if (!t.organization_id) continue;\n  if (!sparklineByOrg.has(t.organization_id)) continue;\n  const created = t.created_at || t.createdAt;\n  if (!created) continue;\n  const dYMD = ymdMadrid(new Date(created));\n  const idx = dayIndex[dYMD];\n  if (idx !== undefined) sparklineByOrg.get(t.organization_id)[idx]++;\n}\n\nconst orgMap = new Map();\nconst orgsResolved = (d.zd_orgs && Array.isArray(d.zd_orgs.organizations)) ? d.zd_orgs.organizations : [];\nfor (const o of orgsResolved) { if (o && o.id) orgMap.set(o.id, o.name); }\nfunction orgName(id){ return orgMap.get(id) || `Organización ${id}`; }\n\nconst top_orgs = topOrgIds.map(([id, count]) => ({\n  name: orgName(id),\n  count,\n  sparkline: sparklineByOrg.get(id) || []\n}));\n\n// ────── Clientes por carga de tickets abiertos ──────\n// Distribución de cuántos clientes (orgs) tienen 1, 2-3, o más de 3 tickets\n// abiertos. Permite ver concentración: 'muchos clientes con 1 ticket' vs\n// 'pocos clientes saturados con muchos tickets'.\nconst openOrgCount = new Map();\nfor (const t of openRes) {\n  if (!t.organization_id) continue;\n  openOrgCount.set(t.organization_id, (openOrgCount.get(t.organization_id) || 0) + 1);\n}\nconst orgs_by_open_count = { gt3: [], between_2_3: [], eq1: [] };\nfor (const [orgId, c] of openOrgCount.entries()) {\n  const entry = { id: orgId, name: orgName(orgId), count: c };\n  if (c > 3)       orgs_by_open_count.gt3.push(entry);\n  else if (c >= 2) orgs_by_open_count.between_2_3.push(entry);\n  else             orgs_by_open_count.eq1.push(entry);\n}\norgs_by_open_count.gt3.sort((a,b) => b.count - a.count);\norgs_by_open_count.between_2_3.sort((a,b) => b.count - a.count);\norgs_by_open_count.eq1.sort((a,b) => b.count - a.count);\nconst orgs_by_open_count_summary = {\n  gt3: orgs_by_open_count.gt3.length,\n  between_2_3: orgs_by_open_count.between_2_3.length,\n  eq1: orgs_by_open_count.eq1.length,\n  total_orgs: openOrgCount.size\n};\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  _workflow_version: '2026-05-13-split-hist',\n  tickets_today: today,\n  tickets_yesterday: yesterday,\n  tickets_week: week,\n  tickets_last_week: lastWeek,\n  tickets_open: open,\n  tickets_pending: pending,\n  tickets_month: month,\n  tickets_solved_today: solvedToday,\n  backlog_today: backlogToday,\n  frt_avg_min: d.frt_avg_min ?? null,\n  frt_sample: d.frt_sample ?? 0,\n  frt_answered: d.frt_answered ?? 0,\n  frt_pending: d.frt_pending ?? 0,\n  frt_min: d._frt_min ?? null,\n  frt_max: d._frt_max ?? null,\n  frt_median: d._frt_median ?? null,\n  frt_breakdown: d._frt_breakdown ?? [],\n  _frt_today_ids_size: d._frt_today_ids_size ?? null,\n  _frt_metrics_size: d._frt_metrics_size ?? null,\n  _frt_matched: d._frt_matched ?? null,\n  _frt_status: d._frt_status ?? null,\n  _frt_body_keys: d._frt_body_keys ?? null,\n  _aged_raw: _aged_raw,\n  _aged_query_date: _aged_query_date,\n  tickets_aged_3d,\n  tickets_incidencias_dev: count(d.zd_incidencias),\n  aged_tickets_list,\n  incidencias_list: (function(){\n    const arr = ((d.zd_incidencias && Array.isArray(d.zd_incidencias.results)) ? d.zd_incidencias.results : []).map(t => ({\n      id: t.id,\n      subject: t.subject || '(sin asunto)',\n      status: t.status,\n      priority: t.priority,\n      created_at: t.created_at,\n      updated_at: t.updated_at,\n      organization_id: t.organization_id,\n      requester_id: t.requester_id,\n      assignee_id: t.assignee_id,\n      age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n      url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n    }));\n    return arr;\n  })(),\n  incidencias_buckets: (function(){\n    const buckets = { lt30: 0, b30_60: 0, b60_100: 0, gt100: 0 };\n    const arr = (d.zd_incidencias && Array.isArray(d.zd_incidencias.results)) ? d.zd_incidencias.results : [];\n    for (const t of arr) {\n      if (!t || !t.created_at) continue;\n      const age = Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000);\n      if (age < 30) buckets.lt30++;\n      else if (age < 60) buckets.b30_60++;\n      else if (age < 100) buckets.b60_100++;\n      else buckets.gt100++;\n    }\n    return buckets;\n  })(),\n  tickets_today_ia: todayIA,\n  tickets_today_manual: todayManual,\n  tickets_yesterday_ia: yesterdayIA,\n  tickets_yesterday_manual: yesterdayManual,\n  tickets_month_ia: monthIA,\n  tickets_month_manual: monthManual,\n  tickets_week_ia: weekIA,\n  tickets_week_manual: weekMa,\n  hourly_today,\n  _past_wd_debug,\n  weekly_stacked,\n  top_orgs,\n  orgs_by_open_count_summary,\n  orgs_by_open_count\n} }];"
+        "jsCode": "// Agregar KPIs (live) = datos vivos (de 'Guardar Orgs') + capa historica (Data Table, via $input).\nconst d = $('Guardar Orgs').first().json;\nconst histRow = $input.first().json || {};\nlet hist = {};\ntry { hist = histRow.payload ? JSON.parse(histRow.payload) : {}; } catch(e) { hist = {}; }\n\nfunction count(o){ if(!o) return 0; if(typeof o.count==='number') return o.count; if(Array.isArray(o.results)) return o.results.length; return 0; }\nfunction results(o){ return (o && Array.isArray(o.results)) ? o.results : []; }\nfunction ymdMad(date){ return date.toLocaleDateString('en-CA',{timeZone:'Europe/Madrid'}); }\nfunction partsMad(date){ return new Intl.DateTimeFormat('en-US',{timeZone:'Europe/Madrid',weekday:'short',hour:'2-digit',hour12:false}).formatToParts(date); }\n\nconst today = count(d.zd_today);\nconst week = count(d.zd_week);\nconst open = count(d.zd_open);\nconst todayIA = count(d.zd_today_ia);\nconst todayManual = count(d.zd_today_manual);\nconst solvedToday = count(d.zd_solved_today);\nconst backlogToday = todayManual - solvedToday;\nconst todayRes = results(d.zd_today);\nconst openRes = results(d.zd_open);\nconst pending = openRes.filter(t => t.status === 'pending').length;\n\nconst nowD = new Date();\nconst todayLocalYMD = ymdMad(nowD);\nconst todayWdStr = new Intl.DateTimeFormat('en-US',{timeZone:'Europe/Madrid',weekday:'short'}).format(nowD);\n\n// hourly_today: hoy (vivo) + avg (historico)\nconst HOURS=['09','10','11','12','13','14','15','16','17','18'];\nconst hoursToday=Object.fromEntries(HOURS.map(h=>[h,0]));\nfor (const t of todayRes){ if(!t.created_at) continue; const dt=new Date(t.created_at); if(ymdMad(dt)!==todayLocalYMD) continue; const s=String(t.subject||'').trim().toLowerCase(); if(s.startsWith('conversation with')) continue; const hh=partsMad(dt).find(p=>p.type==='hour')?.value||'00'; if(hoursToday[hh]!==undefined) hoursToday[hh]++; }\nconst avgMap=Object.fromEntries((hist.hourly_avg||[]).map(o=>[String(o.hour).slice(0,2), o.avg]));\nconst hourly_today=HOURS.map(h=>({ hour:h+':00', today:hoursToday[h], avg: (avgMap[h] ?? 0) }));\n\n// weekly_stacked: historico + parchea hoy con datos vivos\nconst DAYS=['Lun','Mar','Mié','Jue','Vie'];\nconst wdIdx=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(todayWdStr);\nconst todayDayName=(wdIdx>=0&&wdIdx<=4)?DAYS[wdIdx]:null;\nlet weekly_stacked=Array.isArray(hist.weekly_stacked)?hist.weekly_stacked.map(x=>({...x})):[];\nif(todayDayName){ const tot=todayIA+todayManual; const e={day:todayDayName,ia:todayIA,manual:todayManual,total:tot,pct_ia:tot>0?Math.round(todayIA/tot*100):0}; const i=weekly_stacked.findIndex(x=>x.day===todayDayName); if(i>=0) weekly_stacked[i]=e; else weekly_stacked.push(e); }\nconst weekIA=weekly_stacked.reduce((a,x)=>a+(x.ia||0),0);\nconst weekMa=weekly_stacked.reduce((a,x)=>a+(x.manual||0),0);\n\n// Envejecidos (vivo)\nconst tickets_aged_3d=count(d.zd_aged);\nconst agedAll=results(d.zd_aged);\nconst aged_tickets_list=agedAll.filter(t=>t&&t.id).sort((a,b)=>new Date(a.created_at)-new Date(b.created_at)).map(t=>({ id:t.id, subject:t.subject||'(sin asunto)', status:t.status, priority:t.priority, created_at:t.created_at, updated_at:t.updated_at, organization_id:t.organization_id, requester_id:t.requester_id, assignee_id:t.assignee_id, age_days:t.created_at?Math.floor((Date.now()-new Date(t.created_at).getTime())/86400000):null, url:`https://soporteyurest.zendesk.com/agent/tickets/${t.id}` }));\n\n// Incidencias dev (vivo)\nconst incidArr=results(d.zd_incidencias);\nconst incidencias_list=incidArr.map(t=>({ id:t.id, subject:t.subject||'(sin asunto)', status:t.status, priority:t.priority, created_at:t.created_at, updated_at:t.updated_at, organization_id:t.organization_id, requester_id:t.requester_id, assignee_id:t.assignee_id, age_days:t.created_at?Math.floor((Date.now()-new Date(t.created_at).getTime())/86400000):null, url:`https://soporteyurest.zendesk.com/agent/tickets/${t.id}` }));\nconst incidencias_buckets=(function(){ const b={lt30:0,b30_60:0,b60_100:0,gt100:0}; for(const t of incidArr){ if(!t||!t.created_at) continue; const age=Math.floor((Date.now()-new Date(t.created_at).getTime())/86400000); if(age<30)b.lt30++; else if(age<60)b.b30_60++; else if(age<100)b.b60_100++; else b.gt100++; } return b; })();\n\n// orgs_by_open_count (vivo) — nombres de zd_orgs (abiertas)\nconst orgMap=new Map(); const orgsR=(d.zd_orgs&&Array.isArray(d.zd_orgs.organizations))?d.zd_orgs.organizations:[]; for(const o of orgsR){ if(o&&o.id) orgMap.set(o.id,o.name); }\nfunction orgName(id){ return orgMap.get(id)||`Organización ${id}`; }\nconst openOrgCount=new Map();\nfor (const t of openRes){ if(!t.organization_id) continue; openOrgCount.set(t.organization_id,(openOrgCount.get(t.organization_id)||0)+1); }\nconst orgs_by_open_count={gt3:[],between_2_3:[],eq1:[]};\nfor (const [orgId,c] of openOrgCount.entries()){ const e={id:orgId,name:orgName(orgId),count:c}; if(c>3)orgs_by_open_count.gt3.push(e); else if(c>=2)orgs_by_open_count.between_2_3.push(e); else orgs_by_open_count.eq1.push(e); }\norgs_by_open_count.gt3.sort((a,b)=>b.count-a.count); orgs_by_open_count.between_2_3.sort((a,b)=>b.count-a.count); orgs_by_open_count.eq1.sort((a,b)=>b.count-a.count);\nconst orgs_by_open_count_summary={ gt3:orgs_by_open_count.gt3.length, between_2_3:orgs_by_open_count.between_2_3.length, eq1:orgs_by_open_count.eq1.length, total_orgs:openOrgCount.size };\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  _workflow_version: '2026-06-16-split-live',\n  _hist_generated_at: hist.hist_generated_at || null,\n  tickets_today: today,\n  tickets_yesterday: hist.tickets_yesterday ?? null,\n  tickets_week: week,\n  tickets_last_week: hist.tickets_last_week ?? null,\n  tickets_open: open,\n  tickets_pending: pending,\n  tickets_month: hist.tickets_month ?? null,\n  tickets_solved_today: solvedToday,\n  backlog_today: backlogToday,\n  frt_avg_min: d.frt_avg_min ?? null,\n  frt_sample: d.frt_sample ?? 0,\n  frt_answered: d.frt_answered ?? 0,\n  frt_pending: d.frt_pending ?? 0,\n  frt_min: d._frt_min ?? null,\n  frt_max: d._frt_max ?? null,\n  frt_median: d._frt_median ?? null,\n  frt_breakdown: d._frt_breakdown ?? [],\n  tickets_aged_3d,\n  tickets_incidencias_dev: count(d.zd_incidencias),\n  aged_tickets_list,\n  incidencias_list,\n  incidencias_buckets,\n  tickets_today_ia: todayIA,\n  tickets_today_manual: todayManual,\n  tickets_yesterday_ia: hist.tickets_yesterday_ia ?? null,\n  tickets_yesterday_manual: hist.tickets_yesterday_manual ?? null,\n  tickets_month_ia: hist.tickets_month_ia ?? null,\n  tickets_month_manual: hist.tickets_month_manual ?? null,\n  tickets_week_ia: weekIA,\n  tickets_week_manual: weekMa,\n  hourly_today,\n  weekly_stacked,\n  top_orgs: hist.top_orgs ?? [],\n  tickets_by_type: hist.tickets_by_type ?? null,\n  orgs_by_open_count_summary,\n  orgs_by_open_count\n} }];"
       },
-      "id": "agg-1",
+      "id": "d7030980-fc0d-4650-8f24-dd92f24405d6",
       "name": "Agregar KPIs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3000, 0]
+      "position": [68304, -1472]
     },
     {
       "parameters": {
@@ -589,79 +396,99 @@
           }
         }
       },
-      "id": "resp-1",
+      "id": "2a2b9f66-4b75-4ba9-9535-990a3c7b6bbe",
       "name": "Responder webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [3200, 0]
+      "position": [68496, -1472]
     },
     {
       "parameters": {
-        "jsCode": "// Disparado por Schedule Trigger: guarda payload SLIM en staticData.\n// Slim = solo los campos que el frontend usa para pintar el dashboard.\n// Campos pesados (listas de tickets, debug, breakdowns) NO se cachean;\n// siguen disponibles en el output del nodo 'Agregar KPIs' para inspección\n// vía Executions de n8n.\nconst full = $input.first().json || {};\nconst slim = {};\nconst KEEP = [\n  // Meta\n  'generated_at', '_workflow_version',\n  // Counters\n  'tickets_today', 'tickets_yesterday', 'tickets_week', 'tickets_last_week',\n  'tickets_open', 'tickets_pending', 'tickets_month', 'tickets_solved_today',\n  'tickets_today_ia', 'tickets_today_manual',\n  'tickets_yesterday_ia', 'tickets_yesterday_manual',\n  'tickets_week_ia', 'tickets_week_manual',\n  'tickets_month_ia', 'tickets_month_manual',\n  'backlog_today', 'tickets_aged_3d', 'tickets_incidencias_dev',\n  // FRT (resumen, no breakdown)\n  'frt_avg_min', 'frt_sample', 'frt_answered', 'frt_pending',\n  'frt_min', 'frt_max', 'frt_median',\n  // Charts y agrupaciones que pinta el frontend\n  'hourly_today', 'weekly_stacked', 'top_orgs',\n  'incidencias_buckets', 'orgs_by_open_count_summary'\n];\nfor (const k of KEEP) if (k in full) slim[k] = full[k];\nconst staticData = $getWorkflowStaticData('global');\nstaticData.cached_payload = slim;\nstaticData.cached_at      = new Date().toISOString();\nconst _sizeBytes = JSON.stringify(slim).length;\nreturn [{ json: { saved: true, cached_at: staticData.cached_at, _slim_keys: Object.keys(slim).length, _size_bytes: _sizeBytes, _size_kb: Math.round(_sizeBytes/1024) } }];"
+        "jsCode": "// Disparado por Schedule Trigger: guarda payload SLIM en staticData.\n// Slim = solo los campos que el frontend usa para pintar el dashboard.\n// Campos pesados (listas de tickets, debug, breakdowns) NO se cachean;\n// siguen disponibles en el output del nodo 'Agregar KPIs' para inspección\n// vía Executions de n8n.\nconst full = $input.first().json || {};\nconst slim = {};\nconst KEEP = [\n  // Meta\n  'generated_at', '_workflow_version',\n  // Counters\n  'tickets_today', 'tickets_yesterday', 'tickets_week', 'tickets_last_week',\n  'tickets_open', 'tickets_pending', 'tickets_month', 'tickets_solved_today',\n  'tickets_today_ia', 'tickets_today_manual',\n  'tickets_yesterday_ia', 'tickets_yesterday_manual',\n  'tickets_week_ia', 'tickets_week_manual',\n  'tickets_month_ia', 'tickets_month_manual',\n  'backlog_today', 'tickets_aged_3d', 'tickets_incidencias_dev',\n  // FRT (resumen, no breakdown)\n  'frt_avg_min', 'frt_sample', 'frt_answered', 'frt_pending',\n  'frt_min', 'frt_max', 'frt_median',\n  // Charts y agrupaciones que pinta el frontend\n  'hourly_today', 'weekly_stacked', 'top_orgs', 'tickets_by_type',\n  'incidencias_buckets'\n];\nfor (const k of KEEP) if (k in full) slim[k] = full[k];\nconst staticData = $getWorkflowStaticData('global');\nstaticData.cached_payload = slim;\nstaticData.cached_at      = new Date().toISOString();\nconst _sizeBytes = JSON.stringify(slim).length;\nreturn [{ json: { saved: true, cached_at: staticData.cached_at, _slim_keys: Object.keys(slim).length, _size_bytes: _sizeBytes, _size_kb: Math.round(_sizeBytes/1024) } }];"
       },
-      "id": "save-cache",
+      "id": "990cbc37-b14e-45d1-b137-d72f30648dc1",
       "name": "Guardar en caché",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3400, 0]
+      "position": [68704, -1472]
     },
     {
       "parameters": {
         "jsCode": "// Disparado por el webhook: lee el último payload cacheado y lo emite tal cual.\n// Si la caché está vacía (primer arranque o reset), devuelve estructura mínima con _stale=true.\nconst staticData = $getWorkflowStaticData('global');\nconst cached = staticData.cached_payload || null;\nif (!cached) {\n  return [{ json: {\n    generated_at: null,\n    cached_at: null,\n    _stale: true,\n    _hint: 'Cache vacía. Espera al primer tick del Schedule Trigger (5 min) o ejecútalo manualmente.',\n    hourly_today: [],\n    weekly_stacked: [],\n    top_orgs: []\n  } }];\n}\nreturn [{ json: { ...cached, cached_at: staticData.cached_at, _stale: false } }];"
       },
-      "id": "read-cache",
+      "id": "bf2751f0-1a31-4c7a-ae7a-3867337d6b41",
       "name": "Leer caché",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-1400, 200]
+      "position": [63904, -1264]
+    },
+    {
+      "id": "dtget",
+      "name": "DT Leer Hist",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [68200, -1264],
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "biGPvKzy8EU6gDt6"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "cache_key",
+              "condition": "eq",
+              "keyValue": "current"
+            }
+          ]
+        },
+        "options": {}
+      }
     }
   ],
   "connections": {
-    "Webhook KPIs":          { "main": [[{ "node": "Leer caché",          "type": "main", "index": 0 }]] },
-    "Leer caché":            { "main": [[{ "node": "Responder webhook",   "type": "main", "index": 0 }]] },
-    "Schedule Trigger":      { "main": [[{ "node": "Calcular fechas",     "type": "main", "index": 0 }]] },
-    "Calcular fechas":       { "main": [[{ "node": "ZD Hoy",               "type": "main", "index": 0 }]] },
-    "ZD Hoy":                { "main": [[{ "node": "Guardar Hoy",          "type": "main", "index": 0 }]] },
-    "Guardar Hoy":           { "main": [[{ "node": "ZD Ayer",              "type": "main", "index": 0 }]] },
-    "ZD Ayer":               { "main": [[{ "node": "Guardar Ayer",         "type": "main", "index": 0 }]] },
-    "Guardar Ayer":          { "main": [[{ "node": "ZD Ayer IA",           "type": "main", "index": 0 }]] },
-    "ZD Ayer IA":            { "main": [[{ "node": "Guardar Ayer IA",      "type": "main", "index": 0 }]] },
-    "Guardar Ayer IA":       { "main": [[{ "node": "ZD Ayer Manual",       "type": "main", "index": 0 }]] },
-    "ZD Ayer Manual":        { "main": [[{ "node": "Guardar Ayer Manual",  "type": "main", "index": 0 }]] },
-    "Guardar Ayer Manual":   { "main": [[{ "node": "ZD Semana",            "type": "main", "index": 0 }]] },
-    "ZD Semana":             { "main": [[{ "node": "Guardar Semana",       "type": "main", "index": 0 }]] },
-    "Guardar Semana":        { "main": [[{ "node": "ZD Semana Anterior",   "type": "main", "index": 0 }]] },
-    "ZD Semana Anterior":    { "main": [[{ "node": "Guardar Sem. Ant.",    "type": "main", "index": 0 }]] },
-    "Guardar Sem. Ant.":     { "main": [[{ "node": "ZD Abiertos",          "type": "main", "index": 0 }]] },
-    "ZD Abiertos":           { "main": [[{ "node": "Guardar Abiertos",     "type": "main", "index": 0 }]] },
-    "Guardar Abiertos":      { "main": [[{ "node": "ZD Hoy IA",            "type": "main", "index": 0 }]] },
-    "ZD Hoy IA":             { "main": [[{ "node": "Guardar Hoy IA",       "type": "main", "index": 0 }]] },
-    "Guardar Hoy IA":        { "main": [[{ "node": "ZD Hoy Manual",        "type": "main", "index": 0 }]] },
-    "ZD Hoy Manual":         { "main": [[{ "node": "Guardar Hoy Manual",   "type": "main", "index": 0 }]] },
-    "Guardar Hoy Manual":    { "main": [[{ "node": "ZD Metrics Recientes", "type": "main", "index": 0 }]] },
-    "ZD Metrics Recientes":  { "main": [[{ "node": "Calcular FRT",         "type": "main", "index": 0 }]] },
-    "Calcular FRT":          { "main": [[{ "node": "ZD Envejecidos",       "type": "main", "index": 0 }]] },
-    "ZD Envejecidos":        { "main": [[{ "node": "Guardar Envejecidos",  "type": "main", "index": 0 }]] },
-    "Guardar Envejecidos":   { "main": [[{ "node": "ZD Incidencias Dev",   "type": "main", "index": 0 }]] },
-    "ZD Incidencias Dev":    { "main": [[{ "node": "Guardar Incidencias",  "type": "main", "index": 0 }]] },
-    "Guardar Incidencias":   { "main": [[{ "node": "ZD Hist Manual",       "type": "main", "index": 0 }]] },
-    "ZD Hist Manual":        { "main": [[{ "node": "Guardar Hist Manual",  "type": "main", "index": 0 }]] },
-    "Guardar Hist Manual":   { "main": [[{ "node": "ZD Hist IA",           "type": "main", "index": 0 }]] },
-    "ZD Hist IA":            { "main": [[{ "node": "Guardar Hist IA",           "type": "main", "index": 0 }]] },
-    "Guardar Hist IA":       { "main": [[{ "node": "ZD Hist Manual Older",      "type": "main", "index": 0 }]] },
-    "ZD Hist Manual Older":  { "main": [[{ "node": "Guardar Hist Manual Older", "type": "main", "index": 0 }]] },
-    "Guardar Hist Manual Older": { "main": [[{ "node": "ZD Hist IA Older",      "type": "main", "index": 0 }]] },
-    "ZD Hist IA Older":      { "main": [[{ "node": "Guardar Hist",              "type": "main", "index": 0 }]] },
-    "Guardar Hist":          { "main": [[{ "node": "ZD Resueltos Hoy",     "type": "main", "index": 0 }]] },
-    "ZD Resueltos Hoy":      { "main": [[{ "node": "Guardar Resueltos Hoy","type": "main", "index": 0 }]] },
-    "Guardar Resueltos Hoy": { "main": [[{ "node": "Calcular IDs orgs",    "type": "main", "index": 0 }]] },
-    "Calcular IDs orgs":     { "main": [[{ "node": "ZD Organizaciones",    "type": "main", "index": 0 }]] },
-    "ZD Organizaciones":     { "main": [[{ "node": "Guardar Orgs",         "type": "main", "index": 0 }]] },
-    "Guardar Orgs":          { "main": [[{ "node": "Agregar KPIs",         "type": "main", "index": 0 }]] },
-    "Agregar KPIs":          { "main": [[{ "node": "Guardar en caché",    "type": "main", "index": 0 }]] }
+    "Webhook KPIs": { "main": [[{ "node": "Leer caché", "type": "main", "index": 0 }]] },
+    "Leer caché": { "main": [[{ "node": "Responder webhook", "type": "main", "index": 0 }]] },
+    "Schedule Trigger": { "main": [[{ "node": "Calcular fechas", "type": "main", "index": 0 }]] },
+    "Calcular fechas": { "main": [[{ "node": "ZD Hoy", "type": "main", "index": 0 }]] },
+    "ZD Hoy": { "main": [[{ "node": "Guardar Hoy", "type": "main", "index": 0 }]] },
+    "ZD Semana": { "main": [[{ "node": "Guardar Semana", "type": "main", "index": 0 }]] },
+    "ZD Abiertos": { "main": [[{ "node": "Guardar Abiertos", "type": "main", "index": 0 }]] },
+    "Guardar Abiertos": { "main": [[{ "node": "ZD Hoy IA", "type": "main", "index": 0 }]] },
+    "ZD Hoy IA": { "main": [[{ "node": "Guardar Hoy IA", "type": "main", "index": 0 }]] },
+    "Guardar Hoy IA": { "main": [[{ "node": "ZD Hoy Manual", "type": "main", "index": 0 }]] },
+    "ZD Hoy Manual": { "main": [[{ "node": "Guardar Hoy Manual", "type": "main", "index": 0 }]] },
+    "Guardar Hoy Manual": { "main": [[{ "node": "ZD Metrics Recientes", "type": "main", "index": 0 }]] },
+    "ZD Metrics Recientes": { "main": [[{ "node": "Calcular FRT", "type": "main", "index": 0 }]] },
+    "Calcular FRT": { "main": [[{ "node": "ZD Envejecidos", "type": "main", "index": 0 }]] },
+    "ZD Envejecidos": { "main": [[{ "node": "Guardar Envejecidos", "type": "main", "index": 0 }]] },
+    "Guardar Envejecidos": { "main": [[{ "node": "ZD Incidencias Dev", "type": "main", "index": 0 }]] },
+    "ZD Incidencias Dev": { "main": [[{ "node": "Guardar Incidencias", "type": "main", "index": 0 }]] },
+    "ZD Resueltos Hoy": { "main": [[{ "node": "Guardar Resueltos Hoy", "type": "main", "index": 0 }]] },
+    "Guardar Resueltos Hoy": { "main": [[{ "node": "Calcular IDs orgs", "type": "main", "index": 0 }]] },
+    "Calcular IDs orgs": { "main": [[{ "node": "ZD Organizaciones", "type": "main", "index": 0 }]] },
+    "ZD Organizaciones": { "main": [[{ "node": "Guardar Orgs", "type": "main", "index": 0 }]] },
+    "Agregar KPIs": { "main": [[{ "node": "Guardar en caché", "type": "main", "index": 0 }]] },
+    "Guardar Hoy": { "main": [[{ "node": "ZD Semana", "type": "main", "index": 0 }]] },
+    "Guardar Semana": { "main": [[{ "node": "ZD Abiertos", "type": "main", "index": 0 }]] },
+    "Guardar Incidencias": { "main": [[{ "node": "ZD Resueltos Hoy", "type": "main", "index": 0 }]] },
+    "Guardar Orgs": { "main": [[{ "node": "DT Leer Hist", "type": "main", "index": 0 }]] },
+    "DT Leer Hist": { "main": [[{ "node": "Agregar KPIs", "type": "main", "index": 0 }]] }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
   "pinData": {},
-  "active": false,
-  "meta": { "templateCredsSetupCompleted": false }
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
 }
