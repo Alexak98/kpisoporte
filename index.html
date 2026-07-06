@@ -529,7 +529,25 @@
   let _typeRO = null;          // ResizeObserver del donut (creado una sola vez)
   let _typeOptions = null;     // últimas options del donut (para re-render del RO)
   // Paleta compartida donut ↔ barras Top Clientes (mismo color por categoría de tipo).
+  // Color FIJO por etiqueta: no depende del orden de slices (que cambia cada mes según
+  // el conteo). Así 'Incidencia Dev' siempre sale rojo, 'Formación' siempre verde, etc.
+  const TYPE_COLORS = {
+    'Consulta técnica':   '#93b4ff', // azul
+    'Incidencia Dev':     '#f87171', // rojo — siempre rojo
+    'Incidencia Soporte': '#fb7185', // coral
+    'Formación':          '#34d399', // verde
+    'Integración TPV':    '#fbbf77', // naranja
+    'Comercial':          '#22d3ee', // cian
+    'Funcionalidad':      '#c4b5fd', // violeta
+    'Facturación':        '#e879f9', // magenta
+    'Otros':              '#9ca3af', // gris
+    'Otros tipos':        '#6b7280'  // gris oscuro (bucket overflow)
+  };
+  // Fallback para cualquier etiqueta no mapeada (asigna por índice, estable dentro del render).
   const TYPE_PALETTE = ['#93b4ff','#f87171','#34d399','#fbbf77','#c4b5fd','#9ca3af'];
+  function colorForType(label, idx) {
+    return TYPE_COLORS[label] || TYPE_PALETTE[idx % TYPE_PALETTE.length];
+  }
   let _hourlyRO = null;        // ResizeObserver del chart horario (creado una sola vez)
   let _hourlyOptions = null;   // últimas options del chart horario (para re-render del RO)
   let firstLoadDone = false;
@@ -650,9 +668,9 @@
       },
       series: slices.map(s => s.count),
       labels: slices.map(s => s.label),
-      // Orden de slices: Consulta técnica, Incidencia Dev, Formación, Integración TPV, Otros, Otros tipos.
-      // Incidencia Dev en rojizo; Formación en verde brillante para que destaque.
-      colors: TYPE_PALETTE,
+      // Color FIJO por etiqueta (no por posición): Incidencia Dev siempre rojo,
+      // Formación siempre verde, etc. El orden de slices cambia cada mes según conteo.
+      colors: slices.map((s, i) => colorForType(s.label, i)),
       stroke: { width: 0 },
       // Leyenda pegada al borde inferior para dejar más espacio al círculo.
       legend: { position:'bottom', fontSize:'14px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 },
@@ -956,7 +974,7 @@
     const _slices = (d.tickets_by_type && d.tickets_by_type.slices) || [];
     const _order = _slices.map(s => s.label);
     const _typeColors = {};
-    _slices.forEach((s, i) => { _typeColors[s.label] = TYPE_PALETTE[i % TYPE_PALETTE.length]; });
+    _slices.forEach((s, i) => { _typeColors[s.label] = colorForType(s.label, i); });
     renderTopOrgs(d.top_orgs || [], { containerId: 'topOrgs', order: _order, typeColors: _typeColors });
   }
 
