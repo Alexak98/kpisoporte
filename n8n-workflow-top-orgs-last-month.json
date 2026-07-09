@@ -111,7 +111,7 @@
         "operation": "getAll",
         "returnAll": true,
         "options": {
-          "query": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_end_ymd }}"
+          "query": "=type:ticket created>={{ $('Calcular fechas').first().json.last_month_ymd }} created<{{ $('Calcular fechas').first().json.last_month_cutoff_ymd }}"
         }
       },
       "id": "zd-hist-lm",

@@ -483,10 +483,10 @@
 
 <script>
   // ====== CONFIGURACIÓN ======
-  const N8N_WEBHOOK_URL         = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte';        // heavy
-  const N8N_WEBHOOK_URL_LIGHT   = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-soporte-light';  // light
-  const N8N_WEBHOOK_URL_WAITING = 'https://n8n-soporte.data.yurest.dev/webhook/needs-agent-reply';   // esperando agente
-  const N8N_WEBHOOK_URL_LM_ORGS = 'https://n8n-soporte.data.yurest.dev/webhook/kpis-top-orgs-last-month'; // top orgs mes anterior
+  const N8N_WEBHOOK_URL         = 'https://n8n.yurest.dev/webhook/kpis-soporte';        // heavy
+  const N8N_WEBHOOK_URL_LIGHT   = 'https://n8n.yurest.dev/webhook/kpis-soporte-light';  // light
+  const N8N_WEBHOOK_URL_WAITING = 'https://n8n.yurest.dev/webhook/needs-agent-reply';   // esperando agente
+  const N8N_WEBHOOK_URL_LM_ORGS = 'https://n8n.yurest.dev/webhook/kpis-top-orgs-last-month'; // top orgs mes anterior
   const REFRESH_MS         = 10 * 60 * 1000;   // heavy: 10 min (charts, top clientes)
   const REFRESH_MS_LIGHT   = 5 * 60 * 1000;    // light: 5 min (counters, FRT, aged, incidencias)
   const REFRESH_MS_WAITING = 1 * 60 * 1000;    // waiting: 1 min (webhook responde <1s tras bajar tope a 100)
