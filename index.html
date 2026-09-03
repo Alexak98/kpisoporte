@@ -728,13 +728,16 @@
     }
   }
 
-  // === Reparto IA / Manual por día (tabla numérica) ===
+  // === Reparto IA / Manual por día (tabla numérica + barra proporcional) ===
   function renderStacked(arr) {
     const cont = document.getElementById('stackedChart');
     if (!arr || arr.length === 0) {
       cont.innerHTML = '<div class="text-slate-500">Sin datos</div>';
       return;
     }
+    // Ancho de la barra proporcional al día con más volumen (compara volumen
+    // + mezcla IA/Manual en un solo vistazo).
+    const maxTotal = Math.max(...arr.map(x => x.total || 0), 1);
     const header = `
       <div class="grid grid-cols-5 gap-4 py-0.5 px-2 text-xs title border-b border-slate-700/60">
         <div>Día</div>
@@ -743,14 +746,26 @@
         <div class="text-right">Total</div>
         <div class="text-right">% IA</div>
       </div>`;
-    const rows = arr.map(x => `
-      <div class="grid grid-cols-5 gap-4 py-0.5 px-2 items-baseline border-b border-slate-700/20">
-        <div class="font-bold text-base">${x.day}</div>
-        <div class="text-right font-extrabold text-xl text-violet-300 kpi-number">${x.ia}</div>
-        <div class="text-right font-extrabold text-xl text-emerald-300 kpi-number">${x.manual}</div>
-        <div class="text-right font-extrabold text-xl kpi-number">${x.total}</div>
-        <div class="text-right text-sm text-slate-400">${x.pct_ia}%</div>
-      </div>`).join('');
+    const rows = arr.map(x => {
+      const total = x.total || 0;
+      const iaPct = total ? (x.ia     / total) * 100 : 0;
+      const maPct = total ? (x.manual / total) * 100 : 0;
+      const barW  = total ? Math.max(4, (total / maxTotal) * 100) : 0;
+      return `
+      <div class="border-b border-slate-700/20 pb-1">
+        <div class="grid grid-cols-5 gap-4 py-0.5 px-2 items-baseline">
+          <div class="font-bold text-base">${x.day}</div>
+          <div class="text-right font-extrabold text-xl text-violet-300 kpi-number">${x.ia}</div>
+          <div class="text-right font-extrabold text-xl text-emerald-300 kpi-number">${x.manual}</div>
+          <div class="text-right font-extrabold text-xl kpi-number">${x.total}</div>
+          <div class="text-right text-sm text-slate-400">${x.pct_ia}%</div>
+        </div>
+        <div class="mx-2 h-1.5 rounded-full overflow-hidden flex bg-slate-800/40" style="width:${barW}%">
+          <div class="h-full" style="width:${iaPct}%;background:var(--ia-secondary)"></div>
+          <div class="h-full" style="width:${maPct}%;background:#4edea3"></div>
+        </div>
+      </div>`;
+    }).join('');
     cont.innerHTML = header + rows;
   }
 
