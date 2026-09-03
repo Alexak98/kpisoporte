@@ -456,7 +456,7 @@
     <div class="card p-4 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
         <div class="text-xl font-bold">Tickets por hora</div>
-        <div class="text-xs text-slate-400">hoy vs media · sin IA</div>
+        <div class="text-xs text-slate-400">hoy · sin IA</div>
       </div>
       <div id="hourlyChart" class="flex-1 min-h-0"></div>
     </div>
@@ -589,7 +589,7 @@
     txt.textContent = text;
   }
 
-  // === Hoy vs media (barras) ===
+  // === Tickets por hora (solo hoy) ===
   function renderHourly(arr) {
     const container = document.getElementById('hourlyChart');
     // Reservamos un margen abajo para que ApexCharts NO clipee las labels del
@@ -598,7 +598,6 @@
     const h = Math.max((container.clientHeight || 300) - 32, 200);
     const labels = arr.map(x => x.hour);
     const todayD = arr.map(x => x.today);
-    const avgD   = arr.map(x => x.avg);
     const options = {
       chart: {
         type:'bar', height:h, width:'100%', stacked:false,
@@ -606,16 +605,14 @@
         fontFamily:'Inter, sans-serif', animations:{ enabled:false }
       },
       series: [
-        { name:'Hoy',   data: todayD },
-        { name:'Media', data: avgD }
+        { name:'Hoy', data: todayD }
       ],
-      plotOptions: { bar: { columnWidth:'70%', borderRadius:6, dataLabels:{ position:'top' } } },
-      colors: ['#adc6ff', '#424754'],   /* primary | outline-variant */
-      fill: { opacity: [1, 0.45] },
-      stroke: { width: [0, 2], curve:'smooth', dashArray: [0, 4], colors:['transparent','#8c909f'] },
+      plotOptions: { bar: { columnWidth:'60%', borderRadius:6, dataLabels:{ position:'top' } } },
+      colors: ['#adc6ff'],   /* primary */
+      fill: { opacity: 1 },
+      stroke: { width: 0 },
       dataLabels: {
         enabled: true,
-        enabledOnSeries: [0],
         offsetY: -22,
         style:{ fontSize:'14px', fontWeight:700, colors:['#e1e2ec'] },
         formatter: v => v === 0 ? '' : v
@@ -628,7 +625,7 @@
       },
       yaxis: { labels:{ style:{ colors:'#c2c6d6', fontSize:'12px' }, formatter: v => Math.round(v) } },
       grid:  { borderColor:'rgba(155,176,214,0.08)' },  /* = --chart-grid (Apex SVG attr no resuelve var()) */
-      legend:{ position:'top', horizontalAlign:'right', fontSize:'12px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 } },
+      legend:{ show:false },
       tooltip:{ enabled:false },
       states: { hover: { filter: { type:'none' } }, active: { filter: { type:'none' } } }
     };
