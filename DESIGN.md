@@ -48,6 +48,16 @@ colors:
   background: '#10131a'
   on-background: '#e1e2ec'
   surface-variant: '#32353c'
+  age-fresh: '#10b981'
+  age-warn: '#f59e0b'
+  age-stale: '#f97316'
+  age-critical: '#dc2626'
+  ia-primary: '#5b21b6'
+  ia-secondary: '#a855f7'
+  chart-grid: 'rgba(155,176,214,0.08)'
+  chart-neutral: '#64748b'
+  glass-border: 'rgba(255,255,255,0.08)'
+  shadow-ambient: 'rgba(0,0,0,0.35)'
 typography:
   display-lg:
     fontFamily: Inter
@@ -86,6 +96,12 @@ typography:
     fontSize: 12px
     fontWeight: '600'
     lineHeight: 16px
+    letterSpacing: 0.05em
+  micro-caps:
+    fontFamily: Inter
+    fontSize: 10px
+    fontWeight: '600'
+    lineHeight: 14px
     letterSpacing: 0.05em
   mono-data:
     fontFamily: JetBrains Mono

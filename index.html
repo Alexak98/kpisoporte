@@ -76,6 +76,17 @@
       --error-container:            #93000a;
       /* Border glass */
       --glass-border:               rgba(255,255,255,0.08);
+      /* Age buckets (incidencias) — ramp semántico de antigüedad */
+      --age-fresh:                  #10b981;   /* <30d  */
+      --age-warn:                   #f59e0b;   /* 30-59 */
+      --age-stale:                  #f97316;   /* 60-99 */
+      --age-critical:               #dc2626;   /* 100+  */
+      /* IA highlight (violeta semántico para reparto IA/Manual) */
+      --ia-primary:                 #5b21b6;
+      --ia-secondary:               #a855f7;
+      /* Chart tokens */
+      --chart-grid:                 rgba(155,176,214,0.08);
+      --chart-neutral:              #64748b;
     }
 
     html, body {
@@ -116,7 +127,7 @@
     /* Bars / accent gradients alineados al design system */
     .grad-green  { background: linear-gradient(135deg, #00a572 0%, #4edea3 100%); }   /* secondary */
     .grad-amber  { background: linear-gradient(135deg, #df7412 0%, #ffb786 100%); }   /* tertiary */
-    .grad-purple { background: linear-gradient(135deg, #5b21b6 0%, #a855f7 100%); }   /* IA highlight */
+    .grad-purple { background: linear-gradient(135deg, var(--ia-primary) 0%, var(--ia-secondary) 100%); }   /* IA highlight */
     .pulse-dot {
       width: 10px; height: 10px; border-radius: 9999px;
       background: var(--secondary);
@@ -155,10 +166,10 @@
     .loader-overlay.hidden { opacity: 0; pointer-events: none; }
     .loader-box { text-align: center; }
     .loader-text {
-      font-size: 28px; font-weight: 600; color: var(--on-surface);
-      margin-top: 18px; letter-spacing: -0.01em;
+      font-size: 24px; font-weight: 600; color: var(--on-surface);
+      margin-top: 18px; letter-spacing: -0.01em; line-height: 32px;
     }
-    .loader-subtext { font-size: 15px; color: var(--on-surface-variant); margin-top: 6px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500; }
+    .loader-subtext { font-size: 16px; color: var(--on-surface-variant); margin-top: 6px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500; line-height: 24px; }
     .loader-bar {
       width: 280px; height: 4px;
       background: var(--surface-container-high); border-radius: 9999px;
@@ -355,11 +366,11 @@
 
   <!-- SECONDARY KPIs · operacional -->
   <section class="grid grid-cols-4 gap-4 px-10 mt-3 shrink-0">
-    <div class="card p-4">
-      <div class="title text-base">Backlog · hoy</div>
-      <div class="flex items-baseline gap-2 mt-1">
-        <div id="kpiBacklog" class="kpi-number text-4xl">0</div>
-        <div class="text-sm text-slate-400"><span id="kpiBacklogDetail">— nuevos · — resueltos</span></div>
+    <div class="card p-3">
+      <div class="title text-xs">Backlog · hoy</div>
+      <div class="flex items-baseline gap-2 mt-0.5">
+        <div id="kpiBacklog" class="kpi-number text-2xl">0</div>
+        <div class="text-xs text-slate-400"><span id="kpiBacklogDetail">— nuevos · — resueltos</span></div>
       </div>
     </div>
     <div class="card p-4">
@@ -376,24 +387,17 @@
       </div>
       <div class="text-sm text-slate-400 mt-0.5"><span id="kpiFRTDetail">muestra: —</span></div>
     </div>
-    <div class="card p-4">
-      <div class="title text-base">Tickets +5 días</div>
-      <div class="flex items-baseline gap-2 mt-1">
-        <div id="kpiAged" class="kpi-number text-4xl">0</div>
-        <div class="text-sm text-slate-400">sin cerrar · sin IA</div>
-      </div>
-    </div>
-    <div class="card p-4">
+    <div class="card p-4 col-span-2">
       <div class="flex items-baseline justify-between">
-        <div class="title text-base">Incidencias DEV</div>
-        <div id="kpiIncidencias" class="kpi-number text-3xl">0</div>
+        <div class="title text-lg">Incidencias DEV</div>
+        <div id="kpiIncidencias" class="kpi-number text-4xl">0</div>
       </div>
       <!-- Barra apilada por antigüedad -->
       <div class="mt-2 w-full h-2 bg-slate-800/60 rounded-full overflow-hidden flex">
-        <div id="incBarLt30"   class="h-full" style="background:#10b981;width:0%"></div>
-        <div id="incBar30_60"  class="h-full" style="background:#f59e0b;width:0%"></div>
-        <div id="incBar60_100" class="h-full" style="background:#f97316;width:0%"></div>
-        <div id="incBarGt100"  class="h-full" style="background:#dc2626;width:0%"></div>
+        <div id="incBarLt30"   class="h-full" style="background:var(--age-fresh);width:0%"></div>
+        <div id="incBar30_60"  class="h-full" style="background:var(--age-warn);width:0%"></div>
+        <div id="incBar60_100" class="h-full" style="background:var(--age-stale);width:0%"></div>
+        <div id="incBarGt100"  class="h-full" style="background:var(--age-critical);width:0%"></div>
       </div>
       <!-- Leyenda con números + porcentaje sobre total -->
       <div class="grid grid-cols-4 gap-1 mt-1.5 text-center">
@@ -426,16 +430,33 @@
           <div class="text-[10px] text-slate-500 uppercase">100+d</div>
         </div>
       </div>
+      <!-- Sprint breakdown: tarea Asana en proyecto Sprint vs sin asignar -->
+      <div class="mt-3 pt-3 grid grid-cols-2 gap-3" style="border-top:1px solid var(--glass-border)">
+        <div>
+          <div class="text-[10px] title text-slate-500">EN SPRINT</div>
+          <div class="flex items-baseline gap-2">
+            <div id="incSprintEn"    class="kpi-number text-2xl text-emerald-300">—</div>
+            <div id="incSprintEnPct" class="text-[10px] text-slate-500">—</div>
+          </div>
+        </div>
+        <div>
+          <div class="text-[10px] title text-slate-500">SIN GESTIONAR</div>
+          <div class="flex items-baseline gap-2">
+            <div id="incSprintSin"    class="kpi-number text-2xl text-rose-300">—</div>
+            <div id="incSprintSinPct" class="text-[10px] text-slate-500">—</div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- CHARTS / LISTS · expande para absorber el hueco vertical sobrante -->
   <section class="grid grid-cols-4 gap-6 px-10 mt-3 flex-1 min-h-0">
-    <!-- HOURLY COMPARISON -->
-    <div class="card p-6 col-span-2 flex flex-col overflow-hidden">
+    <!-- HOURLY COMPARISON (más estrecho, col-span-1) -->
+    <div class="card p-4 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
-        <div class="text-3xl font-bold">Tickets por hora · hoy vs media</div>
-        <div class="text-base text-slate-400">09:00 – 18:00 · media mismo día semana (8 sem) · sin IA</div>
+        <div class="text-xl font-bold">Tickets por hora</div>
+        <div class="text-xs text-slate-400">hoy vs media · sin IA</div>
       </div>
       <div id="hourlyChart" class="flex-1 min-h-0"></div>
     </div>
@@ -450,7 +471,7 @@
     </div>
 
     <!-- CLIENTES: top este mes (creados) -->
-    <div class="card p-4 flex flex-col overflow-hidden">
+    <div class="card p-4 col-span-2 flex flex-col overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="text-2xl font-bold">Top Clientes</div>
         <div class="text-sm text-slate-400">creados este mes</div>
@@ -582,7 +603,7 @@
       chart: {
         type:'bar', height:h, width:'100%', stacked:false,
         toolbar:{ show:false }, background:'transparent', foreColor:'#c2c6d6',
-        fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
+        fontFamily:'Inter, sans-serif', animations:{ enabled:false }
       },
       series: [
         { name:'Hoy',   data: todayD },
@@ -606,8 +627,8 @@
         axisBorder:{ show:false }, axisTicks:{ show:false }
       },
       yaxis: { labels:{ style:{ colors:'#c2c6d6', fontSize:'12px' }, formatter: v => Math.round(v) } },
-      grid:  { borderColor:'rgba(155,176,214,0.08)' },
-      legend:{ position:'top', horizontalAlign:'right', fontSize:'13px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 } },
+      grid:  { borderColor:'rgba(155,176,214,0.08)' },  /* = --chart-grid (Apex SVG attr no resuelve var()) */
+      legend:{ position:'top', horizontalAlign:'right', fontSize:'12px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 } },
       tooltip:{ enabled:false },
       states: { hover: { filter: { type:'none' } }, active: { filter: { type:'none' } } }
     };
@@ -664,7 +685,7 @@
     const options = {
       chart: {
         type:'donut', height: h, width:'100%', background:'transparent',
-        foreColor:'#c2c6d6', fontFamily:'Bw Modelica, sans-serif', animations:{ enabled:false }
+        foreColor:'#c2c6d6', fontFamily:'Inter, sans-serif', animations:{ enabled:false }
       },
       series: slices.map(s => s.count),
       labels: slices.map(s => s.label),
@@ -688,7 +709,7 @@
       },
       plotOptions: { pie: { offsetY:4, donut: { size:'60%', labels: {
         show:true,
-        total:{ show:true, label:'Total', fontSize:'13px', color:'#c2c6d6',
+        total:{ show:true, label:'Total', fontSize:'12px', color:'#c2c6d6',
                 formatter: () => String(total) }
       } } } }
     };
@@ -759,7 +780,7 @@
       const total = o.count || Object.values(bt).reduce((a,b) => a + b, 0) || 1;
       // Segmentos por tipo, en el orden del donut; cada uno proporcional dentro de la barra del cliente.
       const segs = order.filter(lbl => bt[lbl] > 0).map(lbl =>
-        `<div class="h-full" style="width:${(bt[lbl]/total)*100}%;background:${typeColors[lbl] || '#64748b'}"></div>`
+        `<div class="h-full" style="width:${(bt[lbl]/total)*100}%;background:${typeColors[lbl] || 'var(--chart-neutral)'}"></div>`
       ).join('');
       return `
         <div class="relative flex-1 min-h-0 rounded-lg overflow-hidden bg-slate-800/40">
@@ -899,14 +920,6 @@
       document.getElementById('kpiFRTDetail').textContent =
         ans > 0 ? `${ans} contestados · sin IA` : 'sin datos';
 
-      const agedEl = document.getElementById('kpiAged');
-      const aged   = d.tickets_aged_3d ?? 0;
-      agedEl.textContent = aged;
-      agedEl.classList.remove('text-emerald-300','text-amber-300','text-rose-300','text-slate-200');
-      if (aged <= 3)       agedEl.classList.add('text-emerald-300');
-      else if (aged <= 10) agedEl.classList.add('text-amber-300');
-      else                 agedEl.classList.add('text-rose-300');
-
       // Incidencias dev abiertas (sin filtro de tiempo) + desglose por antigüedad
       const incEl = document.getElementById('kpiIncidencias');
       const inc   = d.tickets_incidencias_dev ?? 0;
@@ -941,6 +954,28 @@
       document.getElementById('incPct30_60').textContent   = incPct(b.b30_60);
       document.getElementById('incPct60_100').textContent  = incPct(b.b60_100);
       document.getElementById('incPctGt100').textContent   = incPct(b.gt100);
+
+      // Sprint breakdown (Asana): tarea en proyecto Sprint vs sin gestionar.
+      // Backend n8n debe rellenar 'incidencias_en_sprint' y 'incidencias_sin_sprint'
+      // cruzando incidencias_list con Asana (custom field zendesk_id + project name ~ /Sprint/i).
+      const spEn  = d.incidencias_en_sprint;
+      const spSin = d.incidencias_sin_sprint;
+      const spEnEl    = document.getElementById('incSprintEn');
+      const spEnPctEl = document.getElementById('incSprintEnPct');
+      const spSinEl    = document.getElementById('incSprintSin');
+      const spSinPctEl = document.getElementById('incSprintSinPct');
+      if (spEn == null && spSin == null) {
+        spEnEl.textContent = '—';    spEnPctEl.textContent = '—';
+        spSinEl.textContent = '—';   spSinPctEl.textContent = '—';
+      } else {
+        const en  = spEn  ?? 0;
+        const sin = spSin ?? 0;
+        const tot = en + sin;
+        spEnEl.textContent   = en;
+        spSinEl.textContent  = sin;
+        spEnPctEl.textContent  = tot ? Math.round(en  / tot * 100) + '%' : '—';
+        spSinPctEl.textContent = tot ? Math.round(sin / tot * 100) + '%' : '—';
+      }
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
