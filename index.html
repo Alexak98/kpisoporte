@@ -661,17 +661,19 @@
     }
   }
 
-  // === Tickets por tipo (donut) ===
+  // === Tickets por tipo (barras horizontales) ===
   function renderTicketsByType(data) {
     const container = document.getElementById('typeChart');
     if (!container) return;
-    const slices = (data && Array.isArray(data.slices)) ? data.slices : [];
+    const rawSlices = (data && Array.isArray(data.slices)) ? data.slices : [];
     // Patrón anti-fuga: destruir la instancia previa antes de recrear.
     if (typeChart) { try { typeChart.destroy(); } catch(_) {} typeChart = null; }
-    if (!slices.length) {
+    if (!rawSlices.length) {
       container.innerHTML = '<div class="text-slate-500 text-sm h-full flex items-center justify-center">Sin datos</div>';
       return;
     }
+    // Orden desc por count — barra más larga arriba, escaneo natural.
+    const slices = rawSlices.slice().sort((a,b) => (b.count||0) - (a.count||0));
     const total = data.total_clasificados ?? slices.reduce((a,s) => a + s.count, 0);
     // Anclamos al card padre para evitar el loop de crecimiento de Apex.
     const card = container.closest('.card');
@@ -679,35 +681,45 @@
     const h = Math.max(cardH - 60, 160);   // card - header (~44) - padding (16)
     const options = {
       chart: {
-        type:'donut', height: h, width:'100%', background:'transparent',
-        parentHeightOffset: 0,
+        type:'bar', height: h, width:'100%', background:'transparent',
+        parentHeightOffset: 0, toolbar:{ show:false },
         foreColor:'#c2c6d6', fontFamily:'Inter, sans-serif', animations:{ enabled:false }
       },
-      series: slices.map(s => s.count),
-      labels: slices.map(s => s.label),
-      // Color FIJO por etiqueta (no por posición): Incidencia Dev siempre rojo,
-      // Formación siempre verde, etc. El orden de slices cambia cada mes según conteo.
+      series: [{ name:'Tickets', data: slices.map(s => s.count) }],
+      // Color FIJO por etiqueta (no por posición): distributed:true toma
+      // colors[i] para la barra i.
       colors: slices.map((s, i) => colorForType(s.label, i)),
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          distributed: true,
+          borderRadius: 6,
+          borderRadiusApplication: 'end',
+          barHeight: '68%',
+          dataLabels: { position: 'top' }
+        }
+      },
       stroke: { width: 0 },
-      // Leyenda pegada al borde inferior para dejar más espacio al círculo.
-      legend: { position:'bottom', fontSize:'12px', labels:{ colors:'#e1e2ec' }, markers:{ size:7 },
-                itemMargin:{ vertical:0, horizontal:6 }, offsetY:4,
-                onItemHover:{ highlightDataSeries:false }, onItemClick:{ toggleDataSeries:false } },
-      // Kiosko TV: sin interacción de ratón (ni tooltip ni resaltado de segmentos).
-      tooltip: { enabled: false },
+      xaxis: {
+        categories: slices.map(s => s.label),
+        labels:{ style:{ colors:'#c2c6d6', fontSize:'11px' }, formatter: v => Math.round(v) },
+        axisBorder:{ show:false }, axisTicks:{ show:false }
+      },
+      yaxis: {
+        labels:{ style:{ colors:'#e1e2ec', fontSize:'13px', fontWeight:600 } }
+      },
+      grid: { borderColor:'rgba(155,176,214,0.08)', xaxis:{ lines:{ show:true } }, yaxis:{ lines:{ show:false } } },
+      legend: { show:false },
+      tooltip: { enabled:false },
       states: { hover:{ filter:{ type:'none' } }, active:{ filter:{ type:'none' } } },
-      // % en blanco con sombra oscura para que se lea sobre cualquier color en la TV.
       dataLabels: {
         enabled: true,
-        formatter: v => Math.round(v) + '%',
-        style:{ fontSize:'12px', fontWeight:700, colors:['#ffffff'] },
-        dropShadow:{ enabled:true, top:1, left:0, blur:3, color:'#000', opacity:0.85 }
-      },
-      plotOptions: { pie: { offsetY:0, donut: { size:'62%', labels: {
-        show:true,
-        total:{ show:true, label:'Total', fontSize:'12px', color:'#c2c6d6',
-                formatter: () => String(total) }
-      } } } }
+        textAnchor: 'start',
+        offsetX: 6,
+        formatter: (v) => total ? `${v} · ${Math.round((v/total)*100)}%` : String(v),
+        style:{ fontSize:'12px', fontWeight:700, colors:['#e1e2ec'] },
+        dropShadow:{ enabled:true, top:1, left:0, blur:3, color:'#000', opacity:0.6 }
+      }
     };
     _typeOptions = options;
     typeChart = new ApexCharts(container, options);
