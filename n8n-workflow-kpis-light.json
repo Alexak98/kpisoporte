@@ -25,7 +25,6 @@
       "typeVersion": 2,
       "position": [-1600, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -34,10 +33,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.today_ymd }} subject:\"Conversation with\"" }
+            {
+              "name": "query",
+              "value": "=type:ticket created>={{ $json.today_ymd }} subject:\"Conversation with\""
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-hoy-ia",
       "name": "ZD Hoy IA",
@@ -55,7 +63,6 @@
       "typeVersion": 2,
       "position": [-1250, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -64,11 +71,23 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.today_ymd }} -subject:\"Conversation with\"" },
-            { "name": "per_page", "value": "100" }
+            {
+              "name": "query",
+              "value": "=type:ticket created>={{ $json.today_ymd }} -subject:\"Conversation with\""
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-hoy-manual",
       "name": "ZD Hoy Manual",
@@ -86,7 +105,6 @@
       "typeVersion": 2,
       "position": [-950, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -95,10 +113,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }} subject:\"Conversation with\"" }
+            {
+              "name": "query",
+              "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }} subject:\"Conversation with\""
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-ayer-ia",
       "name": "ZD Ayer IA",
@@ -116,7 +143,6 @@
       "typeVersion": 2,
       "position": [-650, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -125,10 +151,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }} -subject:\"Conversation with\"" }
+            {
+              "name": "query",
+              "value": "=type:ticket created>={{ $json.yesterday_ymd }} created<{{ $json.today_ymd }} -subject:\"Conversation with\""
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-ayer-manual",
       "name": "ZD Ayer Manual",
@@ -146,7 +181,6 @@
       "typeVersion": 2,
       "position": [-350, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -155,10 +189,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.week_ymd }} subject:\"Conversation with\"" }
+            {
+              "name": "query",
+              "value": "=type:ticket created>={{ $json.week_ymd }} subject:\"Conversation with\""
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-week-ia",
       "name": "ZD Semana IA",
@@ -176,7 +219,6 @@
       "typeVersion": 2,
       "position": [-50, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -185,10 +227,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.week_ymd }} -subject:\"Conversation with\"" }
+            {
+              "name": "query",
+              "value": "=type:ticket created>={{ $json.week_ymd }} -subject:\"Conversation with\""
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-week-manual",
       "name": "ZD Semana Manual",
@@ -206,7 +257,6 @@
       "typeVersion": 2,
       "position": [250, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -215,10 +265,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.month_ymd }} subject:\"Conversation with\"" }
+            {
+              "name": "query",
+              "value": "=type:ticket created>={{ $json.month_ymd }} subject:\"Conversation with\""
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-month-ia",
       "name": "ZD Mes IA",
@@ -236,7 +295,6 @@
       "typeVersion": 2,
       "position": [850, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -245,10 +303,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket created>={{ $json.month_ymd }} -subject:\"Conversation with\"" }
+            {
+              "name": "query",
+              "value": "=type:ticket created>={{ $json.month_ymd }} -subject:\"Conversation with\""
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-month-manual",
       "name": "ZD Mes Manual",
@@ -266,7 +333,6 @@
       "typeVersion": 2,
       "position": [1150, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -275,10 +341,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "type:ticket status<solved -tags:incidencia_dev -custom_status_id:26672419086621" }
+            {
+              "name": "query",
+              "value": "type:ticket status<solved -tags:incidencia_dev -custom_status_id:26672419086621"
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-open",
       "name": "ZD Abiertos",
@@ -296,7 +371,6 @@
       "typeVersion": 2,
       "position": [1450, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -305,10 +379,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket solved>={{ $json.today_ymd }} -subject:\"Conversation with\"" }
+            {
+              "name": "query",
+              "value": "=type:ticket solved>={{ $json.today_ymd }} -subject:\"Conversation with\""
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-solved-today",
       "name": "ZD Resueltos Hoy",
@@ -326,7 +409,6 @@
       "typeVersion": 2,
       "position": [1750, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -335,10 +417,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "=type:ticket status<solved created<{{ $json.aged_ymd }} -subject:\"Conversation with\" tags:consulta_técnica" }
+            {
+              "name": "query",
+              "value": "=type:ticket status<solved created<{{ $json.aged_ymd }} -subject:\"Conversation with\" tags:consulta_técnica"
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-aged",
       "name": "ZD Envejecidos",
@@ -356,7 +447,6 @@
       "typeVersion": 2,
       "position": [2050, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
@@ -365,10 +455,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "query", "value": "type:ticket tags:incidencia_dev custom_status_id:26672419086621" }
+            {
+              "name": "query",
+              "value": "type:ticket tags:incidencia_dev custom_status_id:26672419086621"
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-incidencias",
       "name": "ZD Incidencias Dev",
@@ -386,7 +485,6 @@
       "typeVersion": 2,
       "position": [2350, 0]
     },
-
     {
       "parameters": {
         "url": "https://soporteyurest.zendesk.com/api/v2/ticket_metrics.json",
@@ -395,10 +493,19 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "per_page", "value": "100" }
+            {
+              "name": "per_page",
+              "value": "100"
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "zd-metrics",
       "name": "ZD Metrics Recientes",
@@ -416,10 +523,9 @@
       "typeVersion": 2,
       "position": [2650, 0]
     },
-
     {
       "parameters": {
-        "jsCode": "// Agregar todos los counters en el JSON final (sin histRes-dependent)\nconst d = $input.first().json;\nfunction count(o){ return (o && (typeof o.count === 'number' ? o.count : (Array.isArray(o.results) ? o.results.length : 0))) || 0; }\nfunction results(o){ return (o && Array.isArray(o.results)) ? o.results : []; }\n\nconst today_ia      = count(d.zd_today_ia);\nconst today_manual  = count(d.zd_today_manual);\nconst yesterday_ia  = count(d.zd_yesterday_ia);\nconst yesterday_man = count(d.zd_yesterday_manual);\nconst week_ia       = count(d.zd_week_ia);\nconst week_manual   = count(d.zd_week_manual);\nconst month_ia      = count(d.zd_month_ia);\nconst month_manual  = count(d.zd_month_manual);\nconst open          = count(d.zd_open);\nconst solved_today  = count(d.zd_solved_today);\nconst aged          = count(d.zd_aged);\nconst incidencias   = count(d.zd_incidencias);\n\n// Incidencias buckets desde results (HTTP search devuelve hasta 100)\nconst incRes = results(d.zd_incidencias);\nconst incidencias_list = incRes.map(t => ({\n  id: t.id,\n  subject: t.subject || '(sin asunto)',\n  status: t.status,\n  priority: t.priority,\n  created_at: t.created_at,\n  organization_id: t.organization_id,\n  age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n  url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n}));\nconst incidencias_buckets = { lt30:0, b30_60:0, b60_100:0, gt100:0 };\nfor (const t of incidencias_list) {\n  const a = t.age_days || 0;\n  if (a < 30) incidencias_buckets.lt30++;\n  else if (a < 60) incidencias_buckets.b30_60++;\n  else if (a < 100) incidencias_buckets.b60_100++;\n  else incidencias_buckets.gt100++;\n}\n\n// Aged list (puede traer hasta 100 — la HTTP search no pagina)\nconst agedRes = results(d.zd_aged);\nconst aged_tickets_list = agedRes\n  .filter(t => t && t.id)\n  .sort((a,b) => new Date(a.created_at) - new Date(b.created_at))\n  .map(t => ({\n    id: t.id,\n    subject: t.subject || '(sin asunto)',\n    status: t.status,\n    priority: t.priority,\n    created_at: t.created_at,\n    organization_id: t.organization_id,\n    age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n  }));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  _workflow_version: 'light-v1',\n  _light: true,\n  // Tickets counters\n  tickets_today: today_ia + today_manual,\n  tickets_today_ia: today_ia,\n  tickets_today_manual: today_manual,\n  tickets_yesterday: yesterday_ia + yesterday_man,\n  tickets_yesterday_ia: yesterday_ia,\n  tickets_yesterday_manual: yesterday_man,\n  tickets_week: week_ia + week_manual,\n  tickets_week_ia: week_ia,\n  tickets_week_manual: week_manual,\n  tickets_month: month_ia + month_manual,\n  tickets_month_ia: month_ia,\n  tickets_month_manual: month_manual,\n  tickets_open: open,\n  tickets_solved_today: solved_today,\n  backlog_today: today_manual - solved_today,\n  // Operativos\n  tickets_aged_3d: aged,\n  tickets_incidencias_dev: incidencias,\n  aged_tickets_list,\n  incidencias_list,\n  incidencias_buckets,\n  // FRT\n  frt_avg_min: d.frt_avg_min ?? null,\n  frt_sample: d.frt_sample ?? 0,\n  frt_answered: d.frt_answered ?? 0,\n  frt_pending: d.frt_pending ?? 0,\n  frt_min: d.frt_min ?? null,\n  frt_max: d.frt_max ?? null,\n  frt_median: d.frt_median ?? null,\n  frt_breakdown: d.frt_breakdown || [],\n  frt_pending_list: d.frt_pending_list || [],\n  frt_excluded_list: d.frt_excluded_list || [],\n  frt_excluded_count: d.frt_excluded_count ?? 0,\n  _frt_used_business: d._frt_used_business ?? 0,\n  _frt_used_calendar: d._frt_used_calendar ?? 0\n} }];"
+        "jsCode": "// Agregar todos los counters en el JSON final (sin histRes-dependent)\nconst d = $input.first().json;\nfunction count(o){ return (o && (typeof o.count === 'number' ? o.count : (Array.isArray(o.results) ? o.results.length : 0))) || 0; }\nfunction results(o){ return (o && Array.isArray(o.results)) ? o.results : []; }\n\nconst today_ia      = count(d.zd_today_ia);\nconst today_manual  = count(d.zd_today_manual);\nconst yesterday_ia  = count(d.zd_yesterday_ia);\nconst yesterday_man = count(d.zd_yesterday_manual);\nconst week_ia       = count(d.zd_week_ia);\nconst week_manual   = count(d.zd_week_manual);\nconst month_ia      = count(d.zd_month_ia);\nconst month_manual  = count(d.zd_month_manual);\nconst open          = count(d.zd_open);\nconst solved_today  = count(d.zd_solved_today);\nconst aged          = count(d.zd_aged);\nconst incidencias   = count(d.zd_incidencias);\n\n// Incidencias buckets desde results (HTTP search devuelve hasta 100)\nconst incRes = results(d.zd_incidencias);\nconst incidencias_list = incRes.map(t => ({\n  id: t.id,\n  subject: t.subject || '(sin asunto)',\n  status: t.status,\n  priority: t.priority,\n  created_at: t.created_at,\n  organization_id: t.organization_id,\n  age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n  url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n}));\nconst incidencias_buckets = { lt30:0, b30_60:0, b60_100:0, gt100:0 };\nfor (const t of incidencias_list) {\n  const a = t.age_days || 0;\n  if (a < 30) incidencias_buckets.lt30++;\n  else if (a < 60) incidencias_buckets.b30_60++;\n  else if (a < 100) incidencias_buckets.b60_100++;\n  else incidencias_buckets.gt100++;\n}\n\n// Aged list (puede traer hasta 100 — la HTTP search no pagina)\nconst agedRes = results(d.zd_aged);\nconst aged_tickets_list = agedRes\n  .filter(t => t && t.id)\n  .sort((a,b) => new Date(a.created_at) - new Date(b.created_at))\n  .map(t => ({\n    id: t.id,\n    subject: t.subject || '(sin asunto)',\n    status: t.status,\n    priority: t.priority,\n    created_at: t.created_at,\n    organization_id: t.organization_id,\n    age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n  }));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  _workflow_version: 'light-v1',\n  _light: true,\n  // Tickets counters\n  tickets_today: today_ia + today_manual,\n  tickets_today_ia: today_ia,\n  tickets_today_manual: today_manual,\n  tickets_yesterday: yesterday_ia + yesterday_man,\n  tickets_yesterday_ia: yesterday_ia,\n  tickets_yesterday_manual: yesterday_man,\n  tickets_week: week_ia + week_manual,\n  tickets_week_ia: week_ia,\n  tickets_week_manual: week_manual,\n  tickets_month: month_ia + month_manual,\n  tickets_month_ia: month_ia,\n  tickets_month_manual: month_manual,\n  tickets_open: open,\n  tickets_solved_today: solved_today,\n  backlog_today: today_manual - solved_today,\n  // Operativos\n  tickets_aged_3d: aged,\n  tickets_incidencias_dev: incidencias,\n  aged_tickets_list,\n  incidencias_list,\n  incidencias_buckets,\n  // FRT\n  frt_avg_min: d.frt_avg_min ?? null,\n  frt_sample: d.frt_sample ?? 0,\n  frt_answered: d.frt_answered ?? 0,\n  frt_pending: d.frt_pending ?? 0,\n  frt_min: d.frt_min ?? null,\n  frt_max: d.frt_max ?? null,\n  frt_median: d.frt_median ?? null,\n  frt_breakdown: d.frt_breakdown || [],\n  frt_pending_list: d.frt_pending_list || [],\n  frt_excluded_list: d.frt_excluded_list || [],\n  frt_excluded_count: d.frt_excluded_count ?? 0,\n  _frt_used_business: d._frt_used_business ?? 0,\n  _frt_used_calendar: d._frt_used_calendar ?? 0,\n  // Sprint breakdown (Asana): incidencias DEV abiertas cruzadas con project\n  // Tickets Zendesk (1209422123678036) via custom field ID Zendesk (1213032964664949).\n  incidencias_en_sprint: d.incidencias_en_sprint ?? null,\n  incidencias_sin_sprint: d.incidencias_sin_sprint ?? null,\n  incidencias_en_sprint_list: d.incidencias_en_sprint_list || [],\n  incidencias_sin_sprint_list: d.incidencias_sin_sprint_list || []\n} }];"
       },
       "id": "agg-1",
       "name": "Agregar KPIs Light",
@@ -434,8 +540,14 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Cache-Control", "value": "no-store" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
             ]
           }
         }
@@ -445,41 +557,394 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [2950, 0]
+    },
+    {
+      "id": "8e3271f5-8880-4ba3-a1e8-43834ce6c80e",
+      "name": "Asana Sprint Tasks",
+      "type": "n8n-nodes-base.asana",
+      "typeVersion": 1,
+      "position": [38050, -1700],
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {
+          "project": "=1209422123678036",
+          "opt_fields": "={{ [\"gid\",\"completed\",\"custom_fields\",\"permalink_url\",\"memberships.project.gid\",\"memberships.project.name\"] }}"
+        }
+      },
+      "credentials": {
+        "asanaOAuth2Api": {
+          "id": "lg7A3NxFXWdmTBae",
+          "name": "Asana account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "75d44fae-e425-41ae-ad5d-19e98956264c",
+      "name": "Cruzar Sprint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [38050, -1560],
+      "parameters": {
+        "jsCode": "// Cruza incidencias DEV (Zendesk) con Asana project Tickets Zendesk\n// via custom field ID Zendesk (1213032964664949). Para cada ticket:\n//   en_sprint  = tarea Asana no-completada Y en algun proyecto cuyo\n//                nombre matchea /sprint/i\n//   sin_sprint = resto (sin tarea Asana, task completada, o task no\n//                asignada a ningun Sprint)\nconst ZD_FIELD_GID = '1213032964664949';\n\nconst acc = $('Guardar Incidencias').first().json || {};\nconst incRes = (acc.zd_incidencias && Array.isArray(acc.zd_incidencias.results))\n  ? acc.zd_incidencias.results : [];\n\nlet tasks = [];\ntry { tasks = $input.all().map(i => i.json).filter(Boolean); } catch (_) { tasks = []; }\n\nconst zdIds = new Set(incRes.map(t => String(t.id)));\n\n// zd_id -> mejor tarea Asana (no-completada prevalece)\nconst byId = new Map();\nfor (const t of tasks) {\n  const cfs = Array.isArray(t.custom_fields) ? t.custom_fields : [];\n  const cf = cfs.find(c => c && c.gid === ZD_FIELD_GID);\n  if (!cf) continue;\n  let val = (cf.display_value != null ? cf.display_value : cf.text_value);\n  if (val == null) continue;\n  val = String(val).trim();\n  if (!val) continue;\n  const matched = zdIds.has(val)\n    ? [val]\n    : (val.match(/\\d{2,7}/g) || []).filter(x => zdIds.has(x));\n  for (const id of matched) {\n    const ex = byId.get(id);\n    if (!ex || (ex.completed && !t.completed)) byId.set(id, t);\n  }\n}\n\nconst isSprintTask = (t) => {\n  if (!t || t.completed) return false;\n  const ms = Array.isArray(t.memberships) ? t.memberships : [];\n  return ms.some(m => m && m.project && typeof m.project.name === 'string'\n                    && /sprint/i.test(m.project.name));\n};\n\nlet en = 0, sin = 0;\nconst en_list = [];\nconst sin_list = [];\nfor (const tk of incRes) {\n  const id = String(tk.id);\n  const t = byId.get(id);\n  const entry = {\n    id: tk.id,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${tk.id}`,\n    asana_url: (t && t.permalink_url) ? t.permalink_url : null\n  };\n  if (t && isSprintTask(t)) { en++; en_list.push(entry); }\n  else { sin++; sin_list.push(entry); }\n}\n\nreturn [{ json: {\n  ...acc,\n  incidencias_en_sprint: en,\n  incidencias_sin_sprint: sin,\n  incidencias_en_sprint_list: en_list,\n  incidencias_sin_sprint_list: sin_list\n} }];"
+      }
     }
   ],
   "connections": {
-    "Webhook KPIs Light":  { "main": [[{ "node": "Calcular fechas",      "type": "main", "index": 0 }]] },
-    "Calcular fechas":     { "main": [[{ "node": "ZD Hoy IA",            "type": "main", "index": 0 }]] },
-    "ZD Hoy IA":           { "main": [[{ "node": "Guardar Hoy IA",       "type": "main", "index": 0 }]] },
-    "Guardar Hoy IA":      { "main": [[{ "node": "ZD Hoy Manual",        "type": "main", "index": 0 }]] },
-    "ZD Hoy Manual":       { "main": [[{ "node": "Guardar Hoy Manual",   "type": "main", "index": 0 }]] },
-    "Guardar Hoy Manual":  { "main": [[{ "node": "ZD Ayer IA",           "type": "main", "index": 0 }]] },
-    "ZD Ayer IA":          { "main": [[{ "node": "Guardar Ayer IA",      "type": "main", "index": 0 }]] },
-    "Guardar Ayer IA":     { "main": [[{ "node": "ZD Ayer Manual",       "type": "main", "index": 0 }]] },
-    "ZD Ayer Manual":      { "main": [[{ "node": "Guardar Ayer Manual",  "type": "main", "index": 0 }]] },
-    "Guardar Ayer Manual": { "main": [[{ "node": "ZD Semana IA",         "type": "main", "index": 0 }]] },
-    "ZD Semana IA":        { "main": [[{ "node": "Guardar Semana IA",    "type": "main", "index": 0 }]] },
-    "Guardar Semana IA":   { "main": [[{ "node": "ZD Semana Manual",     "type": "main", "index": 0 }]] },
-    "ZD Semana Manual":    { "main": [[{ "node": "Guardar Semana Manual","type": "main", "index": 0 }]] },
-    "Guardar Semana Manual":{ "main":[[{ "node": "ZD Mes IA",            "type": "main", "index": 0 }]] },
-    "ZD Mes IA":           { "main": [[{ "node": "Guardar Mes IA",       "type": "main", "index": 0 }]] },
-    "Guardar Mes IA":      { "main": [[{ "node": "ZD Mes Manual",        "type": "main", "index": 0 }]] },
-    "ZD Mes Manual":       { "main": [[{ "node": "Guardar Mes Manual",   "type": "main", "index": 0 }]] },
-    "Guardar Mes Manual":  { "main": [[{ "node": "ZD Abiertos",          "type": "main", "index": 0 }]] },
-    "ZD Abiertos":         { "main": [[{ "node": "Guardar Abiertos",     "type": "main", "index": 0 }]] },
-    "Guardar Abiertos":    { "main": [[{ "node": "ZD Resueltos Hoy",     "type": "main", "index": 0 }]] },
-    "ZD Resueltos Hoy":    { "main": [[{ "node": "Guardar Resueltos Hoy","type": "main", "index": 0 }]] },
-    "Guardar Resueltos Hoy":{ "main":[[{ "node": "ZD Envejecidos",       "type": "main", "index": 0 }]] },
-    "ZD Envejecidos":      { "main": [[{ "node": "Guardar Envejecidos",  "type": "main", "index": 0 }]] },
-    "Guardar Envejecidos": { "main": [[{ "node": "ZD Incidencias Dev",   "type": "main", "index": 0 }]] },
-    "ZD Incidencias Dev":  { "main": [[{ "node": "Guardar Incidencias",  "type": "main", "index": 0 }]] },
-    "Guardar Incidencias": { "main": [[{ "node": "ZD Metrics Recientes", "type": "main", "index": 0 }]] },
-    "ZD Metrics Recientes":{ "main": [[{ "node": "Calcular FRT",         "type": "main", "index": 0 }]] },
-    "Calcular FRT":        { "main": [[{ "node": "Agregar KPIs Light",   "type": "main", "index": 0 }]] },
-    "Agregar KPIs Light":  { "main": [[{ "node": "Respond",              "type": "main", "index": 0 }]] }
+    "Webhook KPIs Light": {
+      "main": [
+        [
+          {
+            "node": "Calcular fechas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular fechas": {
+      "main": [
+        [
+          {
+            "node": "ZD Hoy IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Hoy IA": {
+      "main": [
+        [
+          {
+            "node": "Guardar Hoy IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Hoy IA": {
+      "main": [
+        [
+          {
+            "node": "ZD Hoy Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Hoy Manual": {
+      "main": [
+        [
+          {
+            "node": "Guardar Hoy Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Hoy Manual": {
+      "main": [
+        [
+          {
+            "node": "ZD Ayer IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Ayer IA": {
+      "main": [
+        [
+          {
+            "node": "Guardar Ayer IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Ayer IA": {
+      "main": [
+        [
+          {
+            "node": "ZD Ayer Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Ayer Manual": {
+      "main": [
+        [
+          {
+            "node": "Guardar Ayer Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Ayer Manual": {
+      "main": [
+        [
+          {
+            "node": "ZD Semana IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Semana IA": {
+      "main": [
+        [
+          {
+            "node": "Guardar Semana IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Semana IA": {
+      "main": [
+        [
+          {
+            "node": "ZD Semana Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Semana Manual": {
+      "main": [
+        [
+          {
+            "node": "Guardar Semana Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Semana Manual": {
+      "main": [
+        [
+          {
+            "node": "ZD Mes IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Mes IA": {
+      "main": [
+        [
+          {
+            "node": "Guardar Mes IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Mes IA": {
+      "main": [
+        [
+          {
+            "node": "ZD Mes Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Mes Manual": {
+      "main": [
+        [
+          {
+            "node": "Guardar Mes Manual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Mes Manual": {
+      "main": [
+        [
+          {
+            "node": "ZD Abiertos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Abiertos": {
+      "main": [
+        [
+          {
+            "node": "Guardar Abiertos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Abiertos": {
+      "main": [
+        [
+          {
+            "node": "ZD Resueltos Hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Resueltos Hoy": {
+      "main": [
+        [
+          {
+            "node": "Guardar Resueltos Hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Resueltos Hoy": {
+      "main": [
+        [
+          {
+            "node": "ZD Envejecidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Envejecidos": {
+      "main": [
+        [
+          {
+            "node": "Guardar Envejecidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Envejecidos": {
+      "main": [
+        [
+          {
+            "node": "ZD Incidencias Dev",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Incidencias Dev": {
+      "main": [
+        [
+          {
+            "node": "Guardar Incidencias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Incidencias": {
+      "main": [
+        [
+          {
+            "node": "Asana Sprint Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZD Metrics Recientes": {
+      "main": [
+        [
+          {
+            "node": "Calcular FRT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular FRT": {
+      "main": [
+        [
+          {
+            "node": "Agregar KPIs Light",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agregar KPIs Light": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asana Sprint Tasks": {
+      "main": [
+        [
+          {
+            "node": "Cruzar Sprint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cruzar Sprint": {
+      "main": [
+        [
+          {
+            "node": "ZD Metrics Recientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "pinData": {},
   "active": false,
-  "meta": { "templateCredsSetupCompleted": false }
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
 }
