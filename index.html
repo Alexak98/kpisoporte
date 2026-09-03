@@ -447,25 +447,25 @@
   <!-- CHARTS / LISTS · expande para absorber el hueco vertical sobrante -->
   <section class="grid grid-cols-4 gap-6 px-10 mt-3 flex-1 min-h-0">
     <!-- HOURLY COMPARISON (más estrecho, col-span-1) -->
-    <div class="card p-4 flex flex-col">
+    <div class="card p-4 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
         <div class="text-xl font-bold">Tickets por hora</div>
         <div class="text-xs text-slate-400">hoy · sin IA</div>
       </div>
-      <div id="hourlyChart" class="flex-1 min-h-0"></div>
+      <div id="hourlyChart" class="flex-1 min-h-0 overflow-hidden"></div>
     </div>
 
     <!-- TICKETS POR TIPO · donut, este mes -->
-    <div class="card p-4 flex flex-col">
+    <div class="card p-4 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="text-2xl font-bold">Tickets por tipo</div>
         <div class="text-sm text-slate-400">este mes</div>
       </div>
-      <div id="typeChart" class="flex-1 min-h-0"></div>
+      <div id="typeChart" class="flex-1 min-h-0 overflow-hidden"></div>
     </div>
 
     <!-- CLIENTES: top este mes (creados) -->
-    <div class="card p-4 col-span-2 flex flex-col overflow-hidden">
+    <div class="card p-4 col-span-2 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="text-2xl font-bold">Top Clientes</div>
         <div class="text-sm text-slate-400">creados este mes</div>
@@ -586,14 +586,18 @@
   // === Tickets por hora (solo hoy) ===
   function renderHourly(arr) {
     const container = document.getElementById('hourlyChart');
-    // Reservamos margen abajo para que ApexCharts NO clipee las labels del eje X.
-    // Con font 14px + padding interno de Apex hacen falta ~44px.
-    const h = Math.max((container.clientHeight || 300) - 44, 200);
+    // Apex necesita altura en px. Leer del contenedor causa loop de crecimiento
+    // (Apex fija min-height y luego el RO re-renderiza con el nuevo alto).
+    // Anclamos al card padre: card.clientHeight - header (~42) - padding (32).
+    const card = container.closest('.card');
+    const cardH = card ? card.clientHeight : 240;
+    const h = Math.max(cardH - 74, 160);
     const labels = arr.map(x => x.hour);
     const todayD = arr.map(x => x.today);
     const options = {
       chart: {
-        type:'bar', height:h, width:'100%', stacked:false,
+        type:'bar', height: h, width:'100%', stacked:false,
+        parentHeightOffset: 0,
         toolbar:{ show:false }, background:'transparent', foreColor:'#c2c6d6',
         fontFamily:'Inter, sans-serif', animations:{ enabled:false }
       },
@@ -625,35 +629,34 @@
     // Si el contenedor cambió de altura significativamente desde el último render,
     // ApexCharts no re-calcula bien el layout de los ejes con updateOptions →
     // destruimos y recreamos para forzar layout limpio (X-axis labels visibles).
-    const lastH = container.dataset.lastChartH ? parseInt(container.dataset.lastChartH, 10) : 0;
-    if (hourlyChart && Math.abs(h - lastH) > 50) {
+    _hourlyOptions = options;
+    // Re-render limpio si la altura cambia >30px (fitStage recomputó o resize).
+    const lastH = parseInt(container.dataset.lastChartH || '0', 10);
+    if (hourlyChart && Math.abs(h - lastH) > 30) {
       try { hourlyChart.destroy(); } catch(_) {}
       hourlyChart = null;
     }
     container.dataset.lastChartH = String(h);
-    _hourlyOptions = options;   // últimas options, para que el RO re-renderice con datos vigentes
     if (hourlyChart) hourlyChart.updateOptions(options, true, false);
     else {
       hourlyChart = new ApexCharts(container, options);
       hourlyChart.render();
     }
-    // ResizeObserver creado UNA sola vez (antes se recreaba en cada cambio de
-    // altura → observers apilados + fuga). Si el contenedor cambia (p.ej. al
-    // avanzar la semana y crecer 'Reparto IA · Manual'), re-render limpio.
-    if (typeof ResizeObserver !== 'undefined' && !_hourlyRO) {
-      let lastObsH = container.clientHeight;
+    // ResizeObserver observando el CARD padre (no el container que Apex controla).
+    if (typeof ResizeObserver !== 'undefined' && !_hourlyRO && card) {
+      let lastCardH = card.clientHeight;
       _hourlyRO = new ResizeObserver(() => {
-        const newCH = container.clientHeight || 300;
-        if (Math.abs(newCH - lastObsH) < 30) return;  // umbral generoso para evitar bucles
-        lastObsH = newCH;
-        const newH = Math.max(newCH - 32, 200);  // mismo margen que arriba para no clipear labels
+        const newCardH = card.clientHeight;
+        if (Math.abs(newCardH - lastCardH) < 20) return;
+        lastCardH = newCardH;
         if (!hourlyChart) return;
+        const newH = Math.max(newCardH - 74, 160);
         try { hourlyChart.destroy(); } catch(_) {}
         container.dataset.lastChartH = String(newH);
         hourlyChart = new ApexCharts(container, { ..._hourlyOptions, chart: { ..._hourlyOptions.chart, height: newH } });
         hourlyChart.render();
       });
-      _hourlyRO.observe(container);
+      _hourlyRO.observe(card);
     }
   }
 
@@ -669,12 +672,14 @@
       return;
     }
     const total = data.total_clasificados ?? slices.reduce((a,s) => a + s.count, 0);
-    // Altura en px: ApexCharts colapsa con height:'100%' dentro de un flex item.
-    // Usamos toda la altura del contenedor — Apex reparte pie/legend internamente.
-    const h = Math.max(container.clientHeight || 360, 260);
+    // Anclamos al card padre para evitar el loop de crecimiento de Apex.
+    const card = container.closest('.card');
+    const cardH = card ? card.clientHeight : 240;
+    const h = Math.max(cardH - 60, 160);   // card - header (~44) - padding (16)
     const options = {
       chart: {
         type:'donut', height: h, width:'100%', background:'transparent',
+        parentHeightOffset: 0,
         foreColor:'#c2c6d6', fontFamily:'Inter, sans-serif', animations:{ enabled:false }
       },
       series: slices.map(s => s.count),
@@ -694,33 +699,32 @@
       dataLabels: {
         enabled: true,
         formatter: v => Math.round(v) + '%',
-        style:{ fontSize:'13px', fontWeight:700, colors:['#ffffff'] },
+        style:{ fontSize:'12px', fontWeight:700, colors:['#ffffff'] },
         dropShadow:{ enabled:true, top:1, left:0, blur:3, color:'#000', opacity:0.85 }
       },
       plotOptions: { pie: { offsetY:0, donut: { size:'62%', labels: {
         show:true,
-        total:{ show:true, label:'Total', fontSize:'11px', color:'#c2c6d6',
+        total:{ show:true, label:'Total', fontSize:'12px', color:'#c2c6d6',
                 formatter: () => String(total) }
       } } } }
     };
     _typeOptions = options;
     typeChart = new ApexCharts(container, options);
     typeChart.render();
-    // ResizeObserver creado UNA sola vez: el donut suele renderizarse antes de que
-    // el flex item alcance su altura final → reajusta el height al alto real del
-    // contenedor para que llene la tarjeta (mismo patrón que el chart horario).
-    if (typeof ResizeObserver !== 'undefined' && !_typeRO) {
-      let lastObsH = container.clientHeight;
+    // ResizeObserver sobre el CARD padre (no el container).
+    if (typeof ResizeObserver !== 'undefined' && !_typeRO && card) {
+      let lastCardH = card.clientHeight;
       _typeRO = new ResizeObserver(() => {
-        const newCH = container.clientHeight || 360;
-        if (Math.abs(newCH - lastObsH) < 30) return;  // umbral generoso para evitar bucles
-        lastObsH = newCH;
+        const newCardH = card.clientHeight;
+        if (Math.abs(newCardH - lastCardH) < 20) return;
+        lastCardH = newCardH;
         if (!typeChart) return;
+        const newH = Math.max(newCardH - 60, 160);
         try { typeChart.destroy(); } catch(_) {}
-        typeChart = new ApexCharts(container, { ..._typeOptions, chart: { ..._typeOptions.chart, height: Math.max(newCH, 260) } });
+        typeChart = new ApexCharts(container, { ..._typeOptions, chart: { ..._typeOptions.chart, height: newH } });
         typeChart.render();
       });
-      _typeRO.observe(container);
+      _typeRO.observe(card);
     }
   }
 
