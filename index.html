@@ -445,9 +445,10 @@
   </section>
 
   <!-- CHARTS / LISTS · expande para absorber el hueco vertical sobrante -->
-  <section class="grid grid-cols-4 gap-6 px-10 mt-3 flex-1 min-h-0">
-    <!-- HOURLY COMPARISON (más estrecho, col-span-1) -->
-    <div class="card p-4 flex flex-col min-h-0 overflow-hidden">
+  <!-- grid-8: hourly 3 (37%) · type 3 (37%) · topOrgs 2 (25%) -->
+  <section class="grid grid-cols-8 gap-6 px-10 mt-3 flex-1 min-h-0">
+    <!-- HOURLY COMPARISON -->
+    <div class="card p-4 col-span-3 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
         <div class="text-xl font-bold">Tickets por hora</div>
         <div class="text-xs text-slate-400">hoy · sin IA</div>
@@ -456,7 +457,7 @@
     </div>
 
     <!-- TICKETS POR TIPO · donut, este mes -->
-    <div class="card p-4 flex flex-col min-h-0 overflow-hidden">
+    <div class="card p-4 col-span-3 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="text-2xl font-bold">Tickets por tipo</div>
         <div class="text-sm text-slate-400">este mes</div>
