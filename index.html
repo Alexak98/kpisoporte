@@ -364,16 +364,14 @@
     </div>
   </section>
 
-  <!-- SECONDARY KPIs · operacional -->
-  <section class="grid grid-cols-4 gap-4 px-10 mt-3 shrink-0">
-    <div class="card p-3">
+  <!-- SECONDARY KPIs · operacional (grid 6: backlog 1 · respuesta 2 · incidencias 3) -->
+  <section class="grid grid-cols-6 gap-4 px-10 mt-3 shrink-0">
+    <div class="card p-3 flex flex-col justify-center">
       <div class="title text-xs">Backlog · hoy</div>
-      <div class="flex items-baseline gap-2 mt-0.5">
-        <div id="kpiBacklog" class="kpi-number text-2xl">0</div>
-        <div class="text-xs text-slate-400"><span id="kpiBacklogDetail">— nuevos · — resueltos</span></div>
-      </div>
+      <div id="kpiBacklog" class="kpi-number text-3xl mt-0.5">0</div>
+      <div class="text-[10px] text-slate-400 mt-0.5 leading-tight"><span id="kpiBacklogDetail">— nuevos · — resueltos</span></div>
     </div>
-    <div class="card p-4">
+    <div class="card p-4 col-span-2">
       <div class="title text-base">Tiempo respuesta · hoy</div>
       <div class="grid grid-cols-2 gap-3 mt-1">
         <div>
@@ -387,7 +385,7 @@
       </div>
       <div class="text-sm text-slate-400 mt-0.5"><span id="kpiFRTDetail">muestra: —</span></div>
     </div>
-    <div class="card p-4 col-span-2">
+    <div class="card p-4 col-span-3">
       <div class="flex items-baseline justify-between">
         <div class="title text-lg">Incidencias DEV</div>
         <div id="kpiIncidencias" class="kpi-number text-4xl">0</div>
@@ -691,8 +689,8 @@
       colors: slices.map((s, i) => colorForType(s.label, i)),
       stroke: { width: 0 },
       // Leyenda pegada al borde inferior para dejar más espacio al círculo.
-      legend: { position:'bottom', fontSize:'14px', labels:{ colors:'#e1e2ec' }, markers:{ size:8 },
-                itemMargin:{ vertical:1 }, offsetY:6,
+      legend: { position:'bottom', fontSize:'12px', labels:{ colors:'#e1e2ec' }, markers:{ size:7 },
+                itemMargin:{ vertical:0, horizontal:6 }, offsetY:4,
                 onItemHover:{ highlightDataSeries:false }, onItemClick:{ toggleDataSeries:false } },
       // Kiosko TV: sin interacción de ratón (ni tooltip ni resaltado de segmentos).
       tooltip: { enabled: false },
@@ -701,12 +699,12 @@
       dataLabels: {
         enabled: true,
         formatter: v => Math.round(v) + '%',
-        style:{ fontSize:'16px', fontWeight:700, colors:['#ffffff'] },
+        style:{ fontSize:'13px', fontWeight:700, colors:['#ffffff'] },
         dropShadow:{ enabled:true, top:1, left:0, blur:3, color:'#000', opacity:0.85 }
       },
-      plotOptions: { pie: { offsetY:4, donut: { size:'60%', labels: {
+      plotOptions: { pie: { offsetY:0, donut: { size:'62%', labels: {
         show:true,
-        total:{ show:true, label:'Total', fontSize:'12px', color:'#c2c6d6',
+        total:{ show:true, label:'Total', fontSize:'11px', color:'#c2c6d6',
                 formatter: () => String(total) }
       } } } }
     };
