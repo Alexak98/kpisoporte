@@ -274,7 +274,7 @@
         "operation": "getAll",
         "returnAll": true,
         "options": {
-          "query": "type:ticket status<solved tags:incidencia_dev"
+          "query": "type:ticket tags:incidencia_dev custom_status_id:26672419086621"
         }
       },
       "id": "50da59d1-9f6b-45f1-b753-95c1deb33c82",
