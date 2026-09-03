@@ -429,20 +429,16 @@
         </div>
       </div>
       <!-- Sprint breakdown: tarea Asana en proyecto Sprint vs sin asignar -->
-      <div class="mt-3 pt-3 grid grid-cols-2 gap-3" style="border-top:1px solid var(--glass-border)">
-        <div>
-          <div class="text-[10px] title text-slate-500">EN SPRINT</div>
-          <div class="flex items-baseline gap-2">
-            <div id="incSprintEn"    class="kpi-number text-2xl text-emerald-300">—</div>
-            <div id="incSprintEnPct" class="text-[10px] text-slate-500">—</div>
-          </div>
+      <div class="mt-2 pt-2 grid grid-cols-2 gap-3" style="border-top:1px solid var(--glass-border)">
+        <div class="flex items-baseline gap-2">
+          <div class="text-[10px] title text-slate-500 shrink-0">EN SPRINT</div>
+          <div id="incSprintEn"    class="kpi-number text-lg text-emerald-300">—</div>
+          <div id="incSprintEnPct" class="text-[10px] text-slate-500">—</div>
         </div>
-        <div>
-          <div class="text-[10px] title text-slate-500">SIN GESTIONAR</div>
-          <div class="flex items-baseline gap-2">
-            <div id="incSprintSin"    class="kpi-number text-2xl text-rose-300">—</div>
-            <div id="incSprintSinPct" class="text-[10px] text-slate-500">—</div>
-          </div>
+        <div class="flex items-baseline gap-2">
+          <div class="text-[10px] title text-slate-500 shrink-0">SIN GESTIONAR</div>
+          <div id="incSprintSin"    class="kpi-number text-lg text-rose-300">—</div>
+          <div id="incSprintSinPct" class="text-[10px] text-slate-500">—</div>
         </div>
       </div>
     </div>
@@ -451,7 +447,7 @@
   <!-- CHARTS / LISTS · expande para absorber el hueco vertical sobrante -->
   <section class="grid grid-cols-4 gap-6 px-10 mt-3 flex-1 min-h-0">
     <!-- HOURLY COMPARISON (más estrecho, col-span-1) -->
-    <div class="card p-4 flex flex-col overflow-hidden">
+    <div class="card p-4 flex flex-col">
       <div class="flex items-center justify-between mb-3 shrink-0">
         <div class="text-xl font-bold">Tickets por hora</div>
         <div class="text-xs text-slate-400">hoy · sin IA</div>
@@ -460,7 +456,7 @@
     </div>
 
     <!-- TICKETS POR TIPO · donut, este mes -->
-    <div class="card p-4 flex flex-col overflow-hidden">
+    <div class="card p-4 flex flex-col">
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="text-2xl font-bold">Tickets por tipo</div>
         <div class="text-sm text-slate-400">este mes</div>
@@ -590,10 +586,9 @@
   // === Tickets por hora (solo hoy) ===
   function renderHourly(arr) {
     const container = document.getElementById('hourlyChart');
-    // Reservamos un margen abajo para que ApexCharts NO clipee las labels del
-    // eje X. Sin el -32 las labels (18px) salen por debajo del SVG y la
-    // tarjeta con overflow-hidden las recorta a la mitad.
-    const h = Math.max((container.clientHeight || 300) - 32, 200);
+    // Reservamos margen abajo para que ApexCharts NO clipee las labels del eje X.
+    // Con font 14px + padding interno de Apex hacen falta ~44px.
+    const h = Math.max((container.clientHeight || 300) - 44, 200);
     const labels = arr.map(x => x.hour);
     const todayD = arr.map(x => x.today);
     const options = {
@@ -618,7 +613,7 @@
       xaxis: {
         categories: labels,
         labels:{ show: true, rotate: 0, hideOverlappingLabels: false, trim: false,
-                 style:{ colors:'#e6edf7', fontSize:'18px', fontWeight:700 } },
+                 style:{ colors:'#e6edf7', fontSize:'14px', fontWeight:700 } },
         axisBorder:{ show:false }, axisTicks:{ show:false }
       },
       yaxis: { labels:{ style:{ colors:'#c2c6d6', fontSize:'12px' }, formatter: v => Math.round(v) } },
@@ -675,7 +670,7 @@
     }
     const total = data.total_clasificados ?? slices.reduce((a,s) => a + s.count, 0);
     // Altura en px: ApexCharts colapsa con height:'100%' dentro de un flex item.
-    // Calculamos del contenedor (igual que el chart horario).
+    // Usamos toda la altura del contenedor — Apex reparte pie/legend internamente.
     const h = Math.max(container.clientHeight || 360, 260);
     const options = {
       chart: {
