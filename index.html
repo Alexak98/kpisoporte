@@ -275,9 +275,9 @@
       </div>
     </div>
     <div class="flex items-center gap-10">
-      <div class="text-right">
+      <div class="text-center">
         <div class="text-sm title">Hora actual</div>
-        <div id="now" class="text-4xl kpi-number">--:--:--</div>
+        <div id="now" class="text-6xl kpi-number leading-none">--:--:--</div>
         <div id="today" class="text-sm text-slate-400">--</div>
       </div>
       <div class="text-right">
@@ -675,8 +675,8 @@
       // max con margen para que el dataLabel sobre la barra más alta no se corte arriba
       yaxis: {
         min: 0, max: yMax, tickAmount: yTicks, decimalsInFloat: 0,
-        // Bajo 200px el eje Y roba altura y es redundante: el valor ya va sobre la barra.
-        labels:{ show: h >= 200, style:{ colors:'#c2c6d6', fontSize:'12px' }, formatter: v => Math.round(v) }
+        // Bajo 170px el eje Y roba altura y es redundante: el valor ya va sobre la barra.
+        labels:{ show: h >= 170, style:{ colors:'#c2c6d6', fontSize:'12px' }, formatter: v => Math.round(v) }
       },
       grid:  { borderColor:'rgba(155,176,214,0.08)',   /* = --chart-grid (Apex SVG attr no resuelve var()) */
                padding:{ top: 0, right: 6, bottom: 0, left: 6 } },
