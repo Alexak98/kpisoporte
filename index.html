@@ -42,8 +42,6 @@
       }
     };
   </script>
-  <!-- ApexCharts (heatmap) -->
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.1/dist/apexcharts.min.js"></script>
   <!-- Inter + JetBrains Mono (design system: Technical Intelligence Narrative) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -153,7 +151,6 @@
 
     /* Forzar tamaño del heatmap para que no se desborde */
     #heatmap { width: 100%; height: 100%; overflow: hidden; }
-    .apexcharts-canvas { width:100% !important; }
 
     /* ─── Loader inicial ─── */
     .loader-overlay {
@@ -477,7 +474,7 @@
         <div class="text-xl font-bold">Tickets por hora</div>
         <div class="text-xs text-slate-400">hoy · sin IA</div>
       </div>
-      <div id="hourlyChart" class="flex-1 min-h-0 overflow-hidden"></div>
+      <div id="hourlyChart" class="flex-1 min-h-0 overflow-hidden flex flex-col"></div>
     </div>
 
     <!-- TICKETS POR TIPO · barras HTML, este mes -->
@@ -564,7 +561,6 @@
   }
   setInterval(updateCountdown, 1000);
 
-  let hourlyChart = null;
   // Paleta compartida tipos ↔ barras Top Clientes (mismo color por categoría de tipo).
   // Color FIJO por etiqueta: no depende del orden de slices (que cambia cada mes según
   // el conteo). Así 'Incidencia Dev' siempre sale rojo, 'Formación' siempre verde, etc.
@@ -603,8 +599,6 @@
   function clipToRange(start, width) {
     return `clip-path:inset(0 ${(100 - (start + width)).toFixed(2)}% 0 ${start.toFixed(2)}%)`;
   }
-  let _hourlyRO = null;        // ResizeObserver del chart horario (creado una sola vez)
-  let _hourlyOptions = null;   // últimas options del chart horario (para re-render del RO)
   let firstLoadDone = false;
 
   function hideLoader() {
@@ -623,106 +617,59 @@
     txt.textContent = text;
   }
 
-  // Altura real disponible del contenedor del chart horario.
-  // Apex inyecta min-height en el contenedor tras renderizar; si lo leemos tal cual
-  // arrastramos la altura del render anterior (loop de crecimiento). Lo neutralizamos
-  // a 0 antes de medir: el alto queda determinado solo por el flex del card.
-  function measureChartH(container) {
-    // clientHeight y no getBoundingClientRect: el stage lleva un transform: scale()
-    // y el rect vendría escalado, mientras Apex espera px de layout.
-    container.style.minHeight = '0px';
-    return Math.max(container.clientHeight, 100);
-  }
+  // Alto de la fila de etiquetas de hora (12px de texto + mt-1).
+  const HOURLY_LABELS_PX = 20;
+  let _hourlyData = null;      // último dataset pintado (para re-pintar al cambiar el alto)
+  let _hourlyRO   = null;      // ResizeObserver del card (creado una sola vez)
+  let _hourlyH    = 0;         // alto del contenedor en el último pintado
 
-  // === Tickets por hora (solo hoy) ===
+  // === Tickets por hora (barras HTML, sin Apex) ===
+  // El número va DENTRO de la barra como en Tickets por tipo y Top Clientes.
+  // Apex no sabe colocarlo por barra: su offsetY es global, así que en las barras
+  // bajas el número caía fuera. Con HTML decidimos barra a barra.
   function renderHourly(arr) {
     const container = document.getElementById('hourlyChart');
+    if (!container) return;
+    if (arr) _hourlyData = arr;   // sin argumento = re-pintar por cambio de alto
+    arr = _hourlyData;
+    if (!arr || !arr.length) {
+      container.innerHTML = '<div class="text-slate-500 text-sm h-full flex items-center justify-center">Sin datos</div>';
+      return;
+    }
+    const peak = Math.max(1, ...arr.map(x => x.today || 0));
+    // Alto real de la zona de barras (el contenedor menos la fila de horas) para
+    // saber en píxeles si el número cabe dentro de cada barra.
+    const barsAreaPx = Math.max(container.clientHeight - HOURLY_LABELS_PX, 40);
+    const cols = arr.map(x => {
+      const value = x.today || 0;
+      const pct   = (value / peak) * 100;
+      const fitsInside = (pct / 100) * barsAreaPx >= 22;
+      return `
+        <div class="flex flex-col justify-end min-w-0">
+          ${value && !fitsInside ? `<div class="text-center text-[12px] font-bold text-slate-200 leading-none mb-1">${value}</div>` : ''}
+          <div class="rounded-t-md flex justify-center" style="height:${pct}%;background:var(--primary)">
+            ${value && fitsInside ? `<span class="text-[13px] font-bold leading-none mt-1.5 text-slate-900">${value}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+    const hours = arr.map(x =>
+      `<div class="text-center text-[12px] font-bold text-slate-300 truncate">${x.hour}</div>`
+    ).join('');
+    const gridCols = `grid-template-columns:repeat(${arr.length},minmax(0,1fr))`;
+    container.innerHTML = `
+      <div class="flex-1 min-h-0 grid gap-1.5" style="${gridCols}">${cols}</div>
+      <div class="grid gap-1.5 mt-1 shrink-0" style="${gridCols}">${hours}</div>`;
+    // Si el alto cambia (el panel se pinta antes que Reparto, o resize), el
+    // criterio de "el número cabe dentro" deja de valer → re-pintamos.
+    _hourlyH = container.clientHeight;
+    requestAnimationFrame(() => { if (Math.abs(container.clientHeight - _hourlyH) > 20) renderHourly(); });
     const card = container.closest('.card');
-    const h = measureChartH(container);
-    const labels = arr.map(x => x.hour);
-    const todayD = arr.map(x => x.today);
-    // Escala Y en enteros y con margen para el dataLabel de la barra más alta.
-    // yMax múltiplo de yTicks para que los ticks caigan redondos (0,3,6,9,12).
-    const peak   = Math.max(1, ...todayD);
-    const yTicks = Math.min(4, Math.max(1, peak));
-    const yMax   = Math.ceil((peak * 1.15) / yTicks) * yTicks;
-    const options = {
-      chart: {
-        type:'bar', height: h, width:'100%', stacked:false,
-        parentHeightOffset: 0,
-        toolbar:{ show:false }, background:'transparent', foreColor:'#c2c6d6',
-        fontFamily:'Inter, sans-serif', animations:{ enabled:false }
-      },
-      series: [
-        { name:'Hoy', data: todayD }
-      ],
-      plotOptions: { bar: { columnWidth:'60%', borderRadius:6, dataLabels:{ position:'top' } } },
-      colors: ['#adc6ff'],   /* primary */
-      fill: { opacity: 1 },
-      stroke: { width: 0 },
-      dataLabels: {
-        enabled: true,
-        offsetY: h >= 200 ? -20 : -16,
-        style:{ fontSize:'13px', fontWeight:700, colors:['#e1e2ec'] },
-        formatter: v => v === 0 ? '' : v
-      },
-      xaxis: {
-        categories: labels,
-        labels:{ show: true, rotate: 0, hideOverlappingLabels: true, trim: false, offsetY: 1,
-                 style:{ colors:'#e6edf7', fontSize:'13px', fontWeight:700 } },
-        axisBorder:{ show:false }, axisTicks:{ show:false }
-      },
-      // max con margen para que el dataLabel sobre la barra más alta no se corte arriba
-      yaxis: {
-        min: 0, max: yMax, tickAmount: yTicks, decimalsInFloat: 0,
-        // Bajo 170px el eje Y roba altura y es redundante: el valor ya va sobre la barra.
-        labels:{ show: h >= 170, style:{ colors:'#c2c6d6', fontSize:'12px' }, formatter: v => Math.round(v) }
-      },
-      grid:  { borderColor:'rgba(155,176,214,0.08)',   /* = --chart-grid (Apex SVG attr no resuelve var()) */
-               padding:{ top: 0, right: 6, bottom: 0, left: 6 } },
-      legend:{ show:false },
-      tooltip:{ enabled:false },
-      states: { hover: { filter: { type:'none' } }, active: { filter: { type:'none' } } }
-    };
-    // Si el contenedor cambió de altura significativamente desde el último render,
-    // ApexCharts no re-calcula bien el layout de los ejes con updateOptions →
-    // destruimos y recreamos para forzar layout limpio (X-axis labels visibles).
-    _hourlyOptions = options;
-    // Re-render limpio si la altura cambia >30px (fitStage recomputó o resize).
-    const lastH = parseInt(container.dataset.lastChartH || '0', 10);
-    if (hourlyChart && Math.abs(h - lastH) > 30) {
-      try { hourlyChart.destroy(); } catch(_) {}
-      hourlyChart = null;
-    }
-    container.dataset.lastChartH = String(h);
-    if (hourlyChart) hourlyChart.updateOptions(options, true, false);
-    else {
-      hourlyChart = new ApexCharts(container, options);
-      hourlyChart.render();
-    }
-    // El flex puede no estar estabilizado en el primer render (fitStage, fuentes,
-    // cards vecinas creciendo) → el chart se quedaría corto dejando hueco muerto.
-    // Re-medimos tras el frame y otra vez a los 400ms.
-    requestAnimationFrame(syncHourlyH);
-    setTimeout(syncHourlyH, 400);
-    // ResizeObserver observando el CARD padre (no el container que Apex controla).
     if (typeof ResizeObserver !== 'undefined' && !_hourlyRO && card) {
-      _hourlyRO = new ResizeObserver(() => syncHourlyH());
+      _hourlyRO = new ResizeObserver(() => {
+        if (Math.abs(container.clientHeight - _hourlyH) > 20) renderHourly();
+      });
       _hourlyRO.observe(card);
     }
-  }
-
-  // Ajusta el chart horario a la altura real disponible. Recrea en vez de
-  // updateOptions: Apex no recalcula bien el layout del eje X al cambiar altura.
-  function syncHourlyH() {
-    const container = document.getElementById('hourlyChart');
-    if (!hourlyChart || !container || !_hourlyOptions) return;
-    const newH = measureChartH(container);
-    if (Math.abs(newH - parseInt(container.dataset.lastChartH || '0', 10)) < 20) return;
-    container.dataset.lastChartH = String(newH);
-    try { hourlyChart.destroy(); } catch(_) {}
-    hourlyChart = new ApexCharts(container, { ..._hourlyOptions, chart: { ..._hourlyOptions.chart, height: newH } });
-    hourlyChart.render();
   }
 
   // === Tickets por tipo (filas HTML, sin Apex) ===
@@ -1059,8 +1006,10 @@
 
   // Aplica los KPIs pesados (charts + top orgs + tipos de ticket). Solo viene en heavy.
   function applyHeavyData(d) {
-    if (Array.isArray(d.hourly_today))   renderHourly(d.hourly_today);
+    // Reparto primero: al pintarlo cambia el alto de la fila de charts, y el
+    // horario decide con ese alto si el número cabe dentro de cada barra.
     if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
+    if (Array.isArray(d.hourly_today))   renderHourly(d.hourly_today);
     document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
     document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
     // Tickets por tipo del mes.
