@@ -366,10 +366,24 @@
 
   <!-- SECONDARY KPIs · operacional (grid 6: backlog 1 · respuesta 2 · incidencias 3) -->
   <section class="grid grid-cols-6 gap-4 px-10 mt-3 shrink-0">
-    <div class="card p-3 flex flex-col justify-center">
-      <div class="title text-xs">Backlog · hoy</div>
-      <div id="kpiBacklog" class="kpi-number text-3xl mt-0.5">0</div>
-      <div class="text-[10px] text-slate-400 mt-0.5 leading-tight"><span id="kpiBacklogDetail">— nuevos · — resueltos</span></div>
+    <div class="card p-4 flex flex-col justify-center">
+      <div class="title text-sm">Backlog · hoy</div>
+      <div class="flex items-baseline gap-2 mt-1">
+        <div id="kpiBacklog" class="kpi-number text-6xl leading-none">0</div>
+        <div class="text-xs text-slate-500 whitespace-nowrap">solo humano</div>
+      </div>
+      <!-- Desglose entradas/salidas: da contexto al signo del backlog -->
+      <div class="mt-3 flex items-center gap-4">
+        <div class="leading-none">
+          <div class="text-[11px] title text-slate-500">NUEVOS</div>
+          <div id="kpiBacklogNew" class="kpi-number text-2xl text-slate-200 mt-1">—</div>
+        </div>
+        <div class="w-px h-8 bg-slate-700/60"></div>
+        <div class="leading-none">
+          <div class="text-[11px] title text-slate-500">RESUELTOS</div>
+          <div id="kpiBacklogSolved" class="kpi-number text-2xl text-emerald-300 mt-1">—</div>
+        </div>
+      </div>
     </div>
     <div class="card p-4 col-span-2">
       <div class="title text-base">Tiempo respuesta · hoy</div>
@@ -390,55 +404,65 @@
         <div class="title text-lg">Incidencias DEV</div>
         <div id="kpiIncidencias" class="kpi-number text-4xl">0</div>
       </div>
-      <!-- Barra apilada por antigüedad -->
-      <div class="mt-2 w-full h-2 bg-slate-800/60 rounded-full overflow-hidden flex">
-        <div id="incBarLt30"   class="h-full" style="background:var(--age-fresh);width:0%"></div>
-        <div id="incBar30_60"  class="h-full" style="background:var(--age-warn);width:0%"></div>
-        <div id="incBar60_100" class="h-full" style="background:var(--age-stale);width:0%"></div>
-        <div id="incBarGt100"  class="h-full" style="background:var(--age-critical);width:0%"></div>
-      </div>
-      <!-- Leyenda con números + porcentaje sobre total -->
-      <div class="grid grid-cols-4 gap-1 mt-1.5 text-center">
-        <div>
-          <div class="flex items-baseline justify-center gap-1">
-            <div id="incCntLt30"    class="kpi-number text-lg text-emerald-300">0</div>
-            <div id="incPctLt30"    class="text-[10px] text-slate-500">—</div>
+      <!-- Cuerpo en dos columnas: el card es ancho (col-span-3) y así el bloque
+           de sprint gana tamaño sin robarle alto a la fila de charts. -->
+      <div class="grid grid-cols-5 gap-5 mt-2 items-start">
+        <!-- Antigüedad: barra apilada + leyenda -->
+        <div class="col-span-3">
+          <div class="w-full h-2 bg-slate-800/60 rounded-full overflow-hidden flex">
+            <div id="incBarLt30"   class="h-full" style="background:var(--age-fresh);width:0%"></div>
+            <div id="incBar30_60"  class="h-full" style="background:var(--age-warn);width:0%"></div>
+            <div id="incBar60_100" class="h-full" style="background:var(--age-stale);width:0%"></div>
+            <div id="incBarGt100"  class="h-full" style="background:var(--age-critical);width:0%"></div>
           </div>
-          <div class="text-[10px] text-slate-500 uppercase">&lt;30d</div>
-        </div>
-        <div>
-          <div class="flex items-baseline justify-center gap-1">
-            <div id="incCnt30_60"   class="kpi-number text-lg text-amber-300">0</div>
-            <div id="incPct30_60"   class="text-[10px] text-slate-500">—</div>
+          <div class="grid grid-cols-4 gap-1 mt-2 text-center">
+            <div>
+              <div class="flex items-baseline justify-center gap-1">
+                <div id="incCntLt30"    class="kpi-number text-xl text-emerald-300">0</div>
+                <div id="incPctLt30"    class="text-[10px] text-slate-500">—</div>
+              </div>
+              <div class="text-[10px] text-slate-500 uppercase">&lt;30d</div>
+            </div>
+            <div>
+              <div class="flex items-baseline justify-center gap-1">
+                <div id="incCnt30_60"   class="kpi-number text-xl text-amber-300">0</div>
+                <div id="incPct30_60"   class="text-[10px] text-slate-500">—</div>
+              </div>
+              <div class="text-[10px] text-slate-500 uppercase">30-59d</div>
+            </div>
+            <div>
+              <div class="flex items-baseline justify-center gap-1">
+                <div id="incCnt60_100"  class="kpi-number text-xl text-orange-400">0</div>
+                <div id="incPct60_100"  class="text-[10px] text-slate-500">—</div>
+              </div>
+              <div class="text-[10px] text-slate-500 uppercase">60-99d</div>
+            </div>
+            <div>
+              <div class="flex items-baseline justify-center gap-1">
+                <div id="incCntGt100"   class="kpi-number text-xl text-rose-400">0</div>
+                <div id="incPctGt100"   class="text-[10px] text-slate-500">—</div>
+              </div>
+              <div class="text-[10px] text-slate-500 uppercase">100+d</div>
+            </div>
           </div>
-          <div class="text-[10px] text-slate-500 uppercase">30-59d</div>
         </div>
-        <div>
-          <div class="flex items-baseline justify-center gap-1">
-            <div id="incCnt60_100"  class="kpi-number text-lg text-orange-400">0</div>
-            <div id="incPct60_100"  class="text-[10px] text-slate-500">—</div>
+        <!-- Sprint: tarea Asana en proyecto Sprint vs sin asignar. Es la lectura
+             accionable del panel (cuánto backlog DEV está sin tocar). -->
+        <div class="col-span-2 grid grid-cols-2 gap-3">
+          <div class="rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-300/20">
+            <div class="text-[11px] title text-emerald-300/80">En sprint</div>
+            <div class="flex items-baseline gap-2 mt-1">
+              <div id="incSprintEn"    class="kpi-number text-3xl text-emerald-300 leading-none">—</div>
+              <div id="incSprintEnPct" class="text-sm text-emerald-300/60">—</div>
+            </div>
           </div>
-          <div class="text-[10px] text-slate-500 uppercase">60-99d</div>
-        </div>
-        <div>
-          <div class="flex items-baseline justify-center gap-1">
-            <div id="incCntGt100"   class="kpi-number text-lg text-rose-400">0</div>
-            <div id="incPctGt100"   class="text-[10px] text-slate-500">—</div>
+          <div class="rounded-lg px-3 py-2 bg-rose-500/10 border border-rose-300/20">
+            <div class="text-[11px] title text-rose-300/80">Sin gestionar</div>
+            <div class="flex items-baseline gap-2 mt-1">
+              <div id="incSprintSin"    class="kpi-number text-3xl text-rose-300 leading-none">—</div>
+              <div id="incSprintSinPct" class="text-sm text-rose-300/60">—</div>
+            </div>
           </div>
-          <div class="text-[10px] text-slate-500 uppercase">100+d</div>
-        </div>
-      </div>
-      <!-- Sprint breakdown: tarea Asana en proyecto Sprint vs sin asignar -->
-      <div class="mt-2 pt-2 grid grid-cols-2 gap-3" style="border-top:1px solid var(--glass-border)">
-        <div class="flex items-baseline gap-2">
-          <div class="text-[10px] title text-slate-500 shrink-0">EN SPRINT</div>
-          <div id="incSprintEn"    class="kpi-number text-lg text-emerald-300">—</div>
-          <div id="incSprintEnPct" class="text-[10px] text-slate-500">—</div>
-        </div>
-        <div class="flex items-baseline gap-2">
-          <div class="text-[10px] title text-slate-500 shrink-0">SIN GESTIONAR</div>
-          <div id="incSprintSin"    class="kpi-number text-lg text-rose-300">—</div>
-          <div id="incSprintSinPct" class="text-[10px] text-slate-500">—</div>
         </div>
       </div>
     </div>
@@ -456,13 +480,13 @@
       <div id="hourlyChart" class="flex-1 min-h-0 overflow-hidden"></div>
     </div>
 
-    <!-- TICKETS POR TIPO · donut, este mes -->
-    <div class="card p-4 col-span-3 flex flex-col min-h-0 overflow-hidden">
-      <div class="flex items-center justify-between mb-2 shrink-0">
+    <!-- TICKETS POR TIPO · barras HTML, este mes -->
+    <div class="card p-3 col-span-3 flex flex-col min-h-0 overflow-hidden">
+      <div class="flex items-center justify-between mb-1.5 shrink-0">
         <div class="text-2xl font-bold">Tickets por tipo</div>
         <div class="text-sm text-slate-400">este mes</div>
       </div>
-      <div id="typeChart" class="flex-1 min-h-0 overflow-hidden"></div>
+      <div id="typeChart" class="flex-1 min-h-0 overflow-hidden flex flex-col gap-1"></div>
     </div>
 
     <!-- CLIENTES: top este mes (creados) -->
@@ -541,10 +565,7 @@
   setInterval(updateCountdown, 1000);
 
   let hourlyChart = null;
-  let typeChart = null;        // instancia del donut "Tickets por tipo" (destruir antes de re-render)
-  let _typeRO = null;          // ResizeObserver del donut (creado una sola vez)
-  let _typeOptions = null;     // últimas options del donut (para re-render del RO)
-  // Paleta compartida donut ↔ barras Top Clientes (mismo color por categoría de tipo).
+  // Paleta compartida tipos ↔ barras Top Clientes (mismo color por categoría de tipo).
   // Color FIJO por etiqueta: no depende del orden de slices (que cambia cada mes según
   // el conteo). Así 'Incidencia Dev' siempre sale rojo, 'Formación' siempre verde, etc.
   const TYPE_COLORS = {
@@ -563,6 +584,24 @@
   const TYPE_PALETTE = ['#93b4ff','#f87171','#34d399','#fbbf77','#c4b5fd','#9ca3af'];
   function colorForType(label, idx) {
     return TYPE_COLORS[label] || TYPE_PALETTE[idx % TYPE_PALETTE.length];
+  }
+  // Luminancia relativa (WCAG) de un color hex.
+  function relLuminance(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return 0;   // no es hex (var CSS) → lo tratamos como oscuro
+    const n = parseInt(m[1], 16);
+    const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => {
+      const c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126*ch[0] + 0.7152*ch[1] + 0.0722*ch[2];
+  }
+  // Texto negro cuando contrasta más que el blanco (el cruce está en L ≈ 0.179).
+  function needsDarkText(hex) { return relLuminance(hex) > 0.179; }
+  // Capa de texto recortada a un tramo de la fila (barra clara): se pinta encima
+  // de la capa blanca, así cada trozo de texto contrasta con lo que tiene debajo.
+  function clipToRange(start, width) {
+    return `clip-path:inset(0 ${(100 - (start + width)).toFixed(2)}% 0 ${start.toFixed(2)}%)`;
   }
   let _hourlyRO = null;        // ResizeObserver del chart horario (creado una sola vez)
   let _hourlyOptions = null;   // últimas options del chart horario (para re-render del RO)
@@ -584,17 +623,29 @@
     txt.textContent = text;
   }
 
+  // Altura real disponible del contenedor del chart horario.
+  // Apex inyecta min-height en el contenedor tras renderizar; si lo leemos tal cual
+  // arrastramos la altura del render anterior (loop de crecimiento). Lo neutralizamos
+  // a 0 antes de medir: el alto queda determinado solo por el flex del card.
+  function measureChartH(container) {
+    // clientHeight y no getBoundingClientRect: el stage lleva un transform: scale()
+    // y el rect vendría escalado, mientras Apex espera px de layout.
+    container.style.minHeight = '0px';
+    return Math.max(container.clientHeight, 100);
+  }
+
   // === Tickets por hora (solo hoy) ===
   function renderHourly(arr) {
     const container = document.getElementById('hourlyChart');
-    // Apex necesita altura en px. Leer del contenedor causa loop de crecimiento
-    // (Apex fija min-height y luego el RO re-renderiza con el nuevo alto).
-    // Anclamos al card padre: card.clientHeight - header (~42) - padding (32).
     const card = container.closest('.card');
-    const cardH = card ? card.clientHeight : 240;
-    const h = Math.max(cardH - 74, 160);
+    const h = measureChartH(container);
     const labels = arr.map(x => x.hour);
     const todayD = arr.map(x => x.today);
+    // Escala Y en enteros y con margen para el dataLabel de la barra más alta.
+    // yMax múltiplo de yTicks para que los ticks caigan redondos (0,3,6,9,12).
+    const peak   = Math.max(1, ...todayD);
+    const yTicks = Math.min(4, Math.max(1, peak));
+    const yMax   = Math.ceil((peak * 1.15) / yTicks) * yTicks;
     const options = {
       chart: {
         type:'bar', height: h, width:'100%', stacked:false,
@@ -611,18 +662,24 @@
       stroke: { width: 0 },
       dataLabels: {
         enabled: true,
-        offsetY: -22,
-        style:{ fontSize:'14px', fontWeight:700, colors:['#e1e2ec'] },
+        offsetY: h >= 200 ? -20 : -16,
+        style:{ fontSize:'13px', fontWeight:700, colors:['#e1e2ec'] },
         formatter: v => v === 0 ? '' : v
       },
       xaxis: {
         categories: labels,
-        labels:{ show: true, rotate: 0, hideOverlappingLabels: false, trim: false,
-                 style:{ colors:'#e6edf7', fontSize:'14px', fontWeight:700 } },
+        labels:{ show: true, rotate: 0, hideOverlappingLabels: true, trim: false, offsetY: 1,
+                 style:{ colors:'#e6edf7', fontSize:'13px', fontWeight:700 } },
         axisBorder:{ show:false }, axisTicks:{ show:false }
       },
-      yaxis: { labels:{ style:{ colors:'#c2c6d6', fontSize:'12px' }, formatter: v => Math.round(v) } },
-      grid:  { borderColor:'rgba(155,176,214,0.08)' },  /* = --chart-grid (Apex SVG attr no resuelve var()) */
+      // max con margen para que el dataLabel sobre la barra más alta no se corte arriba
+      yaxis: {
+        min: 0, max: yMax, tickAmount: yTicks, decimalsInFloat: 0,
+        // Bajo 200px el eje Y roba altura y es redundante: el valor ya va sobre la barra.
+        labels:{ show: h >= 200, style:{ colors:'#c2c6d6', fontSize:'12px' }, formatter: v => Math.round(v) }
+      },
+      grid:  { borderColor:'rgba(155,176,214,0.08)',   /* = --chart-grid (Apex SVG attr no resuelve var()) */
+               padding:{ top: 0, right: 6, bottom: 0, left: 6 } },
       legend:{ show:false },
       tooltip:{ enabled:false },
       states: { hover: { filter: { type:'none' } }, active: { filter: { type:'none' } } }
@@ -643,102 +700,73 @@
       hourlyChart = new ApexCharts(container, options);
       hourlyChart.render();
     }
+    // El flex puede no estar estabilizado en el primer render (fitStage, fuentes,
+    // cards vecinas creciendo) → el chart se quedaría corto dejando hueco muerto.
+    // Re-medimos tras el frame y otra vez a los 400ms.
+    requestAnimationFrame(syncHourlyH);
+    setTimeout(syncHourlyH, 400);
     // ResizeObserver observando el CARD padre (no el container que Apex controla).
     if (typeof ResizeObserver !== 'undefined' && !_hourlyRO && card) {
-      let lastCardH = card.clientHeight;
-      _hourlyRO = new ResizeObserver(() => {
-        const newCardH = card.clientHeight;
-        if (Math.abs(newCardH - lastCardH) < 20) return;
-        lastCardH = newCardH;
-        if (!hourlyChart) return;
-        const newH = Math.max(newCardH - 74, 160);
-        try { hourlyChart.destroy(); } catch(_) {}
-        container.dataset.lastChartH = String(newH);
-        hourlyChart = new ApexCharts(container, { ..._hourlyOptions, chart: { ..._hourlyOptions.chart, height: newH } });
-        hourlyChart.render();
-      });
+      _hourlyRO = new ResizeObserver(() => syncHourlyH());
       _hourlyRO.observe(card);
     }
   }
 
-  // === Tickets por tipo (barras horizontales) ===
+  // Ajusta el chart horario a la altura real disponible. Recrea en vez de
+  // updateOptions: Apex no recalcula bien el layout del eje X al cambiar altura.
+  function syncHourlyH() {
+    const container = document.getElementById('hourlyChart');
+    if (!hourlyChart || !container || !_hourlyOptions) return;
+    const newH = measureChartH(container);
+    if (Math.abs(newH - parseInt(container.dataset.lastChartH || '0', 10)) < 20) return;
+    container.dataset.lastChartH = String(newH);
+    try { hourlyChart.destroy(); } catch(_) {}
+    hourlyChart = new ApexCharts(container, { ..._hourlyOptions, chart: { ..._hourlyOptions.chart, height: newH } });
+    hourlyChart.render();
+  }
+
+  // === Tickets por tipo (filas HTML, sin Apex) ===
+  // Apex recortaba las etiquetas largas ("Consulta técnica") contra el eje Y y
+  // el valor se salía por la derecha. Con filas HTML la etiqueta va ENCIMA de la
+  // barra: entra entera sea cual sea su longitud y no hay eje que la corte.
   function renderTicketsByType(data) {
     const container = document.getElementById('typeChart');
     if (!container) return;
     const rawSlices = (data && Array.isArray(data.slices)) ? data.slices : [];
-    // Patrón anti-fuga: destruir la instancia previa antes de recrear.
-    if (typeChart) { try { typeChart.destroy(); } catch(_) {} typeChart = null; }
     if (!rawSlices.length) {
       container.innerHTML = '<div class="text-slate-500 text-sm h-full flex items-center justify-center">Sin datos</div>';
       return;
     }
+    // El color se toma por el índice ORIGINAL: así coincide con los segmentos
+    // de Top Clientes, que colorea sobre el array sin ordenar.
+    const idxByLabel = new Map(rawSlices.map((s, i) => [s.label, i]));
     // Orden desc por count — barra más larga arriba, escaneo natural.
     const slices = rawSlices.slice().sort((a,b) => (b.count||0) - (a.count||0));
-    const total = data.total_clasificados ?? slices.reduce((a,s) => a + s.count, 0);
-    // Anclamos al card padre para evitar el loop de crecimiento de Apex.
-    const card = container.closest('.card');
-    const cardH = card ? card.clientHeight : 240;
-    const h = Math.max(cardH - 60, 160);   // card - header (~44) - padding (16)
-    const options = {
-      chart: {
-        type:'bar', height: h, width:'100%', background:'transparent',
-        parentHeightOffset: 0, toolbar:{ show:false },
-        foreColor:'#c2c6d6', fontFamily:'Inter, sans-serif', animations:{ enabled:false }
-      },
-      series: [{ name:'Tickets', data: slices.map(s => s.count) }],
-      // Color FIJO por etiqueta (no por posición): distributed:true toma
-      // colors[i] para la barra i.
-      colors: slices.map((s, i) => colorForType(s.label, i)),
-      plotOptions: {
-        bar: {
-          horizontal: true,
-          distributed: true,
-          borderRadius: 6,
-          borderRadiusApplication: 'end',
-          barHeight: '68%',
-          dataLabels: { position: 'top' }
-        }
-      },
-      stroke: { width: 0 },
-      xaxis: {
-        categories: slices.map(s => s.label),
-        labels:{ style:{ colors:'#c2c6d6', fontSize:'11px' }, formatter: v => Math.round(v) },
-        axisBorder:{ show:false }, axisTicks:{ show:false }
-      },
-      yaxis: {
-        labels:{ style:{ colors:'#e1e2ec', fontSize:'13px', fontWeight:600 } }
-      },
-      grid: { borderColor:'rgba(155,176,214,0.08)', xaxis:{ lines:{ show:true } }, yaxis:{ lines:{ show:false } } },
-      legend: { show:false },
-      tooltip: { enabled:false },
-      states: { hover:{ filter:{ type:'none' } }, active:{ filter:{ type:'none' } } },
-      dataLabels: {
-        enabled: true,
-        textAnchor: 'start',
-        offsetX: 6,
-        formatter: (v) => total ? `${v} · ${Math.round((v/total)*100)}%` : String(v),
-        style:{ fontSize:'12px', fontWeight:700, colors:['#e1e2ec'] },
-        dropShadow:{ enabled:true, top:1, left:0, blur:3, color:'#000', opacity:0.6 }
-      }
-    };
-    _typeOptions = options;
-    typeChart = new ApexCharts(container, options);
-    typeChart.render();
-    // ResizeObserver sobre el CARD padre (no el container).
-    if (typeof ResizeObserver !== 'undefined' && !_typeRO && card) {
-      let lastCardH = card.clientHeight;
-      _typeRO = new ResizeObserver(() => {
-        const newCardH = card.clientHeight;
-        if (Math.abs(newCardH - lastCardH) < 20) return;
-        lastCardH = newCardH;
-        if (!typeChart) return;
-        const newH = Math.max(newCardH - 60, 160);
-        try { typeChart.destroy(); } catch(_) {}
-        typeChart = new ApexCharts(container, { ..._typeOptions, chart: { ..._typeOptions.chart, height: newH } });
-        typeChart.render();
-      });
-      _typeRO.observe(card);
-    }
+    const total  = data.total_clasificados ?? slices.reduce((a,s) => a + (s.count||0), 0);
+    // Barra relativa al tipo más frecuente (no al total): así se distinguen
+    // los tipos de cola, que sobre el total serían todos una raya mínima.
+    const max = Math.max(...slices.map(s => s.count||0), 1);
+    const TYPE_LAYER = 'absolute inset-0 flex items-center justify-between gap-2 px-2';
+    container.innerHTML = slices.map(s => {
+      const count = s.count || 0;
+      const pct   = total ? Math.round((count/total)*100) : 0;
+      const width = Math.max((count/max)*100, 3);
+      const color = colorForType(s.label, idxByLabel.get(s.label) ?? 0);
+      // Fila fluida (flex-1): reparte la altura disponible entre los tipos, así
+      // caben todos tanto si el card mide 200px como 350px. La barra es el fondo
+      // de la fila y el texto va encima — ni eje que recorte ni leyenda aparte.
+      const inner = `
+            <span class="text-[13px] font-bold truncate leading-none">${s.label}</span>
+            <span class="text-[11px] shrink-0 leading-none opacity-75">
+              <span class="kpi-number text-[13px] opacity-100">${count}</span> · ${pct}%
+            </span>`;
+      return `
+        <div class="relative flex-1 min-h-0 rounded-md overflow-hidden bg-slate-800/40">
+          <div class="absolute inset-y-0 left-0" style="width:${width}%;background:${color}"></div>
+          <div class="${TYPE_LAYER} text-white">${inner}</div>
+          ${needsDarkText(color) ? `<div class="${TYPE_LAYER} text-slate-900" style="${clipToRange(0, width)}">${inner}</div>` : ''}
+        </div>`;
+    }).join('');
   }
 
   // === Reparto IA / Manual por día (tabla numérica + barra proporcional) ===
@@ -783,8 +811,8 @@
   }
 
   // Top Clientes: cada cliente es una barra cuyo ancho es proporcional a su total
-  // (vs el cliente líder), segmentada por tipo de ticket con los colores del donut.
-  // orgs: [{name, count, by_type:{label:count}}]; opts.order (labels en orden del donut), opts.typeColors {label:color}.
+  // (vs el cliente líder), segmentada por tipo de ticket con los colores del panel de tipos.
+  // orgs: [{name, count, by_type:{label:count}}]; opts.order (labels en orden del panel de tipos), opts.typeColors {label:color}.
   function renderTopOrgs(orgs, opts = {}) {
     const containerId = opts.containerId || 'topOrgs';
     const order = opts.order || [];
@@ -800,19 +828,29 @@
       const widthPct = max ? Math.max(12, Math.round((o.count / max) * 100)) : 0;
       const bt = o.by_type || {};
       const total = o.count || Object.values(bt).reduce((a,b) => a + b, 0) || 1;
-      // Segmentos por tipo, en el orden del donut; cada uno proporcional dentro de la barra del cliente.
-      const segs = order.filter(lbl => bt[lbl] > 0).map(lbl =>
-        `<div class="h-full" style="width:${(bt[lbl]/total)*100}%;background:${typeColors[lbl] || 'var(--chart-neutral)'}"></div>`
-      ).join('');
+      // Segmentos por tipo, en el orden del panel de tipos; cada uno proporcional dentro de la barra del cliente.
+      // Además de los segmentos guardamos el tramo (en % de la fila) de los que
+      // salen claros: sobre ellos el texto va en oscuro.
+      const segs = [];
+      const lightRanges = [];
+      let cursor = 0;
+      order.filter(lbl => bt[lbl] > 0).forEach(lbl => {
+        const share = bt[lbl] / total;
+        const color = typeColors[lbl] || 'var(--chart-neutral)';
+        segs.push(`<div class="h-full" style="width:${share*100}%;background:${color}"></div>`);
+        const rowWidth = share * widthPct;   // el mismo tramo, pero sobre el ancho de la fila
+        if (needsDarkText(color)) lightRanges.push({ start: cursor, width: rowWidth });
+        cursor += rowWidth;
+      });
+      const LAYER = 'absolute inset-0 flex items-center justify-between px-2';
+      const inner = `
+            <span class="font-bold truncate text-sm" title="${o.name}">${i+1}. ${o.name}</span>
+            <span class="font-extrabold text-base kpi-number">${o.count}</span>`;
       return `
         <div class="relative flex-1 min-h-0 rounded-lg overflow-hidden bg-slate-800/40">
-          <div class="absolute inset-y-0 left-0 flex" style="width:${widthPct}%">${segs}</div>
-          <div class="relative h-full flex items-center justify-between px-2">
-            <span class="font-bold text-white truncate text-sm drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" title="${o.name}">
-              ${i+1}. ${o.name}
-            </span>
-            <span class="font-extrabold text-white text-base kpi-number drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">${o.count}</span>
-          </div>
+          <div class="absolute inset-y-0 left-0 flex" style="width:${widthPct}%">${segs.join('')}</div>
+          <div class="${LAYER} text-white">${inner}</div>
+          ${lightRanges.map(r => `<div class="${LAYER} text-slate-900" style="${clipToRange(r.start, r.width)}">${inner}</div>`).join('')}
         </div>`;
     }).join('');
   }
@@ -908,8 +946,8 @@
       backlogEl.textContent = (backlog > 0 ? '+' : '') + backlog;
       backlogEl.classList.remove('text-emerald-300','text-rose-300','text-slate-200');
       backlogEl.classList.add(backlog > 0 ? 'text-rose-300' : backlog < 0 ? 'text-emerald-300' : 'text-slate-200');
-      document.getElementById('kpiBacklogDetail').textContent =
-        `${d.tickets_today_manual ?? 0} nuevos · ${d.tickets_solved_today ?? 0} resueltos · solo humano`;
+      document.getElementById('kpiBacklogNew').textContent    = d.tickets_today_manual ?? 0;
+      document.getElementById('kpiBacklogSolved').textContent = d.tickets_solved_today ?? 0;
 
       // FRT (media + mediana de tiempo de respuesta hoy)
       const frtAvgEl    = document.getElementById('kpiFRTAvg');
@@ -1025,9 +1063,9 @@
     if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
     document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
     document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
-    // Tickets por tipo del mes (donut).
+    // Tickets por tipo del mes.
     if (d.tickets_by_type) renderTicketsByType(d.tickets_by_type);
-    // Top Clientes: barras segmentadas por tipo, con los mismos colores que el donut.
+    // Top Clientes: barras segmentadas por tipo, con los mismos colores que el panel de tipos.
     const _slices = (d.tickets_by_type && d.tickets_by_type.slices) || [];
     const _order = _slices.map(s => s.label);
     const _typeColors = {};
