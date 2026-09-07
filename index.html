@@ -382,19 +382,20 @@
         </div>
       </div>
     </div>
-    <div class="card p-4 col-span-2">
+    <div class="card p-4 col-span-2 flex flex-col justify-center">
       <div class="title text-base">Tiempo respuesta · hoy</div>
-      <div class="grid grid-cols-2 gap-3 mt-1">
-        <div>
-          <div class="text-[10px] title text-slate-500">MEDIA</div>
-          <div id="kpiFRTAvg" class="kpi-number text-3xl">—</div>
+      <div class="flex items-center gap-6 mt-3">
+        <div class="leading-none">
+          <div class="text-[11px] title text-slate-500">MEDIA</div>
+          <div id="kpiFRTAvg" class="kpi-number text-5xl leading-none mt-2">—</div>
         </div>
-        <div>
-          <div class="text-[10px] title text-slate-500">MEDIANA</div>
-          <div id="kpiFRTMedian" class="kpi-number text-3xl">—</div>
+        <div class="w-px h-12 bg-slate-700/60"></div>
+        <div class="leading-none">
+          <div class="text-[11px] title text-slate-500">MEDIANA</div>
+          <div id="kpiFRTMedian" class="kpi-number text-5xl leading-none mt-2">—</div>
         </div>
       </div>
-      <div class="text-sm text-slate-400 mt-0.5"><span id="kpiFRTDetail">muestra: —</span></div>
+      <div class="text-sm text-slate-400 mt-3"><span id="kpiFRTDetail">muestra: —</span></div>
     </div>
     <div class="card p-4 col-span-3">
       <div class="flex items-baseline justify-between">
