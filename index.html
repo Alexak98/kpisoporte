@@ -361,7 +361,7 @@
     </div>
   </section>
 
-  <!-- SECONDARY KPIs · operacional (grid 6: backlog 1 · respuesta 2 · incidencias 3) -->
+  <!-- SECONDARY KPIs · operacional (grid 6: backlog 1 · respuesta 1 · incidencias 4) -->
   <section class="grid grid-cols-6 gap-4 px-10 mt-3 shrink-0">
     <div class="card p-4 flex flex-col justify-center">
       <div class="title text-sm">Backlog · hoy</div>
@@ -382,27 +382,24 @@
         </div>
       </div>
     </div>
-    <div class="card p-4 col-span-2 flex flex-col justify-center">
-      <div class="title text-base">Tiempo respuesta · hoy</div>
-      <div class="flex items-center gap-6 mt-3">
-        <div class="leading-none">
-          <div class="text-[11px] title text-slate-500">MEDIA</div>
-          <div id="kpiFRTAvg" class="kpi-number text-5xl leading-none mt-2">—</div>
-        </div>
-        <div class="w-px h-12 bg-slate-700/60"></div>
-        <div class="leading-none">
-          <div class="text-[11px] title text-slate-500">MEDIANA</div>
-          <div id="kpiFRTMedian" class="kpi-number text-5xl leading-none mt-2">—</div>
-        </div>
+    <!-- FRT en 1 col: la mediana manda (la media la desvía un solo outlier),
+         la media queda como línea de apoyo. -->
+    <div class="card p-4 flex flex-col justify-center">
+      <div class="title text-sm">Tiempo respuesta · hoy</div>
+      <div class="text-[11px] title text-slate-500 mt-2">MEDIANA</div>
+      <div id="kpiFRTMedian" class="kpi-number text-4xl leading-none mt-1">—</div>
+      <div class="flex items-baseline gap-2 mt-3">
+        <div class="text-[11px] title text-slate-500">MEDIA</div>
+        <div id="kpiFRTAvg" class="kpi-number text-xl leading-none">—</div>
       </div>
-      <div class="text-sm text-slate-400 mt-3"><span id="kpiFRTDetail">muestra: —</span></div>
+      <div class="text-xs text-slate-400 mt-2"><span id="kpiFRTDetail">muestra: —</span></div>
     </div>
-    <div class="card p-4 col-span-3">
+    <div class="card p-4 col-span-4">
       <div class="flex items-baseline justify-between">
         <div class="title text-lg">Incidencias DEV</div>
         <div id="kpiIncidencias" class="kpi-number text-4xl">0</div>
       </div>
-      <!-- Cuerpo en dos columnas: el card es ancho (col-span-3) y así el bloque
+      <!-- Cuerpo en dos columnas: el card es ancho (col-span-4) y así el bloque
            de sprint gana tamaño sin robarle alto a la fila de charts. -->
       <div class="grid grid-cols-5 gap-5 mt-2 items-start">
         <!-- Antigüedad: barra apilada + leyenda -->
