@@ -5,43 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KPIs Soporte Técnico</title>
 
-  <!-- Tailwind via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    // Override de paleta semántica para alinear con Technical Intelligence Narrative.
-    // Sobrescribe los tonos -200/-300 que ya están en uso por la UI: emerald (success),
-    // amber (warning), rose (critical). Mantenemos violet (IA) y slate (neutrals) intactos.
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            emerald: {
-              200: '#6ffbbe',
-              300: '#4edea3',
-              500: '#00a572',
-              900: '#003824'
-            },
-            amber: {
-              200: '#ffdcc6',
-              300: '#ffb786',
-              500: '#df7412',
-              900: '#502400'
-            },
-            rose: {
-              200: '#ffdad6',
-              300: '#ffb4ab',
-              500: '#93000a',
-              900: '#690005'
-            }
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
-            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
-          }
-        }
-      }
-    };
-  </script>
   <!-- Inter + JetBrains Mono (design system: Technical Intelligence Narrative) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,6 +48,9 @@
       /* Chart tokens */
       --chart-grid:                 rgba(155,176,214,0.08);
       --chart-neutral:              #64748b;
+      /* Punto de estado: halo del pulso (ok / error) */
+      --pulse-ok:                   rgba(78,222,163,0.7);
+      --pulse-error:                rgba(255,180,171,0.7);
     }
 
     html, body {
@@ -106,14 +72,12 @@
       display: flex;
       flex-direction: column;
     }
-    /* Cards: glassmorphism sobre surface-container */
+    /* Cards: surface-container translúcido (sin blur: el fondo es liso) */
     .card {
       background: rgba(29, 32, 39, 0.7);   /* surface-container @ 70% */
       border: 1px solid var(--glass-border);
       border-radius: 1rem;                  /* 16px (rounded.lg) */
       box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
     }
     /* Números KPI grandes: JetBrains Mono — alineación de dígitos, técnico */
     .kpi-number {
@@ -123,21 +87,23 @@
       font-weight: 700;
     }
     /* Bars / accent gradients alineados al design system */
-    .grad-green  { background: linear-gradient(135deg, #00a572 0%, #4edea3 100%); }   /* secondary */
-    .grad-amber  { background: linear-gradient(135deg, #df7412 0%, #ffb786 100%); }   /* tertiary */
+    .grad-green  { background: linear-gradient(135deg, var(--secondary-container) 0%, var(--secondary) 100%); }
+    .grad-amber  { background: linear-gradient(135deg, var(--tertiary-container) 0%, var(--tertiary) 100%); }
     .grad-purple { background: linear-gradient(135deg, var(--ia-primary) 0%, var(--ia-secondary) 100%); }   /* IA highlight */
     .pulse-dot {
+      --pulse-color: var(--pulse-ok);
       width: 10px; height: 10px; border-radius: 9999px;
       background: var(--secondary);
-      box-shadow: 0 0 0 0 rgba(78,222,163,0.7);
+      box-shadow: 0 0 0 0 var(--pulse-color);
       animation: pulse 2s infinite;
       display: inline-block;
     }
-    .pulse-dot.error { background: var(--error); box-shadow: 0 0 0 0 rgba(255,180,171,0.7); }
+    /* El halo sigue al estado: antes el error pulsaba en verde. */
+    .pulse-dot.error { --pulse-color: var(--pulse-error); background: var(--error); }
     @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0    rgba(78,222,163,0.7); }
-      70%  { box-shadow: 0 0 0 14px rgba(78,222,163,0); }
-      100% { box-shadow: 0 0 0 0    rgba(78,222,163,0); }
+      0%   { box-shadow: 0 0 0 0    var(--pulse-color); }
+      70%  { box-shadow: 0 0 0 14px transparent; }
+      100% { box-shadow: 0 0 0 0    transparent; }
     }
     .scrollable { scrollbar-width: none; }
     .scrollable::-webkit-scrollbar { display: none; }
@@ -206,12 +172,21 @@
       animation-delay: .55s;
       opacity: 0;
     }
+    @media (prefers-reduced-motion: reduce) {
+      .pulse-dot { animation: none; box-shadow: 0 0 0 3px var(--pulse-color); }
+      .loader-svg .wrench, .loader-svg .bolt { animation: none; }
+      .loader-svg .spark { animation: none; opacity: 0; }
+    }
     @keyframes sparkPulse {
       0%, 100% { opacity: 0; }
       10%      { opacity: 1; }
       30%      { opacity: 0; }
     }
   </style>
+  <!-- Tailwind generado (ver tailwind.config.js); regenerar al tocar clases:
+       npx tailwindcss@3.4.17 -i tailwind.input.css -o tailwind.css
+       Va DESPUÉS del <style>: las utilidades deben ganar a .title como con el CDN. -->
+  <link rel="stylesheet" href="tailwind.css">
 </head>
 <body>
 
@@ -268,7 +243,7 @@
   <header class="flex items-center justify-between px-10 pt-5 pb-2 shrink-0">
     <div class="flex items-center gap-5">
       <div>
-        <div class="text-3xl font-extrabold tracking-tight">Soporte Técnico · KPIs</div>
+        <h1 class="text-3xl font-extrabold tracking-tight">Soporte Técnico · KPIs</h1>
       </div>
     </div>
     <div class="flex items-center gap-10">
@@ -292,7 +267,7 @@
   <section class="grid grid-cols-6 gap-4 px-10 mt-1 shrink-0">
     <!-- TICKETS HOY · ocupa 2 columnas -->
     <div class="card p-5 flex flex-col col-span-2">
-      <div class="title text-xl">Tickets creados hoy</div>
+      <h2 class="title text-xl">Tickets creados hoy</h2>
       <div class="flex items-baseline justify-between mt-1">
         <div id="kpiToday" class="kpi-number text-6xl">0</div>
         <div class="text-sm text-slate-400">total</div>
@@ -308,41 +283,41 @@
         </span>
       </div>
       <div class="w-full h-1.5 bg-slate-800/60 rounded-full overflow-hidden flex mt-1">
-        <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,#5b21b6,#a855f7);width:0%"></div>
-        <div id="barManual" class="h-full" style="background:linear-gradient(90deg,#00a572,#4edea3);width:0%"></div>
+        <div id="barIA"     class="h-full" style="background:linear-gradient(90deg,var(--ia-primary),var(--ia-secondary));width:0%"></div>
+        <div id="barManual" class="h-full" style="background:linear-gradient(90deg,var(--secondary-container),var(--secondary));width:0%"></div>
       </div>
       <div class="mt-2 pt-2 border-t border-slate-700/40 text-xs text-slate-400">
         Ayer:
         IA <span id="kpiIAYesterday" class="text-violet-300 font-bold">—</span>
-        <span id="kpiIAYesterdayPct" class="text-slate-500">—</span>
+        <span id="kpiIAYesterdayPct" class="text-slate-400">—</span>
         ·
         Man <span id="kpiManualYesterday" class="text-emerald-300 font-bold">—</span>
-        <span id="kpiManualYesterdayPct" class="text-slate-500">—</span>
+        <span id="kpiManualYesterdayPct" class="text-slate-400">—</span>
         ·
         <span id="kpiTodayDelta" class="font-bold text-slate-300">—</span>
       </div>
     </div>
 
     <div class="card p-5">
-      <div class="title text-xl">Tickets esta semana</div>
+      <h2 class="title text-xl">Tickets esta semana</h2>
       <div id="kpiWeek" class="kpi-number text-6xl mt-1">0</div>
       <div class="text-base text-slate-300 mt-1">
         IA <span id="kpiWeekIA"     class="text-violet-300 font-bold">—</span>
         ·
         Manual <span id="kpiWeekManual" class="text-emerald-300 font-bold">—</span>
       </div>
-      <div id="kpiWeekDelta" class="text-sm text-slate-500 mt-1">vs sem. ant. —</div>
+      <div id="kpiWeekDelta" class="text-sm text-slate-400 mt-1">vs sem. ant. —</div>
     </div>
     <div class="card p-5">
-      <div class="title text-xl">Tickets este mes</div>
+      <h2 class="title text-xl">Tickets este mes</h2>
       <div id="kpiMonth" class="kpi-number text-6xl mt-1">0</div>
       <div class="text-base text-slate-300 mt-1">
         IA <span id="kpiMonthIA"     class="text-violet-300 font-bold">—</span>
         ·
         Manual <span id="kpiMonthManual" class="text-emerald-300 font-bold">—</span>
       </div>
-      <div id="kpiMonthDelta" class="text-sm text-slate-500 mt-1">vs mes ant. —</div>
-      <div class="text-xs text-slate-500 mt-0.5">
+      <div id="kpiMonthDelta" class="text-sm text-slate-400 mt-1">vs mes ant. —</div>
+      <div class="text-xs text-slate-400 mt-0.5">
         mes ant.:
         IA <span id="kpiMonthIAprev" class="text-violet-300 font-bold">—</span>
         ·
@@ -351,12 +326,12 @@
     </div>
     <!-- Sin atender (vista 'Sin leer') -->
     <div class="card p-5">
-      <div class="title text-xl">Sin atender</div>
+      <h2 class="title text-xl">Sin atender</h2>
       <div id="kpiUnattended" class="kpi-number text-6xl mt-1">—</div>
     </div>
     <!-- Atendidos esperando respuesta -->
     <div class="card p-5">
-      <div class="title text-base leading-tight">Atendidos esperando<br>respuesta</div>
+      <h2 class="title text-base leading-tight">Atendidos esperando<br>respuesta</h2>
       <div id="kpiWaiting" class="kpi-number text-6xl mt-1">—</div>
     </div>
   </section>
@@ -364,20 +339,20 @@
   <!-- SECONDARY KPIs · operacional (grid 6: backlog 1 · respuesta 1 · incidencias 4) -->
   <section class="grid grid-cols-6 gap-4 px-10 mt-3 shrink-0">
     <div class="card p-4 flex flex-col justify-center">
-      <div class="title text-sm">Backlog · hoy</div>
+      <h2 class="title text-sm">Backlog · hoy</h2>
       <div class="flex items-baseline gap-2 mt-1">
         <div id="kpiBacklog" class="kpi-number text-6xl leading-none">0</div>
-        <div class="text-xs text-slate-500 whitespace-nowrap">solo humano</div>
+        <div class="text-xs text-slate-400 whitespace-nowrap">solo humano</div>
       </div>
       <!-- Desglose entradas/salidas: da contexto al signo del backlog -->
       <div class="mt-3 flex items-center gap-4">
         <div class="leading-none">
-          <div class="text-[11px] title text-slate-500">NUEVOS</div>
+          <div class="text-xs title text-slate-400">NUEVOS</div>
           <div id="kpiBacklogNew" class="kpi-number text-2xl text-slate-200 mt-1">—</div>
         </div>
         <div class="w-px h-8 bg-slate-700/60"></div>
         <div class="leading-none">
-          <div class="text-[11px] title text-slate-500">RESUELTOS</div>
+          <div class="text-xs title text-slate-400">RESUELTOS</div>
           <div id="kpiBacklogSolved" class="kpi-number text-2xl text-emerald-300 mt-1">—</div>
         </div>
       </div>
@@ -385,18 +360,18 @@
     <!-- FRT en 1 col: la mediana manda (la media la desvía un solo outlier),
          la media queda como línea de apoyo. -->
     <div class="card p-4 flex flex-col justify-center">
-      <div class="title text-sm">Tiempo respuesta · hoy</div>
-      <div class="text-[11px] title text-slate-500 mt-2">MEDIANA</div>
+      <h2 class="title text-sm">Tiempo respuesta · hoy</h2>
+      <div class="text-xs title text-slate-400 mt-2">MEDIANA</div>
       <div id="kpiFRTMedian" class="kpi-number text-4xl leading-none mt-1">—</div>
       <div class="flex items-baseline gap-2 mt-3">
-        <div class="text-[11px] title text-slate-500">MEDIA</div>
+        <div class="text-xs title text-slate-400">MEDIA</div>
         <div id="kpiFRTAvg" class="kpi-number text-xl leading-none">—</div>
       </div>
       <div class="text-xs text-slate-400 mt-2"><span id="kpiFRTDetail">muestra: —</span></div>
     </div>
     <div class="card p-4 col-span-4">
       <div class="flex items-baseline justify-between">
-        <div class="title text-lg">Incidencias DEV</div>
+        <h2 class="title text-lg">Incidencias DEV</h2>
         <div id="kpiIncidencias" class="kpi-number text-4xl">0</div>
       </div>
       <!-- Cuerpo en dos mitades: antigüedad a la izquierda; sprint a la derecha,
@@ -414,30 +389,30 @@
             <div>
               <div class="flex items-baseline justify-center gap-1">
                 <div id="incCntLt30"    class="kpi-number text-xl text-emerald-300">0</div>
-                <div id="incPctLt30"    class="text-[10px] text-slate-500">—</div>
+                <div id="incPctLt30"    class="text-xs text-slate-400">—</div>
               </div>
-              <div class="text-[10px] text-slate-500 uppercase">&lt;30d</div>
+              <div class="text-xs text-slate-400 uppercase">&lt;30d</div>
             </div>
             <div>
               <div class="flex items-baseline justify-center gap-1">
                 <div id="incCnt30_60"   class="kpi-number text-xl text-amber-300">0</div>
-                <div id="incPct30_60"   class="text-[10px] text-slate-500">—</div>
+                <div id="incPct30_60"   class="text-xs text-slate-400">—</div>
               </div>
-              <div class="text-[10px] text-slate-500 uppercase">30-59d</div>
+              <div class="text-xs text-slate-400 uppercase">30-59d</div>
             </div>
             <div>
               <div class="flex items-baseline justify-center gap-1">
                 <div id="incCnt60_100"  class="kpi-number text-xl text-orange-400">0</div>
-                <div id="incPct60_100"  class="text-[10px] text-slate-500">—</div>
+                <div id="incPct60_100"  class="text-xs text-slate-400">—</div>
               </div>
-              <div class="text-[10px] text-slate-500 uppercase">60-99d</div>
+              <div class="text-xs text-slate-400 uppercase">60-99d</div>
             </div>
             <div>
               <div class="flex items-baseline justify-center gap-1">
                 <div id="incCntGt100"   class="kpi-number text-xl text-rose-400">0</div>
-                <div id="incPctGt100"   class="text-[10px] text-slate-500">—</div>
+                <div id="incPctGt100"   class="text-xs text-slate-400">—</div>
               </div>
-              <div class="text-[10px] text-slate-500 uppercase">100+d</div>
+              <div class="text-xs text-slate-400 uppercase">100+d</div>
             </div>
           </div>
         </div>
@@ -445,19 +420,19 @@
              accionable del panel (cuánto backlog DEV está sin tocar). -->
         <div class="grid grid-cols-2 gap-3">
           <div class="rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-300/20">
-            <div class="text-[11px] title text-emerald-300/80">En sprint</div>
+            <div class="text-xs title text-emerald-300/80">En sprint</div>
             <div class="flex items-baseline gap-2 mt-1">
               <div id="incSprintEn"    class="kpi-number text-3xl text-emerald-300 leading-none">—</div>
-              <div id="incSprintEnPct" class="text-sm text-emerald-300/60">—</div>
+              <div id="incSprintEnPct" class="text-sm text-emerald-300/80">—</div>
             </div>
             <!-- Desglose por estado (sección del Sprint en Asana) -->
             <div id="incSprintEstados" class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-slate-400"></div>
           </div>
           <div class="rounded-lg px-3 py-2 bg-rose-500/10 border border-rose-300/20">
-            <div class="text-[11px] title text-rose-300/80">Sin gestionar</div>
+            <div class="text-xs title text-rose-300/80">Sin gestionar</div>
             <div class="flex items-baseline gap-2 mt-1">
               <div id="incSprintSin"    class="kpi-number text-3xl text-rose-300 leading-none">—</div>
-              <div id="incSprintSinPct" class="text-sm text-rose-300/60">—</div>
+              <div id="incSprintSinPct" class="text-sm text-rose-300/80">—</div>
             </div>
             <!-- Desglose: las que ya tienen tarea Asana (fuera de Sprint) vs las que ni la tienen -->
             <div class="flex gap-3 mt-1.5 text-xs text-slate-400">
@@ -476,7 +451,7 @@
     <!-- HOURLY COMPARISON -->
     <div class="card p-4 col-span-3 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
-        <div class="text-xl font-bold">Tickets por hora</div>
+        <h2 class="text-xl font-bold">Tickets por hora</h2>
         <div class="text-xs text-slate-400">hoy · sin IA</div>
       </div>
       <div id="hourlyChart" class="flex-1 min-h-0 overflow-hidden flex flex-col"></div>
@@ -485,7 +460,7 @@
     <!-- TICKETS POR TIPO · barras HTML, este mes -->
     <div class="card p-3 col-span-3 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-1.5 shrink-0">
-        <div class="text-2xl font-bold">Tickets por tipo</div>
+        <h2 class="text-2xl font-bold">Tickets por tipo</h2>
         <div class="text-sm text-slate-400">este mes</div>
       </div>
       <div id="typeChart" class="flex-1 min-h-0 overflow-hidden flex flex-col gap-1"></div>
@@ -494,7 +469,7 @@
     <!-- CLIENTES: top este mes (creados) -->
     <div class="card p-4 col-span-2 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-2 shrink-0">
-        <div class="text-2xl font-bold">Top Clientes</div>
+        <h2 class="text-2xl font-bold">Top Clientes</h2>
         <div class="text-sm text-slate-400">creados este mes</div>
       </div>
       <div id="topOrgs" class="flex-1 overflow-hidden flex flex-col gap-1 scrollable min-h-0"></div>
@@ -506,7 +481,7 @@
   <section class="grid grid-cols-1 gap-6 px-10 mt-3 shrink-0">
     <div class="card p-3 flex flex-col">
       <div class="flex items-center justify-between mb-0.5 shrink-0">
-        <div class="text-xl font-bold">Reparto IA · Manual por día · esta semana</div>
+        <h2 class="text-xl font-bold">Reparto IA · Manual por día · esta semana</h2>
         <div class="text-sm text-slate-400">
           IA <span id="weekIA">0</span> · Manual <span id="weekMa">0</span>
         </div>
@@ -516,7 +491,7 @@
   </section>
 
   <!-- FOOTER -->
-  <footer class="px-10 mt-auto pb-4 flex justify-end items-center text-sm text-slate-500 shrink-0 gap-6">
+  <footer class="px-10 mt-auto pb-4 flex justify-end items-center text-sm text-slate-400 shrink-0 gap-6">
     <div id="errorMsg" class="text-rose-400"></div>
     <div>Próxima actualización en <span id="countdown">10:00</span></div>
   </footer>
@@ -638,7 +613,7 @@
     if (arr) _hourlyData = arr;   // sin argumento = re-pintar por cambio de alto
     arr = _hourlyData;
     if (!arr || !arr.length) {
-      container.innerHTML = '<div class="text-slate-500 text-sm h-full flex items-center justify-center">Sin datos</div>';
+      container.innerHTML = '<div class="text-slate-400 text-sm h-full flex items-center justify-center">Sin datos</div>';
       return;
     }
     const peak = Math.max(1, ...arr.map(x => x.today || 0));
@@ -658,7 +633,7 @@
         </div>`;
     }).join('');
     const hours = arr.map(x =>
-      `<div class="text-center text-[12px] font-bold text-slate-300 truncate">${x.hour}</div>`
+      `<div class="text-center text-[12px] font-bold text-slate-300 truncate">${escapeHtml(x.hour)}</div>`
     ).join('');
     const gridCols = `grid-template-columns:repeat(${arr.length},minmax(0,1fr))`;
     container.innerHTML = `
@@ -677,6 +652,11 @@
     }
   }
 
+  // Texto que viene de Zendesk/n8n antes de meterlo en innerHTML o en un atributo.
+  function escapeHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
+
   // === Tickets por tipo (filas HTML, sin Apex) ===
   // Apex recortaba las etiquetas largas ("Consulta técnica") contra el eje Y y
   // el valor se salía por la derecha. Con filas HTML la etiqueta va ENCIMA de la
@@ -686,7 +666,7 @@
     if (!container) return;
     const rawSlices = (data && Array.isArray(data.slices)) ? data.slices : [];
     if (!rawSlices.length) {
-      container.innerHTML = '<div class="text-slate-500 text-sm h-full flex items-center justify-center">Sin datos</div>';
+      container.innerHTML = '<div class="text-slate-400 text-sm h-full flex items-center justify-center">Sin datos</div>';
       return;
     }
     // El color se toma por el índice ORIGINAL: así coincide con los segmentos
@@ -708,8 +688,8 @@
       // caben todos tanto si el card mide 200px como 350px. La barra es el fondo
       // de la fila y el texto va encima — ni eje que recorte ni leyenda aparte.
       const inner = `
-            <span class="text-[13px] font-bold truncate leading-none">${s.label}</span>
-            <span class="text-[11px] shrink-0 leading-none opacity-75">
+            <span class="text-[13px] font-bold truncate leading-none">${escapeHtml(s.label)}</span>
+            <span class="text-xs shrink-0 leading-none opacity-75">
               <span class="kpi-number text-[13px] opacity-100">${count}</span> · ${pct}%
             </span>`;
       return `
@@ -725,7 +705,7 @@
   function renderStacked(arr) {
     const cont = document.getElementById('stackedChart');
     if (!arr || arr.length === 0) {
-      cont.innerHTML = '<div class="text-slate-500">Sin datos</div>';
+      cont.innerHTML = '<div class="text-slate-400">Sin datos</div>';
       return;
     }
     // Ancho de la barra proporcional al día con más volumen (compara volumen
@@ -747,7 +727,7 @@
       return `
       <div class="border-b border-slate-700/20 pb-0.5">
         <div class="grid grid-cols-5 gap-4 px-2 items-baseline">
-          <div class="font-bold text-sm leading-tight">${x.day}</div>
+          <div class="font-bold text-sm leading-tight">${escapeHtml(x.day)}</div>
           <div class="text-right font-extrabold text-lg leading-tight text-violet-300 kpi-number">${x.ia}</div>
           <div class="text-right font-extrabold text-lg leading-tight text-emerald-300 kpi-number">${x.manual}</div>
           <div class="text-right font-extrabold text-lg leading-tight kpi-number">${x.total}</div>
@@ -755,7 +735,7 @@
         </div>
         <div class="mx-2 mt-0.5 h-1 rounded-full overflow-hidden flex bg-slate-800/40" style="width:${barW}%">
           <div class="h-full" style="width:${iaPct}%;background:var(--ia-secondary)"></div>
-          <div class="h-full" style="width:${maPct}%;background:#4edea3"></div>
+          <div class="h-full" style="width:${maPct}%;background:var(--secondary)"></div>
         </div>
       </div>`;
     }).join('');
@@ -772,7 +752,7 @@
     const cont = document.getElementById(containerId);
     if (!cont) return;
     if (!orgs || orgs.length === 0) {
-      cont.innerHTML = '<div class="text-slate-500 text-xs">Sin datos</div>';
+      cont.innerHTML = '<div class="text-slate-400 text-xs">Sin datos</div>';
       return;
     }
     const max = Math.max(...orgs.map(o => o.count || 0));
@@ -796,7 +776,7 @@
       });
       const LAYER = 'absolute inset-0 flex items-center justify-between px-2';
       const inner = `
-            <span class="font-bold truncate text-sm" title="${o.name}">${i+1}. ${o.name}</span>
+            <span class="font-bold truncate text-sm" title="${escapeHtml(o.name)}">${i+1}. ${escapeHtml(o.name)}</span>
             <span class="font-extrabold text-base kpi-number">${o.count}</span>`;
       return `
         <div class="relative flex-1 min-h-0 rounded-lg overflow-hidden bg-slate-800/40">
@@ -820,10 +800,10 @@
   function renderDeltaVs(id, current, previous, label) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.classList.remove('text-emerald-300','text-rose-300','text-slate-400','text-slate-500');
+    el.classList.remove('text-emerald-300','text-rose-300','text-slate-400');
     if (previous == null || current == null) {
       el.textContent = `vs ${label} —`;
-      el.classList.add('text-slate-500');
+      el.classList.add('text-slate-400');
       return;
     }
     const diff = current - previous;
@@ -1159,9 +1139,9 @@
     bootFetch();
   }
   // Loops independientes
-  setInterval(fetchKPIsLight,         REFRESH_MS_LIGHT);     // 1 min
-  setInterval(fetchKPIs,              REFRESH_MS);           // 5 min
-  setInterval(fetchWaiting,           REFRESH_MS_WAITING);   // 5 min
+  setInterval(fetchKPIsLight,         REFRESH_MS_LIGHT);     // 5 min
+  setInterval(fetchKPIs,              REFRESH_MS);           // 10 min
+  setInterval(fetchWaiting,           REFRESH_MS_WAITING);   // 1 min
   setInterval(fetchTopOrgsLastMonth,  REFRESH_MS_LM_ORGS);   // 30 min
 </script>
 </body>
