@@ -4,7 +4,9 @@ Dashboard de KPIs para TV 4K (16:9) que consume datos de **Zendesk** y **Asana**
 
 ## Estructura
 
-- `index.html` — Dashboard único, sin build, listo para servir.
+- `index.html` — Dashboard único, listo para servir.
+- `tailwind.css` — CSS de Tailwind generado y versionado. **Si cambias clases en `index.html`, regenéralo:**
+  `npx tailwindcss@3.4.17 -i tailwind.input.css -o tailwind.css` (config en `tailwind.config.js`).
 - `n8n-workflow-kpis-soporte.json` — Workflow de n8n importable.
 
 ## Cómo funciona

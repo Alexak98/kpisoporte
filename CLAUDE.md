@@ -25,6 +25,8 @@ Dashboard de KPIs de soporte Zendesk. Frontend estático (`index.html`) que cons
 ## Contexto técnico
 
 - `index.html` — dashboard, vanilla JS, lee del cache slim.
+- `tailwind.css` — generado desde `tailwind.config.js` + `tailwind.input.css`. Tras añadir o cambiar clases en `index.html` hay que regenerarlo (`npx tailwindcss@3.4.17 -i tailwind.input.css -o tailwind.css`) y commitearlo; si no, la clase nueva no existe en producción. El `<link>` va después del `<style>` para que las utilidades ganen a `.title`.
+- Texto que llega de Zendesk/n8n y se mete en `innerHTML` o en un atributo pasa por `escapeHtml()`.
 - `n8n-workflow-kpis-soporte.json` — workflow principal de generación de KPIs.
 - `n8n-workflow-kpis-light.json` — variante ligera (solo campos pintados).
 - FRT (First Reply Time) usa `reply_time_in_minutes.business` (horario laboral). Tickets con `reply_time = 0` cuentan como respondidos al instante.
