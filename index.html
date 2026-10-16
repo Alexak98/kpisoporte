@@ -450,12 +450,19 @@
               <div id="incSprintEn"    class="kpi-number text-3xl text-emerald-300 leading-none">—</div>
               <div id="incSprintEnPct" class="text-sm text-emerald-300/60">—</div>
             </div>
+            <!-- Desglose por estado (sección del Sprint en Asana) -->
+            <div id="incSprintEstados" class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-slate-400"></div>
           </div>
           <div class="rounded-lg px-3 py-2 bg-rose-500/10 border border-rose-300/20">
             <div class="text-[11px] title text-rose-300/80">Sin gestionar</div>
             <div class="flex items-baseline gap-2 mt-1">
               <div id="incSprintSin"    class="kpi-number text-3xl text-rose-300 leading-none">—</div>
               <div id="incSprintSinPct" class="text-sm text-rose-300/60">—</div>
+            </div>
+            <!-- Desglose: las que ya tienen tarea Asana (fuera de Sprint) vs las que ni la tienen -->
+            <div class="flex gap-3 mt-1.5 text-xs text-slate-400">
+              <div><span id="incSinConAsana" class="kpi-number text-rose-200">—</span> con tarea Asana</div>
+              <div><span id="incSinSinAsana" class="kpi-number text-rose-200">—</span> sin tarea</div>
             </div>
           </div>
         </div>
@@ -981,6 +988,31 @@
         spEnPctEl.textContent  = tot ? Math.round(en  / tot * 100) + '%' : '—';
         spSinPctEl.textContent = tot ? Math.round(sin / tot * 100) + '%' : '—';
       }
+      // En sprint: agrupadas por estado, en el orden del tablero; los desconocidos al final.
+      const ORDEN_ESTADOS = ['Sprint Backlog', 'En curso', 'En espera', 'QA', 'QC', 'No Finalizada (SSP)'];
+      const porEstado = {};
+      for (const t of (d.incidencias_en_sprint_list || [])) {
+        const e = (t && t.estado) || 'Sin estado';
+        porEstado[e] = (porEstado[e] || 0) + 1;
+      }
+      const rango = e => { const i = ORDEN_ESTADOS.indexOf(e); return i < 0 ? 99 : i; };
+      const estadosEl = document.getElementById('incSprintEstados');
+      estadosEl.replaceChildren(...Object.keys(porEstado)
+        .sort((a, b) => rango(a) - rango(b) || porEstado[b] - porEstado[a])
+        .map(e => {
+          const row = document.createElement('div');
+          row.className = 'whitespace-nowrap';
+          const n = document.createElement('span');
+          n.className = 'kpi-number text-emerald-200';
+          n.textContent = porEstado[e];
+          row.append(n, ' ' + e);
+          return row;
+        }));
+      // Sin gestionar: con tarea Asana (asana_url) vs sin tarea.
+      const sinList = d.incidencias_sin_sprint_list;
+      const conAsana = Array.isArray(sinList) ? sinList.filter(t => t && t.asana_url).length : null;
+      document.getElementById('incSinConAsana').textContent = conAsana ?? '—';
+      document.getElementById('incSinSinAsana').textContent = conAsana == null ? '—' : sinList.length - conAsana;
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
