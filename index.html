@@ -457,6 +457,11 @@
               <div id="incSprintSin"    class="kpi-number text-3xl text-rose-300 leading-none">—</div>
               <div id="incSprintSinPct" class="text-sm text-rose-300/60">—</div>
             </div>
+            <!-- Desglose: las que ya tienen tarea Asana (fuera de Sprint) vs las que ni la tienen -->
+            <div class="flex gap-3 mt-1.5 text-xs text-slate-400">
+              <div><span id="incSinConAsana" class="kpi-number text-rose-200">—</span> con tarea Asana</div>
+              <div><span id="incSinSinAsana" class="kpi-number text-rose-200">—</span> sin tarea</div>
+            </div>
           </div>
         </div>
       </div>
@@ -981,6 +986,11 @@
         spEnPctEl.textContent  = tot ? Math.round(en  / tot * 100) + '%' : '—';
         spSinPctEl.textContent = tot ? Math.round(sin / tot * 100) + '%' : '—';
       }
+      // Sin gestionar: con tarea Asana (asana_url) vs sin tarea.
+      const sinList = d.incidencias_sin_sprint_list;
+      const conAsana = Array.isArray(sinList) ? sinList.filter(t => t && t.asana_url).length : null;
+      document.getElementById('incSinConAsana').textContent = conAsana ?? '—';
+      document.getElementById('incSinSinAsana').textContent = conAsana == null ? '—' : sinList.length - conAsana;
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
