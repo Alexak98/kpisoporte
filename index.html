@@ -399,11 +399,11 @@
         <div class="title text-lg">Incidencias DEV</div>
         <div id="kpiIncidencias" class="kpi-number text-4xl">0</div>
       </div>
-      <!-- Cuerpo en dos columnas: el card es ancho (col-span-4) y así el bloque
-           de sprint gana tamaño sin robarle alto a la fila de charts. -->
-      <div class="grid grid-cols-5 gap-5 mt-2 items-start">
+      <!-- Cuerpo en dos mitades: antigüedad a la izquierda; sprint a la derecha,
+           así los cuadros de sprint ganan ancho sin robar alto a los charts. -->
+      <div class="grid grid-cols-2 gap-5 mt-2 items-start">
         <!-- Antigüedad: barra apilada + leyenda -->
-        <div class="col-span-3">
+        <div>
           <div class="w-full h-2 bg-slate-800/60 rounded-full overflow-hidden flex">
             <div id="incBarLt30"   class="h-full" style="background:var(--age-fresh);width:0%"></div>
             <div id="incBar30_60"  class="h-full" style="background:var(--age-warn);width:0%"></div>
@@ -443,7 +443,7 @@
         </div>
         <!-- Sprint: tarea Asana en proyecto Sprint vs sin asignar. Es la lectura
              accionable del panel (cuánto backlog DEV está sin tocar). -->
-        <div class="col-span-2 grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <div class="rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-300/20">
             <div class="text-[11px] title text-emerald-300/80">En sprint</div>
             <div class="flex items-baseline gap-2 mt-1">
