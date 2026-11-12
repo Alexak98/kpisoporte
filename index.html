@@ -446,7 +446,7 @@
   </section>
 
   <!-- CHARTS / LISTS · expande para absorber el hueco vertical sobrante -->
-  <!-- grid-8: hourly 3 (37%) · type 3 (37%) · topOrgs 2 (25%) -->
+  <!-- grid-8: hourly 3 (37%) · type 2 (25%) · incidencias mes 1 (13%) · topOrgs 2 (25%) -->
   <section class="grid grid-cols-8 gap-6 px-10 mt-3 flex-1 min-h-0">
     <!-- HOURLY COMPARISON -->
     <div class="card p-4 col-span-3 flex flex-col min-h-0 overflow-hidden">
@@ -458,12 +458,38 @@
     </div>
 
     <!-- TICKETS POR TIPO · barras HTML, este mes -->
-    <div class="card p-3 col-span-3 flex flex-col min-h-0 overflow-hidden">
+    <div class="card p-3 col-span-2 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-1.5 shrink-0">
         <h2 class="text-2xl font-bold">Tickets por tipo</h2>
         <div class="text-sm text-slate-400">este mes</div>
       </div>
       <div id="typeChart" class="flex-1 min-h-0 overflow-hidden flex flex-col gap-1"></div>
+    </div>
+
+    <!-- INCIDENCIAS DEV · creadas vs resueltas este mes (etiqueta incidencia_dev en Zendesk) -->
+    <div class="card p-4 col-span-1 flex flex-col min-h-0 overflow-hidden">
+      <div class="shrink-0">
+        <h2 class="text-xl font-bold leading-tight">Incidencias DEV</h2>
+        <div class="text-sm text-slate-400">este mes</div>
+      </div>
+      <div class="flex-1 min-h-0 flex flex-col justify-center gap-4 mt-2">
+        <div>
+          <div class="text-xs title text-slate-400">CREADAS</div>
+          <div id="incMesCreadas" class="kpi-number text-5xl leading-none text-amber-300 mt-1">—</div>
+          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
+            <div id="incMesBarCreadas" class="h-full rounded-full" style="background:var(--tertiary);width:0%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs title text-slate-400">RESUELTAS</div>
+          <div id="incMesResueltas" class="kpi-number text-5xl leading-none text-emerald-300 mt-1">—</div>
+          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
+            <div id="incMesBarResueltas" class="h-full rounded-full" style="background:var(--secondary);width:0%"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Saldo: si entran más de las que se resuelven, el backlog DEV crece -->
+      <div id="incMesSaldo" class="shrink-0 text-sm mt-2 text-slate-400">Backlog —</div>
     </div>
 
     <!-- CLIENTES: top este mes (creados) -->
@@ -787,6 +813,29 @@
     }).join('');
   }
 
+  // === Incidencias DEV del mes: creadas vs resueltas ===
+  // Barras relativas a la mayor de las dos. null = la búsqueda de Zendesk falló:
+  // se pinta '—' en vez de un 0 que parecería real.
+  function renderIncidenciasMes(creadas, resueltas) {
+    const has = v => typeof v === 'number';
+    document.getElementById('incMesCreadas').textContent   = has(creadas)   ? creadas   : '—';
+    document.getElementById('incMesResueltas').textContent = has(resueltas) ? resueltas : '—';
+    const max = Math.max(creadas || 0, resueltas || 0, 1);
+    document.getElementById('incMesBarCreadas').style.width   = ((creadas   || 0) / max * 100) + '%';
+    document.getElementById('incMesBarResueltas').style.width = ((resueltas || 0) / max * 100) + '%';
+    const el = document.getElementById('incMesSaldo');
+    el.classList.remove('text-emerald-300','text-rose-300','text-slate-400');
+    if (!has(creadas) || !has(resueltas)) {
+      el.textContent = 'Backlog —';
+      el.classList.add('text-slate-400');
+      return;
+    }
+    const diff = creadas - resueltas;   // > 0: entran más de las que salen
+    if (diff > 0)      { el.innerHTML = `Backlog <span class="font-bold">▲ +${diff}</span>`; el.classList.add('text-rose-300'); }
+    else if (diff < 0) { el.innerHTML = `Backlog <span class="font-bold">▼ −${-diff}</span>`; el.classList.add('text-emerald-300'); }
+    else               { el.textContent = 'Backlog estable'; el.classList.add('text-slate-400'); }
+  }
+
   function setNum(id, val) {
     document.getElementById(id).textContent = (val ?? 0);
   }
@@ -946,6 +995,9 @@
       document.getElementById('incPct30_60').textContent   = incPct(b.b30_60);
       document.getElementById('incPct60_100').textContent  = incPct(b.b60_100);
       document.getElementById('incPctGt100').textContent   = incPct(b.gt100);
+
+      // Incidencias DEV del mes: creadas vs resueltas.
+      renderIncidenciasMes(d.incidencias_dev_creadas_mes, d.incidencias_dev_resueltas_mes);
 
       // Sprint breakdown (Asana): tarea en proyecto Sprint vs sin gestionar.
       // Backend n8n debe rellenar 'incidencias_en_sprint' y 'incidencias_sin_sprint'
