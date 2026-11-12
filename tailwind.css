@@ -730,10 +730,6 @@ video {
   height: 0.5rem;
 }
 
-.h-8 {
-  height: 2rem;
-}
-
 .h-full {
   height: 100%;
 }
@@ -744,10 +740,6 @@ video {
 
 .w-full {
   width: 100%;
-}
-
-.w-px {
-  width: 1px;
 }
 
 .min-w-0 {
@@ -940,10 +932,6 @@ video {
 
 .bg-rose-500\/10 {
   background-color: rgb(147 0 10 / 0.1);
-}
-
-.bg-slate-700\/60 {
-  background-color: rgb(51 65 85 / 0.6);
 }
 
 .bg-slate-800\/40 {

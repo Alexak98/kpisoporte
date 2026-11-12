@@ -336,26 +336,19 @@
     </div>
   </section>
 
-  <!-- SECONDARY KPIs · operacional (grid 6: backlog 1 · respuesta 1 · incidencias 4) -->
+  <!-- SECONDARY KPIs · operacional (grid 6: resolución incidencias 1 · respuesta 1 · incidencias 4) -->
   <section class="grid grid-cols-6 gap-4 px-10 mt-3 shrink-0">
+    <!-- Tiempo de resolución de incidencias DEV resueltas este mes: desde que el ticket
+         pasa a «En Desarrollo» hasta que pasa a cualquier estado resuelto (días naturales). -->
     <div class="card p-4 flex flex-col justify-center">
-      <h2 class="title text-sm">Backlog · hoy</h2>
-      <div class="flex items-baseline gap-2 mt-1">
-        <div id="kpiBacklog" class="kpi-number text-6xl leading-none">0</div>
-        <div class="text-xs text-slate-400 whitespace-nowrap">solo humano</div>
+      <h2 class="title text-sm">Resolución incidencias · mes</h2>
+      <div class="text-xs title text-slate-400 mt-2">MEDIA</div>
+      <div id="kpiIncResMedia" class="kpi-number text-4xl leading-none mt-1">—</div>
+      <div class="flex items-baseline gap-2 mt-3">
+        <div class="text-xs title text-slate-400">MEDIANA</div>
+        <div id="kpiIncResMediana" class="kpi-number text-xl leading-none">—</div>
       </div>
-      <!-- Desglose entradas/salidas: da contexto al signo del backlog -->
-      <div class="mt-3 flex items-center gap-4">
-        <div class="leading-none">
-          <div class="text-xs title text-slate-400">NUEVOS</div>
-          <div id="kpiBacklogNew" class="kpi-number text-2xl text-slate-200 mt-1">—</div>
-        </div>
-        <div class="w-px h-8 bg-slate-700/60"></div>
-        <div class="leading-none">
-          <div class="text-xs title text-slate-400">RESUELTOS</div>
-          <div id="kpiBacklogSolved" class="kpi-number text-2xl text-emerald-300 mt-1">—</div>
-        </div>
-      </div>
+      <div class="text-xs text-slate-400 mt-2"><span id="kpiIncResDetail">muestra: —</span></div>
     </div>
     <!-- FRT en 1 col: la mediana manda (la media la desvía un solo outlier),
          la media queda como línea de apoyo. -->
@@ -842,6 +835,20 @@
     else              { el.textContent = creadas ? 'Todas resueltas' : 'Ninguna este mes'; el.classList.add(creadas ? 'text-emerald-300' : 'text-slate-400'); }
   }
 
+  // === Tiempo de resolución de incidencias DEV (resueltas este mes) ===
+  // Días naturales desde «En Desarrollo» hasta resuelto. Menos de un día se pinta en horas.
+  function renderIncidenciasResolucion(media, mediana, n) {
+    const fmt = v => {
+      if (typeof v !== 'number') return '—';
+      if (v < 1) return Math.round(v * 24) + ' h';
+      return v.toFixed(1).replace('.', ',') + ' d';
+    };
+    document.getElementById('kpiIncResMedia').textContent   = fmt(media);
+    document.getElementById('kpiIncResMediana').textContent = fmt(mediana);
+    document.getElementById('kpiIncResDetail').textContent  =
+      typeof n === 'number' ? `${n} resueltas · desde En Desarrollo` : 'muestra: —';
+  }
+
   function setNum(id, val) {
     document.getElementById(id).textContent = (val ?? 0);
   }
@@ -926,15 +933,6 @@
       _kpiState.weekNow  = (weekIA  + weekMa) || (d.tickets_week  ?? null);
       _kpiState.monthNow = (monthIA + monthMa) || (d.tickets_month ?? null);
       tryRenderDeltas();
-
-      // Secondary KPIs
-      const backlog = d.backlog_today ?? 0;
-      const backlogEl = document.getElementById('kpiBacklog');
-      backlogEl.textContent = (backlog > 0 ? '+' : '') + backlog;
-      backlogEl.classList.remove('text-emerald-300','text-rose-300','text-slate-200');
-      backlogEl.classList.add(backlog > 0 ? 'text-rose-300' : backlog < 0 ? 'text-emerald-300' : 'text-slate-200');
-      document.getElementById('kpiBacklogNew').textContent    = d.tickets_today_manual ?? 0;
-      document.getElementById('kpiBacklogSolved').textContent = d.tickets_solved_today ?? 0;
 
       // FRT (media + mediana de tiempo de respuesta hoy)
       const frtAvgEl    = document.getElementById('kpiFRTAvg');
@@ -1082,6 +1080,8 @@
     document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
     // Tickets por tipo del mes.
     if (d.tickets_by_type) renderTicketsByType(d.tickets_by_type);
+    // Tiempo de resolución de incidencias DEV del mes.
+    renderIncidenciasResolucion(d.incidencias_res_media_dias, d.incidencias_res_mediana_dias, d.incidencias_res_muestra);
     // Top Clientes: barras segmentadas por tipo, con los mismos colores que el panel de tipos.
     const _slices = (d.tickets_by_type && d.tickets_by_type.slices) || [];
     const _order = _slices.map(s => s.label);
