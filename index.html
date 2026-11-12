@@ -336,20 +336,8 @@
     </div>
   </section>
 
-  <!-- SECONDARY KPIs · operacional (grid 6: resolución incidencias 1 · respuesta 1 · incidencias 4) -->
+  <!-- SECONDARY KPIs · operacional (grid 6: respuesta 1 · resolución incidencias 1 · incidencias 4) -->
   <section class="grid grid-cols-6 gap-4 px-10 mt-3 shrink-0">
-    <!-- Tiempo de resolución de incidencias DEV resueltas este mes: desde que el ticket
-         pasa a «En Desarrollo» hasta que pasa a cualquier estado resuelto (días naturales). -->
-    <div class="card p-4 flex flex-col justify-center">
-      <h2 class="title text-sm">Resolución incidencias · mes</h2>
-      <div class="text-xs title text-slate-400 mt-2">MEDIA</div>
-      <div id="kpiIncResMedia" class="kpi-number text-4xl leading-none mt-1">—</div>
-      <div class="flex items-baseline gap-2 mt-3">
-        <div class="text-xs title text-slate-400">MEDIANA</div>
-        <div id="kpiIncResMediana" class="kpi-number text-xl leading-none">—</div>
-      </div>
-      <div class="text-xs text-slate-400 mt-2"><span id="kpiIncResDetail">muestra: —</span></div>
-    </div>
     <!-- FRT en 1 col: la mediana manda (la media la desvía un solo outlier),
          la media queda como línea de apoyo. -->
     <div class="card p-4 flex flex-col justify-center">
@@ -361,6 +349,18 @@
         <div id="kpiFRTAvg" class="kpi-number text-xl leading-none">—</div>
       </div>
       <div class="text-xs text-slate-400 mt-2"><span id="kpiFRTDetail">muestra: —</span></div>
+    </div>
+    <!-- Tiempo de resolución de incidencias DEV resueltas este mes: desde que el ticket
+         pasa a «En Desarrollo» hasta que pasa a cualquier estado resuelto (días naturales). -->
+    <div class="card p-4 flex flex-col justify-center">
+      <h2 class="title text-sm">Resolución incidencias · mes</h2>
+      <div class="text-xs title text-slate-400 mt-2">MEDIA</div>
+      <div id="kpiIncResMedia" class="kpi-number text-4xl leading-none mt-1">—</div>
+      <div class="flex items-baseline gap-2 mt-3">
+        <div class="text-xs title text-slate-400">MEDIANA</div>
+        <div id="kpiIncResMediana" class="kpi-number text-xl leading-none">—</div>
+      </div>
+      <div class="text-xs text-slate-400 mt-2"><span id="kpiIncResDetail">muestra: —</span></div>
     </div>
     <div class="card p-4 col-span-4">
       <div class="flex items-baseline justify-between">
