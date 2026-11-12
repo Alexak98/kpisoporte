@@ -926,7 +926,7 @@
           "parameters": [
             {
               "name": "query",
-              "value": "=type:ticket tags:incidencia_dev solved>={{ $('Calcular fechas').first().json.month_ymd }}"
+              "value": "=type:ticket tags:incidencia_dev created>={{ $('Calcular fechas').first().json.month_ymd }} solved>={{ $('Calcular fechas').first().json.month_ymd }}"
             },
             {
               "name": "per_page",
@@ -959,7 +959,7 @@
         -2100
       ],
       "parameters": {
-        "jsCode": "// Incidencias DEV del mes: creadas vs resueltas (etiqueta incidencia_dev).\n// Solo el count de la Search API; per_page=1 para no traer resultados.\nconst acc = $('Calcular FRT').first().json;\nreturn [{ json: { ...acc,\n  zd_incdev_created_month: $('ZD IncDev Creadas Mes').first().json,\n  zd_incdev_solved_month: $input.first().json\n} }];"
+        "jsCode": "// Incidencias DEV del mes: creadas vs resueltas (etiqueta incidencia_dev).\n// Resueltas = de las creadas este mes, las ya resueltas (no cuenta las de meses anteriores).\n// Solo el count de la Search API; per_page=1 para no traer resultados.\nconst acc = $('Calcular FRT').first().json;\nreturn [{ json: { ...acc,\n  zd_incdev_created_month: $('ZD IncDev Creadas Mes').first().json,\n  zd_incdev_solved_month: $input.first().json\n} }];"
       }
     }
   ],

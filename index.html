@@ -466,7 +466,7 @@
       <div id="typeChart" class="flex-1 min-h-0 overflow-hidden flex flex-col gap-1"></div>
     </div>
 
-    <!-- INCIDENCIAS DEV · creadas vs resueltas este mes (etiqueta incidencia_dev en Zendesk) -->
+    <!-- INCIDENCIAS DEV · creadas este mes y, de ellas, las resueltas (etiqueta incidencia_dev en Zendesk) -->
     <div class="card p-4 col-span-1 flex flex-col min-h-0 overflow-hidden">
       <div class="shrink-0">
         <h2 class="text-xl font-bold leading-tight">Incidencias DEV</h2>
@@ -493,8 +493,8 @@
           </div>
         </div>
       </div>
-      <!-- Saldo: si entran más de las que se resuelven, el backlog DEV crece -->
-      <div id="incMesSaldo" class="shrink-0 text-sm mt-2 text-slate-400">Backlog —</div>
+      <!-- Las creadas este mes que siguen abiertas -->
+      <div id="incMesSaldo" class="shrink-0 text-sm mt-2 text-slate-400">—</div>
     </div>
 
     <!-- CLIENTES: top este mes (creados) -->
@@ -819,6 +819,7 @@
   }
 
   // === Incidencias DEV del mes: creadas vs resueltas ===
+  // Cohorte del mes: resueltas = de las creadas este mes, las ya resueltas.
   // Barras relativas a la mayor de las dos. null = la búsqueda de Zendesk falló:
   // se pinta '—' en vez de un 0 que parecería real.
   function renderIncidenciasMes(creadas, resueltas) {
@@ -831,14 +832,14 @@
     const el = document.getElementById('incMesSaldo');
     el.classList.remove('text-emerald-300','text-rose-300','text-slate-400');
     if (!has(creadas) || !has(resueltas)) {
-      el.textContent = 'Backlog —';
+      el.textContent = '—';
       el.classList.add('text-slate-400');
       return;
     }
-    const diff = creadas - resueltas;   // > 0: entran más de las que salen
-    if (diff > 0)      { el.innerHTML = `Backlog <span class="font-bold">▲ +${diff}</span>`; el.classList.add('text-rose-300'); }
-    else if (diff < 0) { el.innerHTML = `Backlog <span class="font-bold">▼ −${-diff}</span>`; el.classList.add('text-emerald-300'); }
-    else               { el.textContent = 'Backlog estable'; el.classList.add('text-slate-400'); }
+    // Resueltas son un subconjunto de las creadas este mes: la resta son las que siguen abiertas.
+    const abiertas = Math.max(creadas - resueltas, 0);
+    if (abiertas > 0) { el.innerHTML = `<span class="font-bold kpi-number">${abiertas}</span> siguen abiertas`; el.classList.add('text-rose-300'); }
+    else              { el.textContent = creadas ? 'Todas resueltas' : 'Ninguna este mes'; el.classList.add(creadas ? 'text-emerald-300' : 'text-slate-400'); }
   }
 
   function setNum(id, val) {
