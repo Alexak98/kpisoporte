@@ -185,8 +185,10 @@
   </style>
   <!-- Tailwind generado (ver tailwind.config.js); regenerar al tocar clases:
        npx tailwindcss@3.4.17 -i tailwind.input.css -o tailwind.css
-       Va DESPUÉS del <style>: las utilidades deben ganar a .title como con el CDN. -->
-  <link rel="stylesheet" href="tailwind.css">
+       Va DESPUÉS del <style>: las utilidades deben ganar a .title como con el CDN.
+       ?v= rompe la caché (Pages da max-age=600): al regenerar, subir la versión, o la TV
+       carga el HTML nuevo con el CSS viejo y las clases nuevas no existen. -->
+  <link rel="stylesheet" href="tailwind.css?v=2026-11-13a">
 </head>
 <body>
 
