@@ -733,7 +733,7 @@
         -1840
       ],
       "parameters": {
-        "jsCode": "// Agregar todos los counters en el JSON final (sin histRes-dependent)\nconst d = $input.first().json;\nfunction count(o){ return (o && (typeof o.count === 'number' ? o.count : (Array.isArray(o.results) ? o.results.length : 0))) || 0; }\nfunction results(o){ return (o && Array.isArray(o.results)) ? o.results : []; }\n\nconst today_ia      = count(d.zd_today_ia);\nconst today_manual  = count(d.zd_today_manual);\nconst yesterday_ia  = count(d.zd_yesterday_ia);\nconst yesterday_man = count(d.zd_yesterday_manual);\nconst week_ia       = count(d.zd_week_ia);\nconst week_manual   = count(d.zd_week_manual);\nconst month_ia      = count(d.zd_month_ia);\nconst month_manual  = count(d.zd_month_manual);\nconst open          = count(d.zd_open);\nconst solved_today  = count(d.zd_solved_today);\nconst aged          = count(d.zd_aged);\nconst incidencias   = count(d.zd_incidencias);\n// Mes: null si la busqueda fallo (neverError), para no pintar un 0 falso.\nfunction countOrNull(o){ return (o && typeof o.count === 'number') ? o.count : null; }\nconst incdev_creadas_mes   = countOrNull(d.zd_incdev_created_month);\nconst incdev_resueltas_mes = countOrNull(d.zd_incdev_solved_month);\n\n// Incidencias buckets desde results (HTTP search devuelve hasta 100)\nconst incRes = results(d.zd_incidencias);\nconst incidencias_list = incRes.map(t => ({\n  id: t.id,\n  subject: t.subject || '(sin asunto)',\n  status: t.status,\n  priority: t.priority,\n  created_at: t.created_at,\n  organization_id: t.organization_id,\n  age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n  url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n}));\nconst incidencias_buckets = { lt30:0, b30_60:0, b60_100:0, gt100:0 };\nfor (const t of incidencias_list) {\n  const a = t.age_days || 0;\n  if (a < 30) incidencias_buckets.lt30++;\n  else if (a < 60) incidencias_buckets.b30_60++;\n  else if (a < 100) incidencias_buckets.b60_100++;\n  else incidencias_buckets.gt100++;\n}\n\n// Aged list (puede traer hasta 100 — la HTTP search no pagina)\nconst agedRes = results(d.zd_aged);\nconst aged_tickets_list = agedRes\n  .filter(t => t && t.id)\n  .sort((a,b) => new Date(a.created_at) - new Date(b.created_at))\n  .map(t => ({\n    id: t.id,\n    subject: t.subject || '(sin asunto)',\n    status: t.status,\n    priority: t.priority,\n    created_at: t.created_at,\n    organization_id: t.organization_id,\n    age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n  }));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  _workflow_version: 'light-v1',\n  _light: true,\n  // Tickets counters\n  tickets_today: today_ia + today_manual,\n  tickets_today_ia: today_ia,\n  tickets_today_manual: today_manual,\n  tickets_yesterday: yesterday_ia + yesterday_man,\n  tickets_yesterday_ia: yesterday_ia,\n  tickets_yesterday_manual: yesterday_man,\n  tickets_week: week_ia + week_manual,\n  tickets_week_ia: week_ia,\n  tickets_week_manual: week_manual,\n  tickets_month: month_ia + month_manual,\n  tickets_month_ia: month_ia,\n  tickets_month_manual: month_manual,\n  tickets_open: open,\n  tickets_solved_today: solved_today,\n  backlog_today: today_manual - solved_today,\n  // Operativos\n  tickets_aged_3d: aged,\n  tickets_incidencias_dev: incidencias,\n  incidencias_dev_creadas_mes: incdev_creadas_mes,\n  incidencias_dev_resueltas_mes: incdev_resueltas_mes,\n  aged_tickets_list,\n  incidencias_list,\n  incidencias_buckets,\n  // FRT\n  frt_avg_min: d.frt_avg_min ?? null,\n  frt_sample: d.frt_sample ?? 0,\n  frt_answered: d.frt_answered ?? 0,\n  frt_pending: d.frt_pending ?? 0,\n  frt_min: d.frt_min ?? null,\n  frt_max: d.frt_max ?? null,\n  frt_median: d.frt_median ?? null,\n  frt_breakdown: d.frt_breakdown || [],\n  frt_pending_list: d.frt_pending_list || [],\n  frt_excluded_list: d.frt_excluded_list || [],\n  frt_excluded_count: d.frt_excluded_count ?? 0,\n  _frt_used_business: d._frt_used_business ?? 0,\n  _frt_used_calendar: d._frt_used_calendar ?? 0,\n  // Sprint breakdown (Asana): incidencias DEV abiertas cruzadas con project\n  // Tickets Zendesk (1209422123678036) via custom field ID Zendesk (1213032964664949).\n  incidencias_en_sprint: d.incidencias_en_sprint ?? null,\n  incidencias_sin_sprint: d.incidencias_sin_sprint ?? null,\n  incidencias_en_sprint_list: d.incidencias_en_sprint_list || [],\n  incidencias_sin_sprint_list: d.incidencias_sin_sprint_list || [],\n  // Tipo en Asana de las incidencias DEV abiertas con tarea (Error incluye P1).\n  incidencias_tipo_error: d.incidencias_tipo_error ?? null,\n  incidencias_tipo_externo: d.incidencias_tipo_externo ?? null,\n  incidencias_con_tarea: d.incidencias_con_tarea ?? null\n} }];"
+        "jsCode": "// Agregar todos los counters en el JSON final (sin histRes-dependent)\nconst d = $input.first().json;\nfunction count(o){ return (o && (typeof o.count === 'number' ? o.count : (Array.isArray(o.results) ? o.results.length : 0))) || 0; }\nfunction results(o){ return (o && Array.isArray(o.results)) ? o.results : []; }\n\nconst today_ia      = count(d.zd_today_ia);\nconst today_manual  = count(d.zd_today_manual);\nconst yesterday_ia  = count(d.zd_yesterday_ia);\nconst yesterday_man = count(d.zd_yesterday_manual);\nconst week_ia       = count(d.zd_week_ia);\nconst week_manual   = count(d.zd_week_manual);\nconst month_ia      = count(d.zd_month_ia);\nconst month_manual  = count(d.zd_month_manual);\nconst open          = count(d.zd_open);\nconst solved_today  = count(d.zd_solved_today);\nconst aged          = count(d.zd_aged);\nconst incidencias   = count(d.zd_incidencias);\n\n// Incidencias buckets desde results (HTTP search devuelve hasta 100)\nconst incRes = results(d.zd_incidencias);\nconst incidencias_list = incRes.map(t => ({\n  id: t.id,\n  subject: t.subject || '(sin asunto)',\n  status: t.status,\n  priority: t.priority,\n  created_at: t.created_at,\n  organization_id: t.organization_id,\n  age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n  url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n}));\nconst incidencias_buckets = { lt30:0, b30_60:0, b60_100:0, gt100:0 };\nfor (const t of incidencias_list) {\n  const a = t.age_days || 0;\n  if (a < 30) incidencias_buckets.lt30++;\n  else if (a < 60) incidencias_buckets.b30_60++;\n  else if (a < 100) incidencias_buckets.b60_100++;\n  else incidencias_buckets.gt100++;\n}\n\n// Aged list (puede traer hasta 100 — la HTTP search no pagina)\nconst agedRes = results(d.zd_aged);\nconst aged_tickets_list = agedRes\n  .filter(t => t && t.id)\n  .sort((a,b) => new Date(a.created_at) - new Date(b.created_at))\n  .map(t => ({\n    id: t.id,\n    subject: t.subject || '(sin asunto)',\n    status: t.status,\n    priority: t.priority,\n    created_at: t.created_at,\n    organization_id: t.organization_id,\n    age_days: t.created_at ? Math.floor((Date.now() - new Date(t.created_at).getTime()) / 86400000) : null,\n    url: `https://soporteyurest.zendesk.com/agent/tickets/${t.id}`\n  }));\n\nreturn [{ json: {\n  generated_at: new Date().toISOString(),\n  _workflow_version: 'light-v1',\n  _light: true,\n  // Tickets counters\n  tickets_today: today_ia + today_manual,\n  tickets_today_ia: today_ia,\n  tickets_today_manual: today_manual,\n  tickets_yesterday: yesterday_ia + yesterday_man,\n  tickets_yesterday_ia: yesterday_ia,\n  tickets_yesterday_manual: yesterday_man,\n  tickets_week: week_ia + week_manual,\n  tickets_week_ia: week_ia,\n  tickets_week_manual: week_manual,\n  tickets_month: month_ia + month_manual,\n  tickets_month_ia: month_ia,\n  tickets_month_manual: month_manual,\n  tickets_open: open,\n  tickets_solved_today: solved_today,\n  backlog_today: today_manual - solved_today,\n  // Operativos\n  tickets_aged_3d: aged,\n  tickets_incidencias_dev: incidencias,\n  aged_tickets_list,\n  incidencias_list,\n  incidencias_buckets,\n  // FRT\n  frt_avg_min: d.frt_avg_min ?? null,\n  frt_sample: d.frt_sample ?? 0,\n  frt_answered: d.frt_answered ?? 0,\n  frt_pending: d.frt_pending ?? 0,\n  frt_min: d.frt_min ?? null,\n  frt_max: d.frt_max ?? null,\n  frt_median: d.frt_median ?? null,\n  frt_breakdown: d.frt_breakdown || [],\n  frt_pending_list: d.frt_pending_list || [],\n  frt_excluded_list: d.frt_excluded_list || [],\n  frt_excluded_count: d.frt_excluded_count ?? 0,\n  _frt_used_business: d._frt_used_business ?? 0,\n  _frt_used_calendar: d._frt_used_calendar ?? 0,\n  // Sprint breakdown (Asana): incidencias DEV abiertas cruzadas con project\n  // Tickets Zendesk (1209422123678036) via custom field ID Zendesk (1213032964664949).\n  incidencias_en_sprint: d.incidencias_en_sprint ?? null,\n  incidencias_sin_sprint: d.incidencias_sin_sprint ?? null,\n  incidencias_en_sprint_list: d.incidencias_en_sprint_list || [],\n  incidencias_sin_sprint_list: d.incidencias_sin_sprint_list || [],\n  // Tipo en Asana de las incidencias DEV abiertas con tarea (Error incluye P1).\n  incidencias_tipo_error: d.incidencias_tipo_error ?? null,\n  incidencias_tipo_externo: d.incidencias_tipo_externo ?? null,\n  incidencias_con_tarea: d.incidencias_con_tarea ?? null\n} }];"
       }
     },
     {
@@ -859,107 +859,6 @@
       ],
       "parameters": {
         "jsCode": "// Guarda el resultado recien calculado en static data para los siguientes 5 min.\nconst payload = $input.first().json;\nconst sd = $getWorkflowStaticData('global');\nsd.light_payload = payload;\nsd.light_cached_at = new Date().toISOString();\nreturn [{ json: { ...payload, _cache_hit: false, _cached_at: sd.light_cached_at, _cache_age_s: 0 } }];"
-      }
-    },
-    {
-      "id": "3a1a4ca6-6ad5-4c2e-8dd0-a9653fad2282",
-      "name": "ZD IncDev Creadas Mes",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "position": [
-        38256,
-        -2100
-      ],
-      "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "query",
-              "value": "=type:ticket tags:incidencia_dev created>={{ $('Calcular fechas').first().json.month_ymd }}"
-            },
-            {
-              "name": "per_page",
-              "value": "1"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
-        }
-      },
-      "credentials": {
-        "zendeskApi": {
-          "id": "KagVdQFawJyTOzEO",
-          "name": "Zendesk account"
-        }
-      }
-    },
-    {
-      "id": "87d187fe-6a99-43f1-ad0d-89f354ed4bf9",
-      "name": "ZD IncDev Resueltas Mes",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "position": [
-        38400,
-        -2100
-      ],
-      "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "query",
-              "value": "=type:ticket tags:incidencia_dev created>={{ $('Calcular fechas').first().json.month_ymd }} solved>={{ $('Calcular fechas').first().json.month_ymd }}"
-            },
-            {
-              "name": "per_page",
-              "value": "1"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
-        }
-      },
-      "credentials": {
-        "zendeskApi": {
-          "id": "KagVdQFawJyTOzEO",
-          "name": "Zendesk account"
-        }
-      }
-    },
-    {
-      "id": "025d369c-bf1d-4962-8341-59fa8f90563c",
-      "name": "Guardar IncDev Mes",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        38544,
-        -2100
-      ],
-      "parameters": {
-        "jsCode": "// Incidencias DEV del mes: creadas vs resueltas (etiqueta incidencia_dev).\n// Resueltas = de las creadas este mes, las ya resueltas (no cuenta las de meses anteriores).\n// Solo el count de la Search API; per_page=1 para no traer resultados.\nconst acc = $('Calcular FRT').first().json;\nreturn [{ json: { ...acc,\n  zd_incdev_created_month: $('ZD IncDev Creadas Mes').first().json,\n  zd_incdev_solved_month: $input.first().json\n} }];"
       }
     }
   ],
@@ -1346,39 +1245,6 @@
       ]
     },
     "Calcular FRT": {
-      "main": [
-        [
-          {
-            "node": "ZD IncDev Creadas Mes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "ZD IncDev Creadas Mes": {
-      "main": [
-        [
-          {
-            "node": "ZD IncDev Resueltas Mes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "ZD IncDev Resueltas Mes": {
-      "main": [
-        [
-          {
-            "node": "Guardar IncDev Mes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Guardar IncDev Mes": {
       "main": [
         [
           {
