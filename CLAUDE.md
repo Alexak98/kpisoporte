@@ -25,7 +25,7 @@ Dashboard de KPIs de soporte Zendesk. Frontend estático (`index.html`) que cons
 ## Contexto técnico
 
 - `index.html` — dashboard, vanilla JS, lee del cache slim.
-- `tailwind.css` — generado desde `tailwind.config.js` + `tailwind.input.css`. Tras añadir o cambiar clases en `index.html` hay que regenerarlo (`npx tailwindcss@3.4.17 -i tailwind.input.css -o tailwind.css`) y commitearlo; si no, la clase nueva no existe en producción. El `<link>` va después del `<style>` para que las utilidades ganen a `.title`.
+- `tailwind.css` — generado desde `tailwind.config.js` + `tailwind.input.css`. Tras añadir o cambiar clases en `index.html` hay que regenerarlo (`npx tailwindcss@3.4.17 -i tailwind.input.css -o tailwind.css`) y commitearlo; si no, la clase nueva no existe en producción. Al regenerarlo, sube también la versión del `<link href="tailwind.css?v=…">`: Pages lo cachea 10 min y la TV cargaría el HTML nuevo con el CSS viejo (pasó el 13-nov: los cuadros de sprint salieron apilados). El `<link>` va después del `<style>` para que las utilidades ganen a `.title`.
 - Texto que llega de Zendesk/n8n y se mete en `innerHTML` o en un atributo pasa por `escapeHtml()`.
 - `n8n-workflow-kpis-soporte.json` — workflow principal de generación de KPIs.
 - `n8n-workflow-kpis-light.json` — variante ligera (solo campos pintados).
