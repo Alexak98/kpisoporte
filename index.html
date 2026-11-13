@@ -377,11 +377,11 @@
         <h2 class="title text-lg">Incidencias DEV</h2>
         <div id="kpiIncidencias" class="kpi-number text-4xl">0</div>
       </div>
-      <!-- Cuerpo en dos mitades: antigüedad a la izquierda; sprint a la derecha,
-           así los cuadros de sprint ganan ancho sin robar alto a los charts. -->
-      <div class="grid grid-cols-2 gap-5 mt-2 items-start">
+      <!-- Cuerpo 2/5 + 3/5: antigüedad a la izquierda (más estrecha); a la derecha
+           los cuadros de sprint (Error / Error externo) y sin gestionar. -->
+      <div class="grid grid-cols-5 gap-5 mt-2 items-start">
         <!-- Antigüedad: barra apilada + leyenda -->
-        <div>
+        <div class="col-span-2">
           <div class="w-full h-2 bg-slate-800/60 rounded-full overflow-hidden flex">
             <div id="incBarLt30"   class="h-full" style="background:var(--age-fresh);width:0%"></div>
             <div id="incBar30_60"  class="h-full" style="background:var(--age-warn);width:0%"></div>
@@ -419,17 +419,26 @@
             </div>
           </div>
         </div>
-        <!-- Sprint: tarea Asana en proyecto Sprint vs sin asignar. Es la lectura
-             accionable del panel (cuánto backlog DEV está sin tocar). -->
-        <div class="grid grid-cols-2 gap-3">
+        <!-- Sprint: tarea Asana en proyecto Sprint, partida por «Tipo» de Asana
+             (Error incluye ERROR - P1), y sin gestionar. Es la lectura accionable
+             del panel (cuánto backlog DEV está sin tocar). -->
+        <div class="col-span-3 grid grid-cols-3 gap-3">
           <div class="rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-300/20">
-            <div class="text-xs title text-emerald-300/80">En sprint</div>
+            <div class="text-xs title text-emerald-300/80">En sprint · Error</div>
             <div class="flex items-baseline gap-2 mt-1">
-              <div id="incSprintEn"    class="kpi-number text-3xl text-emerald-300 leading-none">—</div>
-              <div id="incSprintEnPct" class="text-sm text-emerald-300/80">—</div>
+              <div id="incSprintErr"    class="kpi-number text-3xl text-emerald-300 leading-none">—</div>
+              <div id="incSprintErrPct" class="text-sm text-emerald-300/80">—</div>
             </div>
             <!-- Desglose por estado (sección del Sprint en Asana) -->
-            <div id="incSprintEstados" class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-slate-400"></div>
+            <div id="incSprintErrEstados" class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-slate-400"></div>
+          </div>
+          <div class="rounded-lg px-3 py-2 bg-emerald-500/10 border border-emerald-300/20">
+            <div class="text-xs title text-emerald-300/80">En sprint · Error externo</div>
+            <div class="flex items-baseline gap-2 mt-1">
+              <div id="incSprintExt"    class="kpi-number text-3xl text-emerald-300 leading-none">—</div>
+              <div id="incSprintExtPct" class="text-sm text-emerald-300/80">—</div>
+            </div>
+            <div id="incSprintExtEstados" class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-slate-400"></div>
           </div>
           <div class="rounded-lg px-3 py-2 bg-rose-500/10 border border-rose-300/20">
             <div class="text-xs title text-rose-300/80">Sin gestionar</div>
@@ -993,44 +1002,56 @@
       // Sprint breakdown (Asana): tarea en proyecto Sprint vs sin gestionar.
       // Backend n8n debe rellenar 'incidencias_en_sprint' y 'incidencias_sin_sprint'
       // cruzando incidencias_list con Asana (custom field zendesk_id + project name ~ /Sprint/i).
+      // En sprint se parte por «Tipo» de Asana (campo 'tipo' de cada tarea: error /
+      // externo / otro). Los porcentajes son sobre el total abierto (en sprint + sin gestionar).
       const spEn  = d.incidencias_en_sprint;
       const spSin = d.incidencias_sin_sprint;
-      const spEnEl    = document.getElementById('incSprintEn');
-      const spEnPctEl = document.getElementById('incSprintEnPct');
+      const enList = Array.isArray(d.incidencias_en_sprint_list) ? d.incidencias_en_sprint_list : [];
+      // Sin el campo 'tipo' (caché vieja del backend) no se puede partir: '—'.
+      const conTipo = enList.length === 0 || enList.some(t => t && t.tipo);
       const spSinEl    = document.getElementById('incSprintSin');
       const spSinPctEl = document.getElementById('incSprintSinPct');
+      const tot = (spEn ?? 0) + (spSin ?? 0);
+      const pct = n => tot ? Math.round(n / tot * 100) + '%' : '—';
       if (spEn == null && spSin == null) {
-        spEnEl.textContent = '—';    spEnPctEl.textContent = '—';
         spSinEl.textContent = '—';   spSinPctEl.textContent = '—';
       } else {
-        const en  = spEn  ?? 0;
-        const sin = spSin ?? 0;
-        const tot = en + sin;
-        spEnEl.textContent   = en;
-        spSinEl.textContent  = sin;
-        spEnPctEl.textContent  = tot ? Math.round(en  / tot * 100) + '%' : '—';
-        spSinPctEl.textContent = tot ? Math.round(sin / tot * 100) + '%' : '—';
+        spSinEl.textContent  = spSin ?? 0;
+        spSinPctEl.textContent = pct(spSin ?? 0);
       }
-      // En sprint: agrupadas por estado, en el orden del tablero; los desconocidos al final.
+      // Cada cuadro: número, % y desglose por estado, en el orden del tablero.
       const ORDEN_ESTADOS = ['Sprint Backlog', 'En curso', 'En espera', 'QA', 'QC', 'No Finalizada (SSP)'];
-      const porEstado = {};
-      for (const t of (d.incidencias_en_sprint_list || [])) {
-        const e = (t && t.estado) || 'Sin estado';
-        porEstado[e] = (porEstado[e] || 0) + 1;
-      }
       const rango = e => { const i = ORDEN_ESTADOS.indexOf(e); return i < 0 ? 99 : i; };
-      const estadosEl = document.getElementById('incSprintEstados');
-      estadosEl.replaceChildren(...Object.keys(porEstado)
-        .sort((a, b) => rango(a) - rango(b) || porEstado[b] - porEstado[a])
-        .map(e => {
-          const row = document.createElement('div');
-          row.className = 'whitespace-nowrap';
-          const n = document.createElement('span');
-          n.className = 'kpi-number text-emerald-200';
-          n.textContent = porEstado[e];
-          row.append(n, ' ' + e);
-          return row;
-        }));
+      const pintarSprint = (tipo, idNum, idPct, idEstados) => {
+        const numEl = document.getElementById(idNum);
+        const pctEl = document.getElementById(idPct);
+        const estadosEl = document.getElementById(idEstados);
+        if (spEn == null || !conTipo) {
+          numEl.textContent = '—'; pctEl.textContent = '—'; estadosEl.replaceChildren();
+          return;
+        }
+        const lista = enList.filter(t => t && t.tipo === tipo);
+        numEl.textContent = lista.length;
+        pctEl.textContent = pct(lista.length);
+        const porEstado = {};
+        for (const t of lista) {
+          const e = t.estado || 'Sin estado';
+          porEstado[e] = (porEstado[e] || 0) + 1;
+        }
+        estadosEl.replaceChildren(...Object.keys(porEstado)
+          .sort((a, b) => rango(a) - rango(b) || porEstado[b] - porEstado[a])
+          .map(e => {
+            const row = document.createElement('div');
+            row.className = 'whitespace-nowrap';
+            const n = document.createElement('span');
+            n.className = 'kpi-number text-emerald-200';
+            n.textContent = porEstado[e];
+            row.append(n, ' ' + e);
+            return row;
+          }));
+      };
+      pintarSprint('error',   'incSprintErr', 'incSprintErrPct', 'incSprintErrEstados');
+      pintarSprint('externo', 'incSprintExt', 'incSprintExtPct', 'incSprintExtEstados');
       // Sin gestionar: con tarea Asana (asana_url) vs sin tarea.
       const sinList = d.incidencias_sin_sprint_list;
       const conAsana = Array.isArray(sinList) ? sinList.filter(t => t && t.asana_url).length : null;
