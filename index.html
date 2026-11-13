@@ -336,19 +336,28 @@
     </div>
   </section>
 
-  <!-- SECONDARY KPIs · operacional (grid 6: respuesta 1 · resolución incidencias 1 · incidencias 4) -->
+  <!-- SECONDARY KPIs · incidencias DEV (grid 6: por tipo 1 · resolución 1 · incidencias 4) -->
   <section class="grid grid-cols-6 gap-4 px-10 mt-3 shrink-0">
-    <!-- FRT en 1 col: la mediana manda (la media la desvía un solo outlier),
-         la media queda como línea de apoyo. -->
+    <!-- INCIDENCIAS DEV POR TIPO · abiertas con tarea en Asana, campo «Tipo» (Error incluye ERROR - P1).
+         En la fila de incidencias, junto a resolución e Incidencias DEV. -->
     <div class="card p-4 flex flex-col justify-center">
-      <h2 class="title text-sm">Tiempo respuesta · hoy</h2>
-      <div class="text-xs title text-slate-400 mt-2">MEDIANA</div>
-      <div id="kpiFRTMedian" class="kpi-number text-4xl leading-none mt-1">—</div>
-      <div class="flex items-baseline gap-2 mt-3">
-        <div class="text-xs title text-slate-400">MEDIA</div>
-        <div id="kpiFRTAvg" class="kpi-number text-xl leading-none">—</div>
+      <h2 class="title text-sm">Incidencias DEV · tipo</h2>
+      <div class="flex items-baseline justify-between gap-2 mt-2">
+        <div class="text-xs title text-slate-400">ERROR</div>
+        <div id="incTipoError" class="kpi-number text-3xl leading-none text-rose-300">—</div>
       </div>
-      <div class="text-xs text-slate-400 mt-2"><span id="kpiFRTDetail">muestra: —</span></div>
+      <div class="h-1.5 mt-1.5 rounded-full bg-slate-800/60 overflow-hidden">
+        <div id="incTipoBarError" class="h-full rounded-full" style="background:var(--error);width:0%"></div>
+      </div>
+      <div class="flex items-baseline justify-between gap-2 mt-2">
+        <div class="text-xs title text-slate-400">ERROR EXTERNO</div>
+        <div id="incTipoExterno" class="kpi-number text-3xl leading-none text-amber-300">—</div>
+      </div>
+      <div class="h-1.5 mt-1.5 rounded-full bg-slate-800/60 overflow-hidden">
+        <div id="incTipoBarExterno" class="h-full rounded-full" style="background:var(--tertiary);width:0%"></div>
+      </div>
+      <!-- Base de las barras: abiertas que ya tienen tarea en Asana -->
+      <div id="incTipoBase" class="text-xs text-slate-400 mt-2">—</div>
     </div>
     <!-- Tiempo de resolución de incidencias DEV pasadas a producción en los últimos 30 días
          (sin mirar cuándo se crearon): desde que se crea la tarea en Asana hasta que se mueve
@@ -440,7 +449,7 @@
   </section>
 
   <!-- CHARTS / LISTS · expande para absorber el hueco vertical sobrante -->
-  <!-- grid-8: hourly 3 (37%) · incidencias por tipo 1 (13%) · type 2 (25%) · topOrgs 2 (25%) -->
+  <!-- grid-8: hourly 3 (37%) · tiempo respuesta 1 (13%) · type 2 (25%) · topOrgs 2 (25%) -->
   <section class="grid grid-cols-8 gap-6 px-10 mt-3 flex-1 min-h-0">
     <!-- HOURLY COMPARISON -->
     <div class="card p-4 col-span-3 flex flex-col min-h-0 overflow-hidden">
@@ -451,35 +460,22 @@
       <div id="hourlyChart" class="flex-1 min-h-0 overflow-hidden flex flex-col"></div>
     </div>
 
-    <!-- INCIDENCIAS DEV POR TIPO · abiertas con tarea en Asana, campo «Tipo» (Error incluye ERROR - P1) -->
+    <!-- TIEMPO DE RESPUESTA · hoy. La mediana manda (la media la desvía un solo outlier),
+         la media queda como línea de apoyo. -->
     <div class="card p-4 col-span-1 flex flex-col min-h-0 overflow-hidden">
       <div class="shrink-0">
-        <h2 class="text-xl font-bold leading-tight">Incidencias DEV</h2>
-        <div class="text-sm text-slate-400">abiertas · tipo</div>
+        <h2 class="text-xl font-bold leading-tight">Tiempo respuesta</h2>
+        <div class="text-sm text-slate-400">hoy</div>
       </div>
-      <div class="flex-1 min-h-0 flex flex-col justify-center gap-4 mt-2">
-        <div>
-          <!-- Etiqueta y número en la misma línea: la fila de charts mide ~265 px y apilados no cabían -->
-          <div class="flex items-baseline justify-between gap-2">
-            <div class="text-xs title text-slate-400">ERROR</div>
-            <div id="incTipoError" class="kpi-number text-5xl leading-none text-rose-300">—</div>
-          </div>
-          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
-            <div id="incTipoBarError" class="h-full rounded-full" style="background:var(--error);width:0%"></div>
-          </div>
-        </div>
-        <div>
-          <div class="flex items-baseline justify-between gap-2">
-            <div class="text-xs title text-slate-400">ERROR EXTERNO</div>
-            <div id="incTipoExterno" class="kpi-number text-5xl leading-none text-amber-300">—</div>
-          </div>
-          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
-            <div id="incTipoBarExterno" class="h-full rounded-full" style="background:var(--tertiary);width:0%"></div>
-          </div>
+      <div class="flex-1 min-h-0 flex flex-col justify-center mt-2">
+        <div class="text-xs title text-slate-400">MEDIANA</div>
+        <div id="kpiFRTMedian" class="kpi-number text-5xl leading-none mt-1">—</div>
+        <div class="flex items-baseline gap-2 mt-3">
+          <div class="text-xs title text-slate-400">MEDIA</div>
+          <div id="kpiFRTAvg" class="kpi-number text-xl leading-none">—</div>
         </div>
       </div>
-      <!-- Base de las barras: abiertas que ya tienen tarea en Asana -->
-      <div id="incTipoBase" class="shrink-0 text-sm mt-2 text-slate-400">—</div>
+      <div class="shrink-0 text-sm mt-2 text-slate-400"><span id="kpiFRTDetail">muestra: —</span></div>
     </div>
 
     <!-- TICKETS POR TIPO · barras HTML, este mes -->
