@@ -829,8 +829,17 @@
     const base = Math.max(conTarea || 0, 1);
     document.getElementById('incTipoBarError').style.width   = ((error   || 0) / base * 100) + '%';
     document.getElementById('incTipoBarExterno').style.width = ((externo || 0) / base * 100) + '%';
-    document.getElementById('incTipoBase').textContent =
-      has(conTarea) ? `de ${conTarea} con tarea en Asana` : '—';
+    // Pie: «Otros N» (cualquier otro Tipo de Asana: Otros, Mejora…) para que cuadre
+    // con el total, y la base de las barras. Otros = con tarea − Error − Error externo.
+    const baseEl = document.getElementById('incTipoBase');
+    if (!has(conTarea)) { baseEl.textContent = '—'; }
+    else {
+      const otros = has(error) && has(externo) ? Math.max(conTarea - error - externo, 0) : null;
+      const n = document.createElement('span');
+      n.className = 'kpi-number text-slate-200';
+      n.textContent = otros ?? '—';
+      baseEl.replaceChildren('Otros ', n, ` · de ${conTarea} con tarea en Asana`);
+    }
   }
 
   // === Tiempo de resolución de incidencias DEV (pasadas a producción en 30 días) ===
