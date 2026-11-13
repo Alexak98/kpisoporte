@@ -440,15 +440,46 @@
   </section>
 
   <!-- CHARTS / LISTS · expande para absorber el hueco vertical sobrante -->
-  <!-- grid-8: hourly 4 (50%) · type 2 (25%) · topOrgs 2 (25%) -->
+  <!-- grid-8: hourly 3 (37%) · incidencias por tipo 1 (13%) · type 2 (25%) · topOrgs 2 (25%) -->
   <section class="grid grid-cols-8 gap-6 px-10 mt-3 flex-1 min-h-0">
     <!-- HOURLY COMPARISON -->
-    <div class="card p-4 col-span-4 flex flex-col min-h-0 overflow-hidden">
+    <div class="card p-4 col-span-3 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-3 shrink-0">
         <h2 class="text-xl font-bold">Tickets por hora</h2>
         <div class="text-xs text-slate-400">hoy · sin IA</div>
       </div>
       <div id="hourlyChart" class="flex-1 min-h-0 overflow-hidden flex flex-col"></div>
+    </div>
+
+    <!-- INCIDENCIAS DEV POR TIPO · abiertas con tarea en Asana, campo «Tipo» (Error incluye ERROR - P1) -->
+    <div class="card p-4 col-span-1 flex flex-col min-h-0 overflow-hidden">
+      <div class="shrink-0">
+        <h2 class="text-xl font-bold leading-tight">Incidencias DEV</h2>
+        <div class="text-sm text-slate-400">abiertas · tipo</div>
+      </div>
+      <div class="flex-1 min-h-0 flex flex-col justify-center gap-4 mt-2">
+        <div>
+          <!-- Etiqueta y número en la misma línea: la fila de charts mide ~265 px y apilados no cabían -->
+          <div class="flex items-baseline justify-between gap-2">
+            <div class="text-xs title text-slate-400">ERROR</div>
+            <div id="incTipoError" class="kpi-number text-5xl leading-none text-rose-300">—</div>
+          </div>
+          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
+            <div id="incTipoBarError" class="h-full rounded-full" style="background:var(--error);width:0%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-baseline justify-between gap-2">
+            <div class="text-xs title text-slate-400">ERROR EXTERNO</div>
+            <div id="incTipoExterno" class="kpi-number text-5xl leading-none text-amber-300">—</div>
+          </div>
+          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
+            <div id="incTipoBarExterno" class="h-full rounded-full" style="background:var(--tertiary);width:0%"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Base de las barras: abiertas que ya tienen tarea en Asana -->
+      <div id="incTipoBase" class="shrink-0 text-sm mt-2 text-slate-400">—</div>
     </div>
 
     <!-- TICKETS POR TIPO · barras HTML, este mes -->
@@ -781,6 +812,20 @@
     }).join('');
   }
 
+  // === Incidencias DEV abiertas por tipo (campo «Tipo» de la tarea en Asana) ===
+  // Error incluye ERROR - P1. Barras relativas a las abiertas con tarea en Asana.
+  // null = el cruce con Asana falló: se pinta '—' en vez de un 0 que parecería real.
+  function renderIncidenciasTipo(error, externo, conTarea) {
+    const has = v => typeof v === 'number';
+    document.getElementById('incTipoError').textContent   = has(error)   ? error   : '—';
+    document.getElementById('incTipoExterno').textContent = has(externo) ? externo : '—';
+    const base = Math.max(conTarea || 0, 1);
+    document.getElementById('incTipoBarError').style.width   = ((error   || 0) / base * 100) + '%';
+    document.getElementById('incTipoBarExterno').style.width = ((externo || 0) / base * 100) + '%';
+    document.getElementById('incTipoBase').textContent =
+      has(conTarea) ? `de ${conTarea} con tarea en Asana` : '—';
+  }
+
   // === Tiempo de resolución de incidencias DEV (pasadas a producción en 30 días) ===
   // Días naturales desde que se crea la tarea en Asana hasta «Producción». Menos de un día se pinta en horas.
   function renderIncidenciasResolucion(media, mediana, n) {
@@ -945,6 +990,9 @@
       document.getElementById('incPct30_60').textContent   = incPct(b.b30_60);
       document.getElementById('incPct60_100').textContent  = incPct(b.b60_100);
       document.getElementById('incPctGt100').textContent   = incPct(b.gt100);
+
+      // Incidencias DEV abiertas por tipo en Asana (Error / Error externo).
+      renderIncidenciasTipo(d.incidencias_tipo_error, d.incidencias_tipo_externo, d.incidencias_con_tarea);
 
       // Sprint breakdown (Asana): tarea en proyecto Sprint vs sin gestionar.
       // Backend n8n debe rellenar 'incidencias_en_sprint' y 'incidencias_sin_sprint'
