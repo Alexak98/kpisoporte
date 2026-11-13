@@ -350,11 +350,11 @@
       </div>
       <div class="text-xs text-slate-400 mt-2"><span id="kpiFRTDetail">muestra: —</span></div>
     </div>
-    <!-- Tiempo de resolución de incidencias DEV creadas y resueltas este mes (misma cohorte
-         que la tarjeta «Incidencias DEV · creadas este mes»): desde que el ticket
-         pasa a «En Desarrollo» hasta que pasa a cualquier estado resuelto (días naturales). -->
+    <!-- Tiempo de resolución de incidencias DEV pasadas a producción en los últimos 30 días
+         (sin mirar cuándo se crearon): desde que se crea la tarea en Asana hasta que se mueve
+         a la columna «Producción» (días naturales). -->
     <div class="card p-4 flex flex-col justify-center">
-      <h2 class="title text-sm">Resolución incidencias · mes</h2>
+      <h2 class="title text-sm">Resolución incidencias · 30 d</h2>
       <div class="text-xs title text-slate-400 mt-2">MEDIA</div>
       <div id="kpiIncResMedia" class="kpi-number text-4xl leading-none mt-1">—</div>
       <div class="flex items-baseline gap-2 mt-3">
@@ -440,7 +440,7 @@
   </section>
 
   <!-- CHARTS / LISTS · expande para absorber el hueco vertical sobrante -->
-  <!-- grid-8: hourly 3 (37%) · type 2 (25%) · incidencias mes 1 (13%) · topOrgs 2 (25%) -->
+  <!-- grid-8: hourly 3 (37%) · incidencias por tipo 1 (13%) · type 2 (25%) · topOrgs 2 (25%) -->
   <section class="grid grid-cols-8 gap-6 px-10 mt-3 flex-1 min-h-0">
     <!-- HOURLY COMPARISON -->
     <div class="card p-4 col-span-3 flex flex-col min-h-0 overflow-hidden">
@@ -451,6 +451,37 @@
       <div id="hourlyChart" class="flex-1 min-h-0 overflow-hidden flex flex-col"></div>
     </div>
 
+    <!-- INCIDENCIAS DEV POR TIPO · abiertas con tarea en Asana, campo «Tipo» (Error incluye ERROR - P1) -->
+    <div class="card p-4 col-span-1 flex flex-col min-h-0 overflow-hidden">
+      <div class="shrink-0">
+        <h2 class="text-xl font-bold leading-tight">Incidencias DEV</h2>
+        <div class="text-sm text-slate-400">abiertas · tipo</div>
+      </div>
+      <div class="flex-1 min-h-0 flex flex-col justify-center gap-4 mt-2">
+        <div>
+          <!-- Etiqueta y número en la misma línea: la fila de charts mide ~265 px y apilados no cabían -->
+          <div class="flex items-baseline justify-between gap-2">
+            <div class="text-xs title text-slate-400">ERROR</div>
+            <div id="incTipoError" class="kpi-number text-5xl leading-none text-rose-300">—</div>
+          </div>
+          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
+            <div id="incTipoBarError" class="h-full rounded-full" style="background:var(--error);width:0%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-baseline justify-between gap-2">
+            <div class="text-xs title text-slate-400">ERROR EXTERNO</div>
+            <div id="incTipoExterno" class="kpi-number text-5xl leading-none text-amber-300">—</div>
+          </div>
+          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
+            <div id="incTipoBarExterno" class="h-full rounded-full" style="background:var(--tertiary);width:0%"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Base de las barras: abiertas que ya tienen tarea en Asana -->
+      <div id="incTipoBase" class="shrink-0 text-sm mt-2 text-slate-400">—</div>
+    </div>
+
     <!-- TICKETS POR TIPO · barras HTML, este mes -->
     <div class="card p-3 col-span-2 flex flex-col min-h-0 overflow-hidden">
       <div class="flex items-center justify-between mb-1.5 shrink-0">
@@ -458,37 +489,6 @@
         <div class="text-sm text-slate-400">este mes</div>
       </div>
       <div id="typeChart" class="flex-1 min-h-0 overflow-hidden flex flex-col gap-1"></div>
-    </div>
-
-    <!-- INCIDENCIAS DEV · creadas este mes y, de ellas, las resueltas (etiqueta incidencia_dev en Zendesk) -->
-    <div class="card p-4 col-span-1 flex flex-col min-h-0 overflow-hidden">
-      <div class="shrink-0">
-        <h2 class="text-xl font-bold leading-tight">Incidencias DEV</h2>
-        <div class="text-sm text-slate-400">creadas este mes</div>
-      </div>
-      <div class="flex-1 min-h-0 flex flex-col justify-center gap-4 mt-2">
-        <div>
-          <!-- Etiqueta y número en la misma línea: la fila de charts mide ~265 px y apilados no cabían -->
-          <div class="flex items-baseline justify-between gap-2">
-            <div class="text-xs title text-slate-400">CREADAS</div>
-            <div id="incMesCreadas" class="kpi-number text-5xl leading-none text-amber-300">—</div>
-          </div>
-          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
-            <div id="incMesBarCreadas" class="h-full rounded-full" style="background:var(--tertiary);width:0%"></div>
-          </div>
-        </div>
-        <div>
-          <div class="flex items-baseline justify-between gap-2">
-            <div class="text-xs title text-slate-400">RESUELTAS</div>
-            <div id="incMesResueltas" class="kpi-number text-5xl leading-none text-emerald-300">—</div>
-          </div>
-          <div class="h-1.5 mt-2 rounded-full bg-slate-800/60 overflow-hidden">
-            <div id="incMesBarResueltas" class="h-full rounded-full" style="background:var(--secondary);width:0%"></div>
-          </div>
-        </div>
-      </div>
-      <!-- Las creadas este mes que siguen abiertas -->
-      <div id="incMesSaldo" class="shrink-0 text-sm mt-2 text-slate-400">—</div>
     </div>
 
     <!-- CLIENTES: top este mes (creados) -->
@@ -812,34 +812,22 @@
     }).join('');
   }
 
-  // === Incidencias DEV del mes: creadas vs resueltas ===
-  // Cohorte del mes: resueltas = de las creadas este mes, las ya resueltas.
-  // Barras relativas a la mayor de las dos. null = la búsqueda de Zendesk falló:
-  // se pinta '—' en vez de un 0 que parecería real.
-  function renderIncidenciasMes(creadas, resueltas) {
+  // === Incidencias DEV abiertas por tipo (campo «Tipo» de la tarea en Asana) ===
+  // Error incluye ERROR - P1. Barras relativas a las abiertas con tarea en Asana.
+  // null = el cruce con Asana falló: se pinta '—' en vez de un 0 que parecería real.
+  function renderIncidenciasTipo(error, externo, conTarea) {
     const has = v => typeof v === 'number';
-    document.getElementById('incMesCreadas').textContent   = has(creadas)   ? creadas   : '—';
-    document.getElementById('incMesResueltas').textContent = has(resueltas) ? resueltas : '—';
-    const max = Math.max(creadas || 0, resueltas || 0, 1);
-    document.getElementById('incMesBarCreadas').style.width   = ((creadas   || 0) / max * 100) + '%';
-    document.getElementById('incMesBarResueltas').style.width = ((resueltas || 0) / max * 100) + '%';
-    const el = document.getElementById('incMesSaldo');
-    el.classList.remove('text-emerald-300','text-rose-300','text-slate-400');
-    if (!has(creadas) || !has(resueltas)) {
-      el.textContent = '—';
-      el.classList.add('text-slate-400');
-      return;
-    }
-    // Resueltas son un subconjunto de las creadas este mes: la resta son las que siguen abiertas.
-    const abiertas = Math.max(creadas - resueltas, 0);
-    if (abiertas > 0) { el.innerHTML = `<span class="font-bold kpi-number">${abiertas}</span> siguen abiertas`; el.classList.add('text-rose-300'); }
-    else              { el.textContent = creadas ? 'Todas resueltas' : 'Ninguna este mes'; el.classList.add(creadas ? 'text-emerald-300' : 'text-slate-400'); }
+    document.getElementById('incTipoError').textContent   = has(error)   ? error   : '—';
+    document.getElementById('incTipoExterno').textContent = has(externo) ? externo : '—';
+    const base = Math.max(conTarea || 0, 1);
+    document.getElementById('incTipoBarError').style.width   = ((error   || 0) / base * 100) + '%';
+    document.getElementById('incTipoBarExterno').style.width = ((externo || 0) / base * 100) + '%';
+    document.getElementById('incTipoBase').textContent =
+      has(conTarea) ? `de ${conTarea} con tarea en Asana` : '—';
   }
 
-  // === Tiempo de resolución de incidencias DEV (creadas y resueltas este mes) ===
-  // Días naturales desde «En Desarrollo» hasta resuelto. Menos de un día se pinta en horas.
-  // n = las que tienen las dos fechas; puede ser menor que «Resueltas» de la otra tarjeta
-  // si alguna se resolvió sin pasar por En Desarrollo.
+  // === Tiempo de resolución de incidencias DEV (pasadas a producción en 30 días) ===
+  // Días naturales desde que se crea la tarea en Asana hasta «Producción». Menos de un día se pinta en horas.
   function renderIncidenciasResolucion(media, mediana, n) {
     const fmt = v => {
       if (typeof v !== 'number') return '—';
@@ -849,7 +837,7 @@
     document.getElementById('kpiIncResMedia').textContent   = fmt(media);
     document.getElementById('kpiIncResMediana').textContent = fmt(mediana);
     document.getElementById('kpiIncResDetail').textContent  =
-      typeof n === 'number' ? `${n} de las creadas este mes · desde En Desarrollo` : 'muestra: —';
+      typeof n === 'number' ? `${n} en producción · desde alta en Asana` : 'muestra: —';
   }
 
   function setNum(id, val) {
@@ -1003,8 +991,8 @@
       document.getElementById('incPct60_100').textContent  = incPct(b.b60_100);
       document.getElementById('incPctGt100').textContent   = incPct(b.gt100);
 
-      // Incidencias DEV del mes: creadas vs resueltas.
-      renderIncidenciasMes(d.incidencias_dev_creadas_mes, d.incidencias_dev_resueltas_mes);
+      // Incidencias DEV abiertas por tipo en Asana (Error / Error externo).
+      renderIncidenciasTipo(d.incidencias_tipo_error, d.incidencias_tipo_externo, d.incidencias_con_tarea);
 
       // Sprint breakdown (Asana): tarea en proyecto Sprint vs sin gestionar.
       // Backend n8n debe rellenar 'incidencias_en_sprint' y 'incidencias_sin_sprint'
