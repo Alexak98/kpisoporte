@@ -720,52 +720,39 @@
       }
     },
     {
-      "id": "1457add5-2343-418b-889c-e579f795dd29",
-      "name": "ZD IncDev Resueltas Mes Lista",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "42b8b743-c883-4ecd-bfa4-0d53e7d557b2",
+      "name": "Asana TZ Recientes",
+      "type": "n8n-nodes-base.asana",
+      "typeVersion": 1,
+      "alwaysOutputData": true,
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
       "position": [
         68096,
         -1056
       ],
       "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "query",
-              "value": "=type:ticket tags:incidencia_dev solved>={{ $('Calcular fechas').first().json.month_ymd }}"
-            },
-            {
-              "name": "per_page",
-              "value": "100"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "neverError": true
-            }
-          }
+        "authentication": "oAuth2",
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {
+          "project": "=1209422123678036",
+          "modified_since": "={{ new Date(Date.now() - 30 * 86400000).toISOString() }}",
+          "opt_fields": "={{ [\"gid\",\"created_at\",\"modified_at\",\"memberships.section.name\"] }}"
         }
       },
       "credentials": {
-        "zendeskApi": {
-          "id": "KagVdQFawJyTOzEO",
-          "name": "Zendesk account"
+        "asanaOAuth2Api": {
+          "id": "lg7A3NxFXWdmTBae",
+          "name": "Asana account"
         }
       }
     },
     {
-      "id": "ce3aeed8-11ac-41e2-86fd-1af44b46ab53",
-      "name": "Pendientes Audits IncDev",
+      "id": "d3518b11-403d-4b90-ada2-ddba4f459beb",
+      "name": "Pendientes Stories IncDev",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -773,12 +760,12 @@
         -1056
       ],
       "parameters": {
-        "jsCode": "// Tiempo de resolucion de incidencias DEV (resueltas este mes).\n// Cache por ticket en static data: solo se piden los audits de los tickets\n// nuevos o cambiados (updated_at distinto). Sale un item por ticket a\n// consultar; si no hay ninguno, un item {id:null} que el IF manda directo\n// al calculo.\nconst sd = $getWorkflowStaticData('global');\nconst cache = sd.incdev_res_cache || {};\nconst body = $input.first().json || {};\nconst res = Array.isArray(body.results) ? body.results : [];\nconst out = [];\nfor (const t of res) {\n  const c = cache[String(t.id)];\n  if (!c || c.u !== t.updated_at) out.push({ json: { id: t.id } });\n}\nreturn out.length ? out : [{ json: { id: null } }];"
+        "jsCode": "// Why Code: cache por tarea en static data entre ejecuciones.\n// Tiempo de resolucion de incidencias DEV (decision usuario 13-nov): tareas del\n// proyecto Asana 'Tickets Zendesk' que estan en una columna 'Produccion'.\n// Solo se piden los stories de las tareas nuevas o modificadas (modified_at\n// distinto). Sale un item por tarea a consultar; si no hay ninguna, un item\n// {gid:null} que el IF manda directo al calculo.\nconst PROD = /^\\s*producci[oó]n\\b/i;\nconst sd = $getWorkflowStaticData('global');\nconst cache = sd.incdev_prod_cache || {};\nconst out = [];\nfor (const it of $input.all()) {\n  const t = it.json || {};\n  if (!t.gid) continue;\n  const enProd = (t.memberships || []).some(m => m && m.section && PROD.test(m.section.name || ''));\n  if (!enProd) continue;\n  const c = cache[String(t.gid)];\n  if (!c || c.m !== t.modified_at || c.v !== 1) out.push({ json: { gid: t.gid } });\n}\nreturn out.length ? out : [{ json: { gid: null } }];"
       }
     },
     {
-      "id": "8758fc9f-0ff6-4723-9a2e-c053f626cec3",
-      "name": "Hay audits que pedir?",
+      "id": "6a310e80-07c2-407b-8403-03d7fef631bb",
+      "name": "Hay stories que pedir?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
@@ -795,8 +782,8 @@
           },
           "conditions": [
             {
-              "id": "c0a1f3e2-6b1d-4a77-9a55-1f2e3d4c5b6a",
-              "leftValue": "={{ !!$json.id }}",
+              "id": "5b1e9a40-2c7d-4f1e-9d3a-7a6c2e1f0b11",
+              "leftValue": "={{ !!$json.gid }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -811,8 +798,8 @@
       }
     },
     {
-      "id": "1ebde2dd-284c-4a83-ab5f-f240db77e43a",
-      "name": "ZD Audits IncDev",
+      "id": "c69b5ccb-0276-455e-b3a6-884628d73480",
+      "name": "Asana Stories IncDev",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "retryOnFail": true,
@@ -823,14 +810,31 @@
         -1120
       ],
       "parameters": {
-        "url": "={{ 'https://soporteyurest.zendesk.com/api/v2/tickets/' + $json.id + '/audits.json' }}",
+        "url": "={{ 'https://app.asana.com/api/1.0/tasks/' + $json.gid + '/stories' }}",
         "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "zendeskApi",
+        "nodeCredentialType": "asanaOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "opt_fields",
+              "value": "created_at,resource_subtype,new_section.name,target.gid"
+            },
+            {
+              "name": "sort_ascending",
+              "value": "false"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
         "options": {
           "batching": {
             "batch": {
               "batchSize": 10,
-              "batchInterval": 1500
+              "batchInterval": 1000
             }
           },
           "response": {
@@ -841,9 +845,9 @@
         }
       },
       "credentials": {
-        "zendeskApi": {
-          "id": "KagVdQFawJyTOzEO",
-          "name": "Zendesk account"
+        "asanaOAuth2Api": {
+          "id": "lg7A3NxFXWdmTBae",
+          "name": "Asana account"
         }
       }
     },
@@ -857,7 +861,7 @@
         -1056
       ],
       "parameters": {
-        "jsCode": "// Tiempo de resolucion de incidencias DEV resueltas este mes (decision\n// usuario 12-nov): desde que el ticket pasa al estado 'En Desarrollo'\n// (primera vez, incluido al crearse) hasta que pasa a cualquier estado\n// resuelto (la ultima vez, la de este mes). Dias naturales.\n// Si algo falla, devuelve nulls: el panel pinta '-' y el resto sigue.\nconst EN_DEV = '26672419086621';\ntry {\n  const sd = $getWorkflowStaticData('global');\n  const cache = sd.incdev_res_cache || {};\n  const lista = $('ZD IncDev Resueltas Mes Lista').first().json || {};\n  const res = Array.isArray(lista.results) ? lista.results : [];\n  const updById = new Map(res.map(t => [String(t.id), t.updated_at]));\n  for (const it of $input.all()) {\n    const audits = Array.isArray(it.json.audits) ? it.json.audits.slice() : [];\n    if (!audits.length) continue;\n    const id = String(audits[0].ticket_id);\n    audits.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));\n    let dev = null, sol = null;\n    for (const a of audits) for (const e of (a.events || [])) {\n      if ((e.type === 'Create' || e.type === 'Change') && String(e.field_name) === 'custom_status_id' && String(e.value) === EN_DEV && !dev) dev = a.created_at;\n      if (e.type === 'Change' && String(e.field_name) === 'status' && e.value === 'solved' && dev) sol = a.created_at;\n    }\n    cache[id] = { u: updById.get(id) || null, dev, sol };\n  }\n  // Solo quedan en cache los tickets resueltos este mes.\n  const vivos = {};\n  for (const id of updById.keys()) if (cache[id]) vivos[id] = cache[id];\n  sd.incdev_res_cache = vivos;\n  const dias = Object.values(vivos)\n    .filter(c => c.dev && c.sol)\n    .map(c => (new Date(c.sol) - new Date(c.dev)) / 86400000)\n    .filter(x => x >= 0)\n    .sort((a, b) => a - b);\n  const n = dias.length;\n  const media = n ? dias.reduce((s, x) => s + x, 0) / n : null;\n  const mediana = n ? (n % 2 ? dias[(n - 1) / 2] : (dias[n / 2 - 1] + dias[n / 2]) / 2) : null;\n  const r1 = v => (v == null ? null : Math.round(v * 10) / 10);\n  return [{ json: {\n    incdev_res_n: n,\n    incdev_res_total: res.length,\n    incdev_res_sin_dev: Object.values(vivos).filter(c => !c.dev).length,\n    incdev_res_media_d: r1(media),\n    incdev_res_mediana_d: r1(mediana)\n  } }];\n} catch (e) {\n  return [{ json: { incdev_res_n: null, incdev_res_media_d: null, incdev_res_mediana_d: null, _error: String(e && e.message || e) } }];\n}"
+        "jsCode": "// Why Code: cache por tarea en static data + media/mediana sobre todas las tareas.\n// Tiempo de resolucion de incidencias DEV (decision usuario 13-nov): tareas del\n// proyecto Asana 'Tickets Zendesk' que pasaron a una columna 'Produccion' en los\n// ultimos 30 dias, sin mirar cuando se crearon. Desde que se crea la tarea en\n// Asana hasta la ultima vez que se mueve a 'Produccion'. Dias naturales.\n// Si algo falla, devuelve nulls: el panel pinta '-' y el resto sigue.\nconst PROD = /^\\s*producci[oó]n\\b/i;\nconst VENTANA_MS = 30 * 86400000;\ntry {\n  const tareas = $('Asana TZ Recientes').all().map(i => i.json || {});\n  if (tareas.some(t => t.error)) throw new Error('Asana TZ Recientes: ' + JSON.stringify(tareas.find(t => t.error).error).slice(0, 200));\n  const sd = $getWorkflowStaticData('global');\n  const cache = sd.incdev_prod_cache || {};\n  // Tareas que ahora estan en una columna Produccion (de cualquier tablero).\n  const enProd = new Map();\n  for (const t of tareas) {\n    if (!t.gid) continue;\n    if ((t.memberships || []).some(m => m && m.section && PROD.test(m.section.name || ''))) enProd.set(String(t.gid), t);\n  }\n  // Stories, mas recientes primero: el primer cambio a Produccion es la ultima vez.\n  for (const it of $input.all()) {\n    const st = Array.isArray(it.json.data) ? it.json.data : null;\n    if (!st || !st.length || !st[0].target) continue;\n    const gid = String(st[0].target.gid);\n    const t = enProd.get(gid);\n    if (!t) continue;\n    const mov = st.find(s => s.resource_subtype === 'section_changed' && s.new_section && PROD.test(s.new_section.name || ''));\n    cache[gid] = { m: t.modified_at, c: t.created_at, p: mov ? mov.created_at : null, v: 1 };\n  }\n  // Solo quedan en cache las tareas que siguen en Produccion y se tocaron en 30 dias.\n  const vivos = {};\n  for (const gid of enProd.keys()) if (cache[gid]) vivos[gid] = cache[gid];\n  sd.incdev_prod_cache = vivos;\n  delete sd.incdev_res_cache;\n  const desde = Date.now() - VENTANA_MS;\n  const enVentana = Object.values(vivos).filter(c => c.p && new Date(c.p).getTime() >= desde);\n  const dias = enVentana\n    .map(c => (new Date(c.p) - new Date(c.c)) / 86400000)\n    .filter(x => x >= 0)\n    .sort((a, b) => a - b);\n  const n = dias.length;\n  const media = n ? dias.reduce((s, x) => s + x, 0) / n : null;\n  const mediana = n ? (n % 2 ? dias[(n - 1) / 2] : (dias[n / 2 - 1] + dias[n / 2]) / 2) : null;\n  // Centesimas de dia (~15 min): con decimas, 1 h salia como 0 y el panel pintaba '0 h'.\n  const r1 = v => (v == null ? null : Math.round(v * 100) / 100);\n  return [{ json: {\n    incdev_res_n: n,\n    incdev_res_en_prod: enProd.size,\n    incdev_res_sin_fecha: Object.values(vivos).filter(c => !c.p).length,\n    incdev_res_media_d: r1(media),\n    incdev_res_mediana_d: r1(mediana)\n  } }];\n} catch (e) {\n  return [{ json: { incdev_res_n: null, incdev_res_media_d: null, incdev_res_mediana_d: null, _error: String(e && e.message || e) } }];\n}"
       }
     }
   ],
@@ -1157,40 +1161,40 @@
       "main": [
         [
           {
-            "node": "ZD IncDev Resueltas Mes Lista",
+            "node": "Asana TZ Recientes",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "ZD IncDev Resueltas Mes Lista": {
+    "Asana TZ Recientes": {
       "main": [
         [
           {
-            "node": "Pendientes Audits IncDev",
+            "node": "Pendientes Stories IncDev",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Pendientes Audits IncDev": {
+    "Pendientes Stories IncDev": {
       "main": [
         [
           {
-            "node": "Hay audits que pedir?",
+            "node": "Hay stories que pedir?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Hay audits que pedir?": {
+    "Hay stories que pedir?": {
       "main": [
         [
           {
-            "node": "ZD Audits IncDev",
+            "node": "Asana Stories IncDev",
             "type": "main",
             "index": 0
           }
@@ -1204,7 +1208,7 @@
         ]
       ]
     },
-    "ZD Audits IncDev": {
+    "Asana Stories IncDev": {
       "main": [
         [
           {
