@@ -456,6 +456,9 @@
             <!-- Fecha de alta en Zendesk de la más antigua sin gestionar -->
             <div id="incSinAntigua" class="mt-1 text-xs text-slate-400 whitespace-nowrap">—</div>
           </div>
+          <!-- En sprint con «Tipo» distinto de Error / Error externo: no tienen cuadro,
+               se nombran aquí para que la suma cuadre con el total. Oculta si no hay. -->
+          <div id="incSprintOtros" class="col-span-3 text-xs text-slate-400" hidden></div>
         </div>
       </div>
     </div>
@@ -1065,6 +1068,28 @@
       };
       pintarSprint('error',   'incSprintErr', 'incSprintErrPct', 'incSprintErrEstados');
       pintarSprint('externo', 'incSprintExt', 'incSprintExtPct', 'incSprintExtEstados');
+      // En sprint de otro tipo (Optimización, Mejora…): una línea con el nombre
+      // del Tipo de Asana (tipo_nombre; sin él, solo el número).
+      const otrosEl = document.getElementById('incSprintOtros');
+      const otros = (spEn == null || !conTipo) ? [] : enList.filter(t => t && t.tipo === 'otro');
+      if (!otros.length) {
+        otrosEl.hidden = true;
+        otrosEl.replaceChildren();
+      } else {
+        const porNombre = {};
+        for (const t of otros) {
+          if (!t.tipo_nombre) continue;
+          porNombre[t.tipo_nombre] = (porNombre[t.tipo_nombre] || 0) + 1;
+        }
+        const nombres = Object.keys(porNombre).sort((a, b) => porNombre[b] - porNombre[a] || a.localeCompare(b));
+        const num = document.createElement('span');
+        num.className = 'kpi-number text-emerald-200';
+        num.textContent = '+' + otros.length;
+        const detalle = nombres.length === 0 ? ''
+          : ': ' + nombres.map(n => (nombres.length === 1 && porNombre[n] === otros.length) ? n : `${n} (${porNombre[n]})`).join(', ');
+        otrosEl.replaceChildren(num, ` en sprint de otro tipo${detalle}`);
+        otrosEl.hidden = false;
+      }
       // Sin gestionar: con tarea Asana (asana_url) vs sin tarea.
       const sinList = d.incidencias_sin_sprint_list;
       const conAsana = Array.isArray(sinList) ? sinList.filter(t => t && t.asana_url).length : null;
