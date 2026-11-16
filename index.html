@@ -453,6 +453,8 @@
               <div><span id="incSinConAsana" class="kpi-number text-rose-200">—</span> con tarea Asana</div>
               <div><span id="incSinSinAsana" class="kpi-number text-rose-200">—</span> sin tarea</div>
             </div>
+            <!-- Fecha de alta en Zendesk de la más antigua sin gestionar -->
+            <div id="incSinAntigua" class="mt-1 text-xs text-slate-400 whitespace-nowrap">—</div>
           </div>
         </div>
       </div>
@@ -1068,6 +1070,28 @@
       const conAsana = Array.isArray(sinList) ? sinList.filter(t => t && t.asana_url).length : null;
       document.getElementById('incSinConAsana').textContent = conAsana ?? '—';
       document.getElementById('incSinSinAsana').textContent = conAsana == null ? '—' : sinList.length - conAsana;
+      // Más antigua sin gestionar: la lista no trae fecha, se cruza por id con
+      // incidencias_list (created_at = alta del ticket en Zendesk).
+      const antEl = document.getElementById('incSinAntigua');
+      const altaPorId = new Map((Array.isArray(d.incidencias_list) ? d.incidencias_list : [])
+        .map(t => [String(t.id), t.created_at]));
+      const altas = (Array.isArray(sinList) ? sinList : [])
+        .map(t => new Date(altaPorId.get(String(t && t.id))))
+        .filter(f => !isNaN(f))
+        .sort((a, b) => a - b);
+      if (!altas.length) {
+        antEl.textContent = '—';
+      } else {
+        const f = altas[0];
+        const dias = Math.floor((Date.now() - f.getTime()) / 86400000);
+        const fecha = document.createElement('span');
+        fecha.className = 'kpi-number text-rose-200';
+        // Año solo si no es el actual: el cuadro es estrecho.
+        const optsFecha = { day: 'numeric', month: 'short' };
+        if (f.getFullYear() !== new Date().getFullYear()) optsFecha.year = 'numeric';
+        fecha.textContent = f.toLocaleDateString('es-ES', optsFecha);
+        antEl.replaceChildren('Más antigua ', fecha, ` · ${dias} d`);
+      }
 
       // IA vs Manual (hoy)
       const ia     = d.tickets_today_ia     ?? 0;
