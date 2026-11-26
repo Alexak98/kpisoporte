@@ -634,6 +634,26 @@
     txt.textContent = text;
   }
 
+  // Errores por fuente: un fetch que va bien solo borra el suyo. Antes el light
+  // borraba el error del heavy y los gráficos se quedaban viejos sin aviso.
+  const _errores = {};
+  function marcarError(fuente, msg) {
+    if (msg) _errores[fuente] = msg; else delete _errores[fuente];
+    const lista = Object.values(_errores);
+    document.getElementById('errorMsg').textContent = lista.join(' · ');
+    setStatus(!lista.length, lista.length ? 'Datos incompletos' : 'Datos actualizados');
+  }
+  // El cron del heavy corre L-V de 8 a 19:57 (hora Madrid): fuera de ese horario
+  // es normal que la caché envejezca; dentro, más de 30 min es que el cron no corre.
+  function cacheHeavyVieja(iso) {
+    if (!iso) return true;
+    const d = new Date();
+    const h = d.getHours() + d.getMinutes() / 60;
+    const enHorario = d.getDay() >= 1 && d.getDay() <= 5 && h >= 8.5 && h < 20;
+    return enHorario && Date.now() - new Date(iso).getTime() > 30 * 60000;
+  }
+  const horaDe = iso => { const f = new Date(iso); return `${fmt2(f.getHours())}:${fmt2(f.getMinutes())}`; };
+
   // Alto de la fila de etiquetas de hora (12px de texto + mt-1).
   const HOURLY_LABELS_PX = 20;
   let _hourlyData = null;      // último dataset pintado (para re-pintar al cambiar el alto)
@@ -1092,7 +1112,8 @@
       }
       // Sin gestionar: con tarea Asana (asana_url) vs sin tarea.
       const sinList = d.incidencias_sin_sprint_list;
-      const conAsana = Array.isArray(sinList) ? sinList.filter(t => t && t.asana_url).length : null;
+      // spSin null = Asana no respondió: la lista llega vacía y saldría 0 / 0.
+      const conAsana = (spSin != null && Array.isArray(sinList)) ? sinList.filter(t => t && t.asana_url).length : null;
       document.getElementById('incSinConAsana').textContent = conAsana ?? '—';
       document.getElementById('incSinSinAsana').textContent = conAsana == null ? '—' : sinList.length - conAsana;
       // Más antigua sin gestionar: la lista no trae fecha, se cruza por id con
@@ -1134,8 +1155,6 @@
       const now = new Date();
       document.getElementById('lastUpdate').textContent =
         `${fmt2(now.getHours())}:${fmt2(now.getMinutes())}:${fmt2(now.getSeconds())}`;
-      document.getElementById('errorMsg').textContent = '';
-      setStatus(true, 'Datos actualizados');
   }
 
   // Aplica los KPIs pesados (charts + top orgs + tipos de ticket). Solo viene en heavy.
@@ -1163,12 +1182,14 @@
     try {
       const d = await fetchOnce(N8N_WEBHOOK_URL_LIGHT, 45000);
       applyLightData(d);
-      setStatus(true, 'Datos actualizados');
-      document.getElementById('errorMsg').textContent = '';
+      marcarError('light', null);
+      // incidencias_en_sprint null = el cruce con Asana falló (ver nodo Cruzar Sprint).
+      marcarError('asana', d.incidencias_en_sprint == null
+        ? 'Asana no respondió: sprint sin datos y el total de incidencias incluye las ya en Producción' : null);
       hideLoader();   // primer fetch que termina quita el loader (light o heavy)
     } catch (e) {
       console.warn('Light fetch falló:', e && e.message);
-      setStatus(false, 'Error light');
+      marcarError('light', 'Contadores: ' + (e && e.message || e));
     } finally {
       nextRefreshAt = Date.now() + REFRESH_MS_LIGHT;
     }
@@ -1176,21 +1197,18 @@
 
   // Fetch HEAVY: counters + charts + top orgs. Con loader y retry.
   async function fetchKPIs() {
-    setStatus(true, 'Actualizando…');
     let d;
     try {
       try {
         d = await fetchOnce(N8N_WEBHOOK_URL, 90000);
       } catch (e1) {
         console.warn('Heavy fetch primer intento falló, reintento:', e1.message);
-        setStatus(true, 'Reintentando…');
         await new Promise(r => setTimeout(r, 5000));
         d = await fetchOnce(N8N_WEBHOOK_URL, 90000);
       }
     } catch (e) {
       console.error('Heavy fetch falló:', e);
-      setStatus(false, 'Error al actualizar');
-      document.getElementById('errorMsg').textContent = 'Error: ' + (e && e.message || e);
+      marcarError('heavy', 'Gráficos: ' + (e && e.message || e));
       hideLoader();
       return;
     }
@@ -1199,10 +1217,13 @@
       // Los contadores son responsabilidad exclusiva del webhook light (fresco cada 5 min).
       // El heavy viene cacheado (3 min de stale máximo) y pisaría los counters frescos del light.
       applyHeavyData(d);
+      // El webhook solo lee la caché que llena el cron: si el cron se para, responde
+      // bien pero con datos viejos.
+      marcarError('heavy', !cacheHeavyVieja(d.cached_at) ? null
+        : d.cached_at ? `Gráficos sin actualizar desde las ${horaDe(d.cached_at)}` : 'Gráficos: caché vacía');
     } catch (e) {
       console.error(e);
-      setStatus(false, 'Error al renderizar');
-      document.getElementById('errorMsg').textContent = 'Error: ' + e.message;
+      marcarError('heavy', 'Gráficos: ' + e.message);
     } finally {
       hideLoader();
     }
@@ -1223,8 +1244,12 @@
       document.getElementById('kpiMonthIAprev').textContent     = (mIa  != null) ? mIa  : '—';
       document.getElementById('kpiMonthManualPrev').textContent = (mMan != null) ? mMan : '—';
       tryRenderDeltas();
+      // El cron corre una vez al día (03:00): más de 26 h = las comparativas no son de hoy.
+      const vieja = !d.cached_at || Date.now() - new Date(d.cached_at).getTime() > 26 * 3600000;
+      marcarError('mesant', vieja ? 'Comparativa sem./mes ant. sin actualizar' : null);
     } catch (e) {
       console.warn('Top orgs mes ant fetch falló:', e && e.message);
+      marcarError('mesant', 'Comparativa sem./mes ant.: ' + (e && e.message || e));
     }
   }
 
@@ -1246,8 +1271,10 @@
       const d = await fetchOnce(N8N_WEBHOOK_URL_WAITING, 90000);
       paintCount('kpiWaiting',    d.needs_agent_reply_count ?? null);
       paintCount('kpiUnattended', d.unattended_count        ?? null);
+      marcarError('waiting', null);
     } catch (e) {
       console.warn('Waiting fetch falló:', e && e.message);
+      marcarError('waiting', 'Sin atender / esperando: ' + (e && e.message || e));
     }
   }
 
