@@ -630,24 +630,22 @@
         -1840
       ],
       "parameters": {
-        "url": "https://soporteyurest.zendesk.com/api/v2/search.json?per_page=100&query=type%3Aticket%20tags%3Aincidencia_dev%20custom_status_id%3A26672419086621",
+        "url": "https://soporteyurest.zendesk.com/api/v2/search.json",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "zendeskApi",
-        "sendQuery": false,
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "type:ticket tags:incidencia_dev custom_status_id:26672419086621"
+            }
+          ]
+        },
         "options": {
           "response": {
             "response": {
               "neverError": true
-            }
-          },
-          "pagination": {
-            "pagination": {
-              "paginationMode": "responseContainsNextURL",
-              "nextURL": "={{ $response.body.next_page }}",
-              "paginationCompleteWhen": "other",
-              "completeExpression": "={{ !$response.body.next_page }}",
-              "limitPagesFetched": true,
-              "maxRequests": 10
             }
           }
         }
@@ -669,7 +667,7 @@
         -1840
       ],
       "parameters": {
-        "jsCode": "const acc = $('Guardar Envejecidos').first().json;\n// Con paginacion llega un item por pagina de 100: se juntan los results\n// (antes, con mas de 100 abiertas, las de mas se perdian del cruce y los tramos).\nconst pags = $input.all().map(i => i.json || {});\nconst results = pags.flatMap(p => Array.isArray(p.results) ? p.results : []);\nreturn [{ json: { ...acc, zd_incidencias: { ...pags[0], results } } }];"
+        "jsCode": "const acc = $('Guardar Envejecidos').first().json;\nreturn [{ json: { ...acc, zd_incidencias: $input.first().json } }];"
       }
     },
     {
