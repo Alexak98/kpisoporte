@@ -530,7 +530,7 @@
   <!-- FOOTER -->
   <footer class="px-10 mt-auto pb-4 flex justify-end items-center text-sm text-slate-400 shrink-0 gap-6">
     <div id="errorMsg" class="text-rose-400"></div>
-    <div>Próxima actualización en <span id="countdown">10:00</span></div>
+    <div>Próxima actualización en <span id="countdown">05:00</span></div>
   </footer>
 
 </div>
@@ -540,11 +540,9 @@
   const N8N_WEBHOOK_URL         = 'https://n8n.yurest.dev/webhook/kpis-soporte';        // heavy
   const N8N_WEBHOOK_URL_LIGHT   = 'https://n8n.yurest.dev/webhook/kpis-soporte-light';  // light
   const N8N_WEBHOOK_URL_WAITING = 'https://n8n.yurest.dev/webhook/needs-agent-reply';   // esperando agente
-  const N8N_WEBHOOK_URL_LM_ORGS = 'https://n8n.yurest.dev/webhook/kpis-top-orgs-last-month'; // top orgs mes anterior
   const REFRESH_MS         = 10 * 60 * 1000;   // heavy: 10 min (charts, top clientes)
   const REFRESH_MS_LIGHT   = 5 * 60 * 1000;    // light: 5 min (counters, FRT, aged, incidencias)
   const REFRESH_MS_WAITING = 1 * 60 * 1000;    // waiting: 1 min (webhook responde <1s tras bajar tope a 100)
-  const REFRESH_MS_LM_ORGS = 30 * 60 * 1000;   // top orgs mes ant: 30 min (datos casi estáticos)
   // ===========================
 
   function fitStage() {
@@ -885,9 +883,7 @@
     document.getElementById(id).textContent = (val ?? 0);
   }
 
-  // Estado compartido para coordinar el delta vs periodo anterior:
-  // 'actual' viene de light, 'previo' viene del webhook cacheado de mes/semana ant.
-  // Cualquiera de los dos fetches dispara el render — el segundo en llegar lo completa.
+  // Estado del delta vs periodo anterior: 'actual' y 'previo' (al mismo minuto) vienen del light.
   const _kpiState = { weekNow: null, monthNow: null, weekPrev: null, monthPrev: null };
 
   // Render de un sub-KPI "▲ +12 (+5%) · vs sem. ant. 245" con color por dirección.
@@ -962,8 +958,15 @@
       document.getElementById('kpiMonthIA').textContent     = d.tickets_month_ia     ?? '—';
       document.getElementById('kpiMonthManual').textContent = d.tickets_month_manual ?? '—';
       // Alimenta el estado de deltas con el total actual (suma IA+Manual; fallback al campo total).
-      _kpiState.weekNow  = (weekIA  + weekMa) || (d.tickets_week  ?? null);
-      _kpiState.monthNow = (monthIA + monthMa) || (d.tickets_month ?? null);
+      // Sin `||`: un 0 real (lunes a primera hora) es 0, no «sin dato».
+      _kpiState.weekNow  = d.tickets_week_ia  != null ? weekIA  + weekMa  : (d.tickets_week  ?? null);
+      _kpiState.monthNow = d.tickets_month_ia != null ? monthIA + monthMa : (d.tickets_month ?? null);
+      // Semana / mes anterior hasta el mismo minuto que ahora (los calcula el light).
+      _kpiState.weekPrev  = d.tickets_last_week  ?? null;
+      _kpiState.monthPrev = d.tickets_last_month ?? null;
+      // Desglose IA/Manual del mes anterior para comparar el mix (no solo el total).
+      document.getElementById('kpiMonthIAprev').textContent     = d.tickets_last_month_ia     ?? '—';
+      document.getElementById('kpiMonthManualPrev').textContent = d.tickets_last_month_manual ?? '—';
       tryRenderDeltas();
 
       // FRT (media + mediana de tiempo de respuesta hoy)
@@ -1161,10 +1164,17 @@
   function applyHeavyData(d) {
     // Reparto primero: al pintarlo cambia el alto de la fila de charts, y el
     // horario decide con ese alto si el número cabe dentro de cada barra.
-    if (Array.isArray(d.weekly_stacked)) renderStacked(d.weekly_stacked);
-    if (Array.isArray(d.hourly_today))   renderHourly(d.hourly_today);
-    document.getElementById('weekIA').textContent = d.tickets_week_ia     ?? 0;
-    document.getElementById('weekMa').textContent = d.tickets_week_manual ?? 0;
+    // El cron del heavy no corre de noche ni en fin de semana: la caché puede ser de
+    // otro día (o de la semana pasada, un lunes antes de las 8) y no debe pasar por «hoy».
+    const gen = d.generated_at ? new Date(d.generated_at) : null;
+    const lunes = new Date(); lunes.setHours(0, 0, 0, 0);
+    lunes.setDate(lunes.getDate() - (lunes.getDay() + 6) % 7);
+    const deHoy = !!gen && gen.toDateString() === new Date().toDateString();
+    const deEstaSemana = !!gen && gen >= lunes;
+    if (Array.isArray(d.weekly_stacked)) renderStacked(deEstaSemana ? d.weekly_stacked : []);
+    if (Array.isArray(d.hourly_today))   renderHourly(deHoy ? d.hourly_today : []);
+    document.getElementById('weekIA').textContent = deEstaSemana ? (d.tickets_week_ia     ?? 0) : 0;
+    document.getElementById('weekMa').textContent = deEstaSemana ? (d.tickets_week_manual ?? 0) : 0;
     // Tickets por tipo del mes.
     if (d.tickets_by_type) renderTicketsByType(d.tickets_by_type);
     // Tiempo de resolución de incidencias DEV del mes.
@@ -1229,29 +1239,6 @@
     }
   }
 
-  // Fetch del Top Clientes del mes anterior (webhook separado, lento por paginación Zendesk del mes completo).
-  // Refresh largo (30 min): los datos del mes anterior apenas cambian — no se justifica pegar más al backend.
-  async function fetchTopOrgsLastMonth() {
-    try {
-      const d = await fetchOnce(N8N_WEBHOOK_URL_LM_ORGS, 90000);
-      // Ya no renderizamos top_orgs_last_month (la columna se reutilizó para 'Por tipo cliente').
-      // Mantenemos el fetch porque alimenta los deltas vs sem./mes anterior.
-      _kpiState.weekPrev  = d.tickets_last_week  ?? null;
-      _kpiState.monthPrev = d.tickets_last_month ?? null;
-      // Desglose IA/Manual del mes anterior para comparar el mix (no solo el total).
-      const mIa  = d.tickets_last_month_ia;
-      const mMan = d.tickets_last_month_manual;
-      document.getElementById('kpiMonthIAprev').textContent     = (mIa  != null) ? mIa  : '—';
-      document.getElementById('kpiMonthManualPrev').textContent = (mMan != null) ? mMan : '—';
-      tryRenderDeltas();
-      // El cron corre una vez al día (03:00): más de 26 h = las comparativas no son de hoy.
-      const vieja = !d.cached_at || Date.now() - new Date(d.cached_at).getTime() > 26 * 3600000;
-      marcarError('mesant', vieja ? 'Comparativa sem./mes ant. sin actualizar' : null);
-    } catch (e) {
-      console.warn('Top orgs mes ant fetch falló:', e && e.message);
-      marcarError('mesant', 'Comparativa sem./mes ant.: ' + (e && e.message || e));
-    }
-  }
 
   // Pinta un contador (sin atender / atendidos esperando) con código de color por umbral.
   function paintCount(id, n) {
@@ -1284,7 +1271,6 @@
     fetchKPIsLight();          // counters al instante (fresh, ~30s)
     fetchKPIs();                // charts + top orgs (cacheado, <200ms)
     fetchWaiting();
-    fetchTopOrgsLastMonth();
   }
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(bootFetch);
@@ -1295,7 +1281,6 @@
   setInterval(fetchKPIsLight,         REFRESH_MS_LIGHT);     // 5 min
   setInterval(fetchKPIs,              REFRESH_MS);           // 10 min
   setInterval(fetchWaiting,           REFRESH_MS_WAITING);   // 1 min
-  setInterval(fetchTopOrgsLastMonth,  REFRESH_MS_LM_ORGS);   // 30 min
 </script>
 </body>
 </html>
